@@ -79,6 +79,7 @@ const pairingCode = !!phoneNumber || process.argv.includes("--pairing-code")
 const useMobile = process.argv.includes("--mobile")
 
 // Only create readline interface if we're in an interactive environment
+const rl = process.stdin.isTTY ? readline.createInterface({ input: process.stdin, output: process.stdout }) : null
 const question = (text) => {
     if (rl) {
         return new Promise((resolve) => rl.question(text, resolve))
@@ -92,10 +93,7 @@ const question = (text) => {
 async function startXeonBotInc() {
     try {
         let { version, isLatest } = await fetchLatestBaileysVersion()
-          const { mongoAuthState } = require('./lib/mongoAuth')
-const state = await mongoAuthState()
-
-const saveCreds = async () => {}
+        const { state, saveCreds } = await useMultiFileAuthState(`./session`)
         const msgRetryCounterCache = new NodeCache()
 
         const XeonBotInc = makeWASocket({
@@ -120,19 +118,6 @@ const saveCreds = async () => {}
             connectTimeoutMs: 60000,
             keepAliveIntervalMs: 10000,
         })
-
-        XeonBotInc.ev.on('connection.update', async (update) => {
-    const { connection } = update
-
-    if (connection === 'open' && pairingCode && !XeonBotInc.authState.creds.registered) {
-        try {
-            let code = await XeonBotInc.requestPairingCode(phoneNumber)
-            console.log("🔥 CODE:", code)
-        } catch (err) {
-            console.log("💀 pairing falló:", err)
-        }
-    }
-})
 
         // Save credentials when they update
         XeonBotInc.ev.on('creds.update', saveCreds)
@@ -230,11 +215,15 @@ const saveCreds = async () => {}
     if (pairingCode && !XeonBotInc.authState.creds.registered) {
         if (useMobile) throw new Error('Cannot use pairing code with mobile api')
 
-     
-    let phoneNumber = "212693891790"
+        let phoneNumber
+        if (!!global.phoneNumber) {
+            phoneNumber = global.phoneNumber
+        } else {
+            phoneNumber = await question(chalk.bgBlack(chalk.greenBright(`Please type your WhatsApp number 😍\nFormat: 6281376552730 (without + or spaces) : `)))
+        }
 
-// limpiar por si acaso
-phoneNumber = phoneNumber.replace(/[^0-9]/g, '')
+        // Clean the phone number - remove any non-digit characters
+        phoneNumber = phoneNumber.replace(/[^0-9]/g, '')
 
         // Validate the phone number using awesome-phonenumber
         const pn = require('awesome-phonenumber');
