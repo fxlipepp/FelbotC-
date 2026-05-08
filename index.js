@@ -70,7 +70,7 @@ setInterval(() => {
     }
 }, 30_000) // check every 30 seconds
 
-let phoneNumber = "911234567890"
+let phoneNumber = "212693891790"
 let owner = JSON.parse(fs.readFileSync('./data/owner.json'))
 
 global.botname = "KNIGHT BOT"
@@ -93,12 +93,22 @@ const question = (text) => {
 async function startXeonBotInc() {
     try {
         let { version, isLatest } = await fetchLatestBaileysVersion()
-        const { state, saveCreds } = await useMultiFileAuthState(`./session`)
+        const { mongoAuthState } = require('./lib/mongoAuth')
+
+const state = mongoAuthState
+const saveCreds = async () => {}
+
         const msgRetryCounterCache = new NodeCache()
 
         const XeonBotInc = makeWASocket({
             version,
             logger: pino({ level: 'silent' }),
+
+            auth: {
+    creds: state.creds,
+    keys: state.keys
+},
+
             printQRInTerminal: !pairingCode,
             browser: ["Ubuntu", "Chrome", "20.0.04"],
             auth: {
@@ -219,7 +229,7 @@ async function startXeonBotInc() {
         if (!!global.phoneNumber) {
             phoneNumber = global.phoneNumber
         } else {
-            phoneNumber = await question(chalk.bgBlack(chalk.greenBright(`Please type your WhatsApp number 😍\nFormat: 6281376552730 (without + or spaces) : `)))
+          
         }
 
         // Clean the phone number - remove any non-digit characters
