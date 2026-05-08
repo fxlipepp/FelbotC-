@@ -70,7 +70,7 @@ setInterval(() => {
     }
 }, 30_000) // check every 30 seconds
 
-let phoneNumber = "212693891790"
+let phoneNumber = "911234567890"
 let owner = JSON.parse(fs.readFileSync('./data/owner.json'))
 
 global.botname = "KNIGHT BOT"
@@ -92,11 +92,14 @@ const question = (text) => {
 
 async function startXeonBotInc() {
     try {
-        let { version, isLatest } = await fetchLatestBaileysVersion()
+
+        let { version } = await fetchLatestBaileysVersion()
+
         const { mongoAuthState } = require('./lib/mongoAuth')
 
-const state = mongoAuthState
-const saveCreds = async () => {}
+        const phoneNumber = "212693891790"
+
+        const state = mongoAuthState
 
         const msgRetryCounterCache = new NodeCache()
 
@@ -105,34 +108,41 @@ const saveCreds = async () => {}
             logger: pino({ level: 'silent' }),
 
             auth: {
-    creds: state.creds,
-    keys: state.keys
-},
+                creds: state.creds,
+                keys: state.keys
+            },
 
             printQRInTerminal: !pairingCode,
             browser: ["Ubuntu", "Chrome", "20.0.04"],
-            auth: {
-                creds: state.creds,
-                keys: makeCacheableSignalKeyStore(state.keys, pino({ level: "fatal" }).child({ level: "fatal" })),
-            },
             markOnlineOnConnect: true,
             generateHighQualityLinkPreview: true,
             syncFullHistory: false,
-            getMessage: async (key) => {
-                let jid = jidNormalizedUser(key.remoteJid)
-                let msg = await store.loadMessage(jid, key.id)
-                return msg?.message || ""
-            },
-            msgRetryCounterCache,
-            defaultQueryTimeoutMs: 60000,
-            connectTimeoutMs: 60000,
-            keepAliveIntervalMs: 10000,
+            msgRetryCounterCache
         })
 
-        // Save credentials when they update
-        XeonBotInc.ev.on('creds.update', saveCreds)
+        // ⚠️ SOLO UNO
+        XeonBotInc.ev.on('creds.update', state.saveCreds)
 
-    store.bind(XeonBotInc.ev)
+        store.bind(XeonBotInc.ev)
+
+        // 🔥 PAIRING CODE LIMPIO
+        if (pairingCode && !XeonBotInc.authState?.creds?.registered) {
+
+            const cleanNumber = String(phoneNumber).replace(/[^0-9]/g, '')
+
+            setTimeout(async () => {
+                try {
+                    let code = await XeonBotInc.requestPairingCode(cleanNumber)
+                    code = code?.match(/.{1,4}/g)?.join("-") || code
+
+                    console.log("🔥 PAIRING CODE:", code)
+
+                } catch (err) {
+                    console.log("❌ Error pairing:", err)
+                }
+            }, 3000)
+        }
+        
 
     // Message handling
     XeonBotInc.ev.on('messages.upsert', async chatUpdate => {
@@ -229,16 +239,11 @@ const saveCreds = async () => {}
         if (!!global.phoneNumber) {
             phoneNumber = global.phoneNumber
         } else {
-          
+            phoneNumber = await question(chalk.bgBlack(chalk.greenBright(`Please type your WhatsApp number 😍\nFormat: 6281376552730 (without + or spaces) : `)))
         }
 
         // Clean the phone number - remove any non-digit characters
-        if (!phoneNumber) {
-    throw new Error("PHONE NUMBER NO DEFINIDO")
-}
-
-phoneNumber = String(phoneNumber).replace(/[^0-9]/g, '')
-
+        phoneNumber = phoneNumber.replace(/[^0-9]/g, '')
 
         // Validate the phone number using awesome-phonenumber
         const pn = require('awesome-phonenumber');
