@@ -1,33 +1,37 @@
 const settings = require("../settings");
-async function aliveCommand(sock, chatId, message) {
+
+async function comandoActivo(sock, chatId, mensaje) {
     try {
-        const message1 = `*🤖 Knight Bot is Active!*\n\n` +
-                       `*Version:* ${settings.version}\n` +
-                       `*Status:* Online\n` +
-                       `*Mode:* Public\n\n` +
-                       `*🌟 Features:*\n` +
-                       `• Group Management\n` +
-                       `• Antilink Protection\n` +
-                       `• Fun Commands\n` +
-                       `• And more!\n\n` +
-                       `Type *.menu* for full command list`;
+        const texto = `*🤖 𝕱𝖊𝖑𝖇𝖔𝖙 夜 está Activo!*\n\n` +
+            `*Versión:* ${settings.version}\n` +
+            `*Estado:* En línea\n` +
+            `*Modo:* Público\n\n` +
+            `*🌟 Funciones:*\n` +
+            `• Administración de grupos\n` +
+            `• Protección anti-link\n` +
+            `• Comandos de diversión\n` +
+            `• Y más cosas\n\n` +
+            `Escribe *.menu* para ver todo`;
 
         await sock.sendMessage(chatId, {
-            text: message1,
+            text: texto,
             contextInfo: {
                 forwardingScore: 999,
                 isForwarded: true,
+
+                // 👇 AQUÍ ES DONDE CAMBIAS LA COMUNIDAD
                 forwardedNewsletterMessageInfo: {
-                    newsletterJid: '120363161513685998@newsletter',
-                    newsletterName: 'KnightBot MD',
+                    newsletterJid: '120363409628624676@newsletter',
+                    newsletterName: '✧ 𝕱𝖊𝖑𝖇𝖔𝖙 夜 | 𝕺𝖋𝖎𝖈𝖎𝖆𝖑 𝕮𝖍𝖆𝖓𝖓𝖊𝖑 ✧',
                     serverMessageId: -1
                 }
             }
-        }, { quoted: message });
+        }, { quoted: mensaje });
+
     } catch (error) {
-        console.error('Error in alive command:', error);
-        await sock.sendMessage(chatId, { text: 'Bot is alive and running!' }, { quoted: message });
+        console.error('Error en el comando activo:', error);
+        await sock.sendMessage(chatId, { text: 'El bot está vivo y funcionando 😎' }, { quoted: mensaje });
     }
 }
 
-module.exports = aliveCommand;
+module.exports = comandoActivo;

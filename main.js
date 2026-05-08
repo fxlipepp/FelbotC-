@@ -41,7 +41,7 @@ const { autoreadCommand, isAutoreadEnabled, handleAutoread } = require('./comman
 
 // Command imports
 const tagAllCommand = require('./commands/tagall');
-const helpCommand = require('./commands/help');
+const helpCommand = require('./commands/menu');
 const banCommand = require('./commands/ban');
 const { promoteCommand } = require('./commands/promote');
 const { demoteCommand } = require('./commands/demote');
@@ -64,11 +64,6 @@ const memeCommand = require('./commands/meme');
 const tagCommand = require('./commands/tag');
 const tagNotAdminCommand = require('./commands/tagnotadmin');
 const hideTagCommand = require('./commands/hidetag');
-const jokeCommand = require('./commands/joke');
-const quoteCommand = require('./commands/quote');
-const factCommand = require('./commands/fact');
-const weatherCommand = require('./commands/weather');
-const newsCommand = require('./commands/news');
 const kickCommand = require('./commands/kick');
 const simageCommand = require('./commands/simage');
 const attpCommand = require('./commands/attp');
@@ -77,7 +72,6 @@ const { startTrivia, answerTrivia } = require('./commands/trivia');
 const { complimentCommand } = require('./commands/compliment');
 const { insultCommand } = require('./commands/insult');
 const { eightBallCommand } = require('./commands/eightball');
-const { lyricsCommand } = require('./commands/lyrics');
 const { dareCommand } = require('./commands/dare');
 const { truthCommand } = require('./commands/truth');
 const { clearCommand } = require('./commands/clear');
@@ -569,27 +563,7 @@ async function handleMessages(sock, messageUpdate, printLog) {
                 break;
             case userMessage === '.meme':
                 await memeCommand(sock, chatId, message);
-                break;
-            case userMessage === '.joke':
-                await jokeCommand(sock, chatId, message);
-                break;
-            case userMessage === '.quote':
-                await quoteCommand(sock, chatId, message);
-                break;
-            case userMessage === '.fact':
-                await factCommand(sock, chatId, message, message);
-                break;
-            case userMessage.startsWith('.weather'):
-                const city = userMessage.slice(9).trim();
-                if (city) {
-                    await weatherCommand(sock, chatId, message, city);
-                } else {
-                    await sock.sendMessage(chatId, { text: 'Please specify a city, e.g., .weather London', ...channelInfo }, { quoted: message });
-                }
-                break;
-            case userMessage === '.news':
-                await newsCommand(sock, chatId);
-                break;
+                break;                  
             case userMessage.startsWith('.ttt') || userMessage.startsWith('.tictactoe'):
                 const tttText = userMessage.split(' ').slice(1).join(' ');
                 await tictactoeCommand(sock, chatId, senderId, tttText);
@@ -636,10 +610,6 @@ async function handleMessages(sock, messageUpdate, printLog) {
             case userMessage.startsWith('.8ball'):
                 const question = userMessage.split(' ').slice(1).join(' ');
                 await eightBallCommand(sock, chatId, question);
-                break;
-            case userMessage.startsWith('.lyrics'):
-                const songTitle = userMessage.split(' ').slice(1).join(' ');
-                await lyricsCommand(sock, chatId, songTitle, message);
                 break;
             case userMessage.startsWith('.simp'):
                 const quotedMsg = message.message?.extendedTextMessage?.contextInfo?.quotedMessage;
@@ -1096,7 +1066,6 @@ async function handleMessages(sock, messageUpdate, printLog) {
             case userMessage.startsWith('.facepalm'):
             case userMessage.startsWith('.face-palm'):
             case userMessage.startsWith('.animuquote'):
-            case userMessage.startsWith('.quote'):
             case userMessage.startsWith('.loli'):
                 {
                     const parts = userMessage.trim().split(/\s+/);
