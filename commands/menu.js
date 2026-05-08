@@ -35,9 +35,7 @@ async function helpCommand(sock, chatId, message) {
 ⪼ .staff / .admins
 ⪼ .vv
 ⪼ .trt
-⪼ .ss
 ⪼ .jid
-⪼ .url
 ┗━━━━━━━━━┛
 
 ┏━✦「 👮‍♂️ 𝐀𝐃𝐌𝐈𝐍 」✦━┓

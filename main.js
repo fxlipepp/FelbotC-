@@ -1,5 +1,6 @@
 // 🧹 Fix for ENOSPC / temp overflow in hosted panels
 const fs = require('fs');
+const User = require('./models/User')
 const path = require('path');
 
 // Redirect temp storage away from system /tmp
@@ -114,9 +115,7 @@ const playCommand = require('./commands/play');
 const tiktokCommand = require('./commands/tiktok');
 const songCommand = require('./commands/song');
 const aiCommand = require('./commands/ai');
-const urlCommand = require('./commands/url');
 const { handleTranslateCommand } = require('./commands/translate');
-const { handleSsCommand } = require('./commands/ss');
 const { addCommandReaction, handleAreactCommand } = require('./lib/reactions');
 const { goodnightCommand } = require('./commands/goodnight');
 const { shayariCommand } = require('./commands/shayari');
@@ -164,6 +163,7 @@ async function handleMessages(sock, messageUpdate, printLog) {
         const message = messages[0];
         if (!message?.message) return;
 
+
         // Handle autoread functionality
         await handleAutoread(sock, message);
 
@@ -181,6 +181,42 @@ async function handleMessages(sock, messageUpdate, printLog) {
         const chatId = message.key.remoteJid;
         const senderId = message.key.participant || message.key.remoteJid;
         const isGroup = chatId.endsWith('@g.us');
+
+
+        // SISTEMA MUTE
+
+if (
+    global.muted?.[chatId]?.includes(senderId)
+) {
+
+    try {
+
+        await sock.sendMessage(chatId, {
+            delete: message.key
+        })
+
+    } catch (e) {
+
+        console.log(
+            'Error deleting muted message:',
+            e
+        )
+    }
+
+    return
+}
+
+        //Ban
+        message.key.participant || message.key.remoteJid
+
+let userData = await User.findOne({
+   userId: senderId
+})
+
+if (userData?.banned) {
+   return
+}
+
         const senderIsSudo = await isSudo(senderId);
         const senderIsOwnerOrSudo = await isOwnerOrSudo(senderId, sock, chatId);
 
@@ -378,21 +414,22 @@ async function handleMessages(sock, messageUpdate, printLog) {
                 const mentionedJidListKick = message.message.extendedTextMessage?.contextInfo?.mentionedJid || [];
                 await kickCommand(sock, chatId, senderId, mentionedJidListKick, message);
                 break;
-            case userMessage.startsWith('.mute'):
-                {
-                    const parts = userMessage.trim().split(/\s+/);
-                    const muteArg = parts[1];
-                    const muteDuration = muteArg !== undefined ? parseInt(muteArg, 10) : undefined;
-                    if (muteArg !== undefined && (isNaN(muteDuration) || muteDuration <= 0)) {
-                        await sock.sendMessage(chatId, { text: 'Please provide a valid number of minutes or use .mute with no number to mute immediately.', ...channelInfo }, { quoted: message });
-                    } else {
-                        await muteCommand(sock, chatId, senderId, message, muteDuration);
-                    }
-                }
-                break;
-            case userMessage === '.unmute':
-                await unmuteCommand(sock, chatId, senderId);
-                break;
+           
+        case userMessage.startsWith('.mute'):
+
+    await muteCommand(
+        sock,
+        chatId,
+        senderId,
+        message
+    )
+
+    break;
+
+        case userMessage.startsWith('.unmute'):
+    await unmuteCommand(sock, chatId, senderId, message)
+    break;
+
             case userMessage.startsWith('.ban'):
                 if (!isGroup) {
                     if (!message.key.fromMe && !senderIsSudo) {
@@ -781,9 +818,6 @@ async function handleMessages(sock, messageUpdate, printLog) {
                 }
                 await staffCommand(sock, chatId, message);
                 break;
-            case userMessage.startsWith('.tourl') || userMessage.startsWith('.url'):
-                await urlCommand(sock, chatId, message);
-                break;
             case userMessage.startsWith('.emojimix') || userMessage.startsWith('.emix'):
                 await emojimixCommand(sock, chatId, message);
                 break;
@@ -921,10 +955,6 @@ async function handleMessages(sock, messageUpdate, printLog) {
                 const commandLength = userMessage.startsWith('.translate') ? 10 : 4;
                 await handleTranslateCommand(sock, chatId, message, userMessage.slice(commandLength));
                 return;
-            case userMessage.startsWith('.ss') || userMessage.startsWith('.ssweb') || userMessage.startsWith('.screenshot'):
-                const ssCommandLength = userMessage.startsWith('.screenshot') ? 11 : (userMessage.startsWith('.ssweb') ? 6 : 3);
-                await handleSsCommand(sock, chatId, message, userMessage.slice(ssCommandLength).trim());
-                break;
             case userMessage.startsWith('.areact') || userMessage.startsWith('.autoreact') || userMessage.startsWith('.autoreaction'):
                 await handleAreactCommand(sock, chatId, message, isOwnerOrSudoCheck);
                 break;
