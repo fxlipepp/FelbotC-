@@ -79,7 +79,6 @@ const pairingCode = !!phoneNumber || process.argv.includes("--pairing-code")
 const useMobile = process.argv.includes("--mobile")
 
 // Only create readline interface if we're in an interactive environment
-const rl = process.stdin.isTTY ? readline.createInterface({ input: process.stdin, output: process.stdout }) : null
 const question = (text) => {
     if (rl) {
         return new Promise((resolve) => rl.question(text, resolve))
@@ -92,15 +91,11 @@ const question = (text) => {
 
 async function startXeonBotInc() {
     try {
-
-        let { version } = await fetchLatestBaileysVersion()
-
+        let { version, isLatest } = await fetchLatestBaileysVersion()
         const { mongoAuthState } = require('./lib/mongoAuth')
 
-        const phoneNumber = "212693891790"
-
-        const state = mongoAuthState
-
+const state = mongoAuthState
+const saveCreds = async () => {}
         const msgRetryCounterCache = new NodeCache()
 
         const XeonBotInc = makeWASocket({
@@ -108,41 +103,34 @@ async function startXeonBotInc() {
             logger: pino({ level: 'silent' }),
 
             auth: {
-                creds: state.creds,
-                keys: state.keys
-            },
+  creds: state.creds,
+  keys: state.keys
+},
 
             printQRInTerminal: !pairingCode,
             browser: ["Ubuntu", "Chrome", "20.0.04"],
+            auth: {
+                creds: state.creds,
+                keys: makeCacheableSignalKeyStore(state.keys, pino({ level: "fatal" }).child({ level: "fatal" })),
+            },
             markOnlineOnConnect: true,
             generateHighQualityLinkPreview: true,
             syncFullHistory: false,
-            msgRetryCounterCache
+            getMessage: async (key) => {
+                let jid = jidNormalizedUser(key.remoteJid)
+                let msg = await store.loadMessage(jid, key.id)
+                return msg?.message || ""
+            },
+            msgRetryCounterCache,
+            defaultQueryTimeoutMs: 60000,
+            connectTimeoutMs: 60000,
+            keepAliveIntervalMs: 10000,
         })
 
-        // ⚠️ SOLO UNO
-        XeonBotInc.ev.on('creds.update', state.saveCreds)
+        // Save credentials when they update
+        XeonBotInc.ev.on('creds.update', saveCreds)
 
-        store.bind(XeonBotInc.ev)
-
-        // 🔥 PAIRING CODE LIMPIO
-        if (pairingCode && !XeonBotInc.authState?.creds?.registered) {
-
-            const cleanNumber = String(phoneNumber).replace(/[^0-9]/g, '')
-
-            setTimeout(async () => {
-                try {
-                    let code = await XeonBotInc.requestPairingCode(cleanNumber)
-                    code = code?.match(/.{1,4}/g)?.join("-") || code
-
-                    console.log("🔥 PAIRING CODE:", code)
-
-                } catch (err) {
-                    console.log("❌ Error pairing:", err)
-                }
-            }, 3000)
-        }
-        
+    store.bind(XeonBotInc.ev)
 
     // Message handling
     XeonBotInc.ev.on('messages.upsert', async chatUpdate => {
@@ -235,15 +223,11 @@ async function startXeonBotInc() {
     if (pairingCode && !XeonBotInc.authState.creds.registered) {
         if (useMobile) throw new Error('Cannot use pairing code with mobile api')
 
-        let phoneNumber
-        if (!!global.phoneNumber) {
-            phoneNumber = global.phoneNumber
-        } else {
-            phoneNumber = await question(chalk.bgBlack(chalk.greenBright(`Please type your WhatsApp number 😍\nFormat: 6281376552730 (without + or spaces) : `)))
-        }
+     
+    let phoneNumber = "212693891790"
 
-        // Clean the phone number - remove any non-digit characters
-        phoneNumber = phoneNumber.replace(/[^0-9]/g, '')
+// limpiar por si acaso
+phoneNumber = phoneNumber.replace(/[^0-9]/g, '')
 
         // Validate the phone number using awesome-phonenumber
         const pn = require('awesome-phonenumber');
