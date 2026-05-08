@@ -92,9 +92,9 @@ const question = (text) => {
 async function startXeonBotInc() {
     try {
         let { version, isLatest } = await fetchLatestBaileysVersion()
-        const { mongoAuthState } = require('./lib/mongoAuth')
+          const { mongoAuthState } = require('./lib/mongoAuth')
+const state = await mongoAuthState()
 
-const state = mongoAuthState
 const saveCreds = async () => {}
         const msgRetryCounterCache = new NodeCache()
 
@@ -120,6 +120,19 @@ const saveCreds = async () => {}
             connectTimeoutMs: 60000,
             keepAliveIntervalMs: 10000,
         })
+
+        XeonBotInc.ev.on('connection.update', async (update) => {
+    const { connection } = update
+
+    if (connection === 'open' && pairingCode && !XeonBotInc.authState.creds.registered) {
+        try {
+            let code = await XeonBotInc.requestPairingCode(phoneNumber)
+            console.log("🔥 CODE:", code)
+        } catch (err) {
+            console.log("💀 pairing falló:", err)
+        }
+    }
+})
 
         // Save credentials when they update
         XeonBotInc.ev.on('creds.update', saveCreds)
