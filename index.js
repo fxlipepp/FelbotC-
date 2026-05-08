@@ -233,7 +233,12 @@ const saveCreds = async () => {}
         }
 
         // Clean the phone number - remove any non-digit characters
-        phoneNumber = phoneNumber.replace(/[^0-9]/g, '')
+        if (!phoneNumber) {
+    throw new Error("PHONE NUMBER NO DEFINIDO")
+}
+
+phoneNumber = String(phoneNumber).replace(/[^0-9]/g, '')
+
 
         // Validate the phone number using awesome-phonenumber
         const pn = require('awesome-phonenumber');
