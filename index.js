@@ -101,12 +101,6 @@ const saveCreds = async () => {}
         const XeonBotInc = makeWASocket({
             version,
             logger: pino({ level: 'silent' }),
-
-            auth: {
-  creds: state.creds,
-  keys: state.keys
-},
-
             printQRInTerminal: !pairingCode,
             browser: ["Ubuntu", "Chrome", "20.0.04"],
             auth: {
