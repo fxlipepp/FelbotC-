@@ -545,7 +545,7 @@ if (userData?.banned) {
                 }
                 break;
             case userMessage.startsWith('.n'):
-                const messageText = rawText.slice(4).trim();  // use rawText here, not userMessage
+                const messageText = rawText.substring(2).trim();// use rawText here, not userMessage
                 const replyMessage = message.message?.extendedTextMessage?.contextInfo?.quotedMessage || null;
                 await tagCommand(sock, chatId, senderId, messageText, replyMessage, message);
                 break;
