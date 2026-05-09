@@ -7,7 +7,16 @@
       "action": "delete"
     }
   },
-  "antibadword": {},
+  "antibadword": {
+    "120363409279998632@g.us": {
+      "enabled": true,
+      "action": "delete"
+    },
+    "120363425747376468@g.us": {
+      "enabled": true,
+      "action": "delete"
+    }
+  },
   "warnings": {},
   "sudo": [],
   "welcome": {

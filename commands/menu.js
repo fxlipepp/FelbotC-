@@ -1,160 +1,355 @@
-const fs = require('fs');
-const path = require('path');
+const fs = require('fs')
+const path = require('path')
 
 function formatUptime(seconds) {
-    const h = Math.floor(seconds / 3600);
-    const m = Math.floor((seconds % 3600) / 60);
-    const s = Math.floor(seconds % 60);
-    return `${h}h ${m}m ${s}s`;
+
+    const h = Math.floor(seconds / 3600)
+    const m = Math.floor((seconds % 3600) / 60)
+    const s = Math.floor(seconds % 60)
+
+    return `${h}h ${m}m ${s}s`
 }
 
 async function helpCommand(sock, chatId, message) {
 
-    const uptime = formatUptime(process.uptime());
-    const version = '2.0.0';
+    const uptime = formatUptime(process.uptime())
+    const version = '2.0.0'
 
-    const videoPath = path.join('assets', 'gifs', 'menu', 'menu.mp4');
+    const videoPath = path.join('assets', 'gifs', 'menu', 'menu.mp4')
 
     const helpMessage = `
-╭━〔 𝐌𝐄𝐍𝐔 - 𝕱𝖊𝖑𝖇𝖔𝖙 夜 〕━╮
-┃ ✦ Canal: ✧ FELBOT 夜 | Oficial ✧
+╭━━━〔 𝕱𝖊𝖑𝖇𝖔𝖙 夜 〕━━━⬣
 ┃ 👑 Creador: Fxlipe 夜
-┃ ⚙️ Versión : v${version}
+┃ ⚙️ Versión: v${version}
 ┃ ⏳ Uptime: ${uptime}
-╰━━━━━━━━━╯
+┃ 📢 Canal Oficial:
+┃ ✧ FELBOT 夜 | Oficial ✧
+╰━━━━━━━━━━━━━━━━⬣
 
-┏━✦「 🌐 𝐆𝐄𝐍𝐄𝐑𝐀𝐋 」✦━┓
-⪼ .menu
-⪼ .ping
-⪼ .alive
-⪼ .tts
-⪼ .owner
-⪼ .attp 
-⪼ .8ball
-⪼ .groupinfo
-⪼ .staff / .admins
-⪼ .vv
-⪼ .trt
-⪼ .jid
-┗━━━━━━━━━┛
+╭━━〔 🌐 GENERAL 〕━━⬣
+> ✦ Comandos principales e información del bot.
 
-┏━✦「 👮‍♂️ 𝐀𝐃𝐌𝐈𝐍 」✦━┓
-⪼ .ban
-⪼ .promote
-⪼ .demote
-⪼ .mute
-⪼ .unmute
-⪼ .delete / .del
-⪼ .kick
-⪼ .warnings
-⪼ .warn
-⪼ .antilink
-⪼ .antibadword
-⪼ .clear
-⪼ .tag
-⪼ .tagall
-⪼ .hidetag
-⪼ .setgdesc
-⪼ .setgname
-┗━━━━━━━━━┛
+❀ \`.menu\` › \`.help\`
+> Mostrar el menú completo del bot.
 
-┏━✦「 🔒 𝐎𝐖𝐍𝐄𝐑 」✦━┓
-⪼ .mode
-⪼ .clearsession
-⪼ .update
-⪼ .settings
-⪼ .autoreact
-⪼ .autotyping
-⪼ .autoread
-⪼ .anticall
-⪼ .pmblocker
-⪼ .setmention
-┗━━━━━━━━━┛
+❀ \`.ping\`
+> Ver la velocidad y respuesta del bot.
 
-┏━✦「 🎨 𝐒𝐓𝐈𝐂𝐊𝐄𝐑 」✦━┓
-⪼ .sticker
-⪼ .take
-⪼ .emojimix
-⪼ .meme
-⪼ .removebg
-┗━━━━━━━━━┛
+❀ \`.alive\`
+> Comprobar si el bot está activo.
 
-┏━✦「 🎮 𝐆𝐀𝐌𝐄𝐒 」✦━┓
-⪼ .tictactoe
-⪼ .hangman
-⪼ .guess
-⪼ .trivia
-⪼ .truth
-⪼ .dare
-┗━━━━━━━━━┛
+❀ \`.owner\`
+> Ver el contacto del creador del bot.
 
-┏━✦「 🎯 𝐅𝐔𝐍 」✦━┓
-⪼ .compliment
-⪼ .insult
-⪼ .flirt
-⪼ .ship
-⪼ .simp
-⪼ .stupid
-┗━━━━━━━━━┛
+❀ \`.jid\`
+> Obtener tu ID de WhatsApp.
 
-┏✦「 📥 𝐃𝐎𝐖𝐍𝐋𝐎𝐀𝐃𝐄𝐑 」✦┓
-⪼ .play
-⪼ .song
-⪼ .spotify
-⪼ .tiktok
-⪼ .facebook
-⪼ .instagram
-⪼ .ytmp4
-┗━━━━━━━━━┛
+❀ \`.groupinfo\`
+> Mostrar información del grupo.
 
-┏━✦「 🧩 𝐌𝐈𝐒𝐂 」✦━┓
-⪼ .heart
-⪼ .horny
-⪼ .circle
-⪼ .lgbt
-⪼ .lolice
-⪼ .tweet
-⪼ .gay
-⪼ .jail
-⪼ .triggered
-┗━━━━━━━━━┛
+❀ \`.staff\` › \`.admins\`
+> Ver la lista de administradores.
+╰━━━━━━━━━━━━━━━━⬣
 
-✦〔 ⚡ 𝕱𝖊𝖑𝖇𝖔𝖙 夜 v${version} ⚡ 〕✦
-🔥 FELBOT • POWERED BY Fxlipe 夜
-`;
+╭━━〔 🛠️ UTILIDADES 〕━━⬣
+> ✦ Herramientas útiles y funciones extras.
+
+❀ \`.tts\` + <texto>
+> Convertir texto a voz.
+
+❀ \`.trt\` + <texto>
+> Traducir texto automáticamente.
+
+❀ \`.vv\`
+> Ver mensajes de visualización única.
+
+❀ \`.8ball\` + <pregunta>
+> Respuestas aleatorias tipo bola mágica.
+╰━━━━━━━━━━━━━━━━⬣
+
+╭━━〔 👮 ADMIN 〕━━⬣
+> ✦ Herramientas de administración para grupos.
+
+❀ \`.ban\` + <@usuario>
+> Banear un usuario del bot.
+
+❀ \`.kick\` + <@usuario>
+> Expulsar un miembro del grupo.
+
+❀ \`.warn\` + <@usuario>
+> Dar advertencias a un usuario.
+
+❀ \`.warnings\` + <@usuario>
+> Ver advertencias acumuladas.
+
+❀ \`.mute\`
+> Silenciar el grupo temporalmente.
+
+❀ \`.unmute\`
+> Volver a activar mensajes del grupo.
+
+❀ \`.promote\` + <@usuario>
+> Dar administrador a un usuario.
+
+❀ \`.demote\` + <@usuario>
+> Quitar administrador a un usuario.
+
+❀ \`.delete\` › \`.del\`
+> Eliminar mensajes enviados.
+
+❀ \`.antilink\` on/off
+> Activar o desactivar anti enlaces.
+
+❀ \`.n\` + <texto>
+> Mencionar a todos los miembros.
+
+❀ \`.todos\`
+> Etiquetar a todos los participantes.
+
+❀ \`.setgname\` + <texto>
+> Cambiar nombre del grupo.
+
+❀ \`.setgpp\` + <imagen>
+> Cambiar foto del grupo.
+
+❀ \`.setgdesc\` + <texto>
+> Cambiar descripción del grupo.
+╰━━━━━━━━━━━━━━━━⬣
+
+╭━━〔 🎨 STICKERS 〕━━⬣
+> ✦ Herramientas de stickers e imágenes.
+
+❀ \`.s\`
+> Convertir imagen o video en sticker.
+
+❀ \`.wmm\`
+> Cambiar packname de un sticker.
+
+❀ \`.attp\` + <texto>
+> Crear sticker animado con texto.
+
+❀ \`.emojimix\` + <emoji+emoji>
+> Combinar emojis en stickers.
+
+❀ \`.meme\`
+> Crear memes automáticamente.
+
+❀ \`.removebg\`
+> Eliminar fondo de imágenes.
+╰━━━━━━━━━━━━━━━━⬣
+
+╭━━〔 🔤 TEXTMAKER 〕━━⬣
+> ✦ Crear textos con estilos épicos.
+
+❀ \`.metallic\` + <texto>
+> Texto metálico brillante.
+
+❀ \`.ice\` + <texto>
+> Texto congelado estilo hielo.
+
+❀ \`.snow\` + <texto>
+> Texto cubierto de nieve.
+
+❀ \`.impressive\` + <texto>
+> Texto impresionante decorado.
+
+❀ \`.matrix\` + <texto>
+> Texto estilo Matrix hacker.
+
+❀ \`.light\` + <texto>
+> Texto iluminado.
+
+❀ \`.neon\` + <texto>
+> Texto con efecto neón.
+
+❀ \`.devil\` + <texto>
+> Texto estilo demoníaco.
+
+❀ \`.purple\` + <texto>
+> Texto morado brillante.
+
+❀ \`.thunder\` + <texto>
+> Texto con rayos eléctricos.
+
+❀ \`.leaves\` + <texto>
+> Texto decorado con hojas.
+
+❀ \`.1917\` + <texto>
+> Texto estilo película 1917.
+
+❀ \`.arena\` + <texto>
+> Texto arena/desierto.
+
+❀ \`.hacker\` + <texto>
+> Texto hacker oscuro.
+
+❀ \`.sand\` + <texto>
+> Texto de arena caliente.
+
+❀ \`.blackpink\` + <texto>
+> Texto estilo BLACKPINK.
+
+❀ \`.glitch\` + <texto>
+> Texto con efecto glitch.
+
+❀ \`.fire\` + <texto>
+> Texto en llamas 🔥
+╰━━━━━━━━━━━━━━━━⬣
+
+╭━━〔 🖼️ ANIME 〕━━⬣
+> ✦ Reacciones y gifs estilo anime.
+
+❀ \`.nom\`
+> Comer cariñosamente a alguien.
+
+❀ \`.poke\`
+> Picar/molestar a alguien.
+
+❀ \`.cry\`
+> Llorar estilo anime.
+
+❀ \`.kiss\`
+> Besar a alguien.
+
+❀ \`.pat\`
+> Dar palmadas en la cabeza.
+
+❀ \`.hug\`
+> Abrazar a alguien.
+
+❀ \`.wink\`
+> Guiñar el ojo.
+
+❀ \`.facepalm\`
+> Hacer facepalm anime.
+╰━━━━━━━━━━━━━━━━⬣
+
+╭━━〔 🎮 JUEGOS 〕━━⬣
+> ✦ Juegos y entretenimiento interactivo.
+
+❀ \`.tictactoe\`
+> Jugar tres en raya.
+
+❀ \`.hangman\`
+> Jugar ahorcado.
+
+❀ \`.guess\`
+> Juego de adivinar palabras.
+
+❀ \`.trivia\`
+> Responder preguntas de trivia.
+
+❀ \`.truth\`
+> Preguntas de verdad.
+
+❀ \`.dare\`
+> Retos aleatorios.
+╰━━━━━━━━━━━━━━━━⬣
+
+╭━━〔 🎯 DIVERSIÓN 〕━━⬣
+> ✦ Comandos divertidos y sociales.
+
+❀ \`.compliment\` + <@usuario>
+> Enviar cumplidos a alguien.
+
+❀ \`.insult\` + <@usuario>
+> Insultar amistosamente a alguien.
+
+❀ \`.flirt\`
+> Coquetear con un usuario.
+
+❀ \`.ship\`
+> Ver porcentaje de compatibilidad.
+
+❀ \`.simp\` + <@usuario>
+> Tarjeta Simp.
+
+❀ \`.stupid\` + <@usuario>
+> Estúpido del grupo.
+╰━━━━━━━━━━━━━━━━⬣
+
+╭━━〔 📥 DESCARGAS 〕━━⬣
+> ✦ Descargar contenido multimedia.
+
+❀ \`.play\` + <nombre>
+> Buscar y descargar música.
+
+❀ \`.video\` + <nombre>
+> Buscar y video de yt.
+
+❀ \`.song\` + <nombre>
+> Descargar canciones en mp3.
+
+❀ \`.spotify\` + <link>
+> Descargar audio de Spotify.
+
+❀ \`.tiktok\` + <link>
+> Descargar videos de TikTok.
+
+❀ \`.facebook\` + <link>
+> Descargar videos de Facebook.
+
+❀ \`.instagram\` + <link>
+> Descargar reels y publicaciones.
+
+❀ \`.ytmp4\` + <link>
+> Descargar videos de YouTube.
+╰━━━━━━━━━━━━━━━━⬣
+
+╭━━━〔 ⚡ 𝕱𝖊𝖑𝖇𝖔𝖙 夜 ⚡ 〕━━━⬣
+┃ 🚀 Powered By Fxlipe 夜
+╰━━━━━━━━━━━━━━━━━━⬣
+`
 
     try {
 
         if (fs.existsSync(videoPath)) {
 
-            const videoBuffer = fs.readFileSync(videoPath);
+            const videoBuffer = fs.readFileSync(videoPath)
 
             await sock.sendMessage(chatId, {
                 video: videoBuffer,
                 gifPlayback: true,
                 caption: helpMessage,
+
                 contextInfo: {
                     forwardingScore: 999,
                     isForwarded: true,
+
                     forwardedNewsletterMessageInfo: {
                         newsletterJid: '120363409628624676@newsletter',
                         newsletterName: '✧ 𝕱𝖊𝖑𝖇𝖔𝖙 夜 | 𝕺𝖋𝖎𝖈𝖎𝖆𝖑 𝕮𝖍𝖆𝖓𝖓𝖊𝖑 ✧'
                     }
                 }
-            }, { quoted: message });
+
+            }, { quoted: message })
 
         } else {
 
             await sock.sendMessage(chatId, {
-                text: helpMessage
-            }, { quoted: message });
+                text: helpMessage,
 
+                contextInfo: {
+                    forwardingScore: 999,
+                    isForwarded: true,
+
+                    forwardedNewsletterMessageInfo: {
+                        newsletterJid: '120363409628624676@newsletter',
+                        newsletterName: '✧ 𝕱𝖊𝖑𝖇𝖔𝖙 夜 | 𝕺𝖋𝖎𝖈𝖎𝖆𝖑 𝕮𝖍𝖆𝖓𝖓𝖊𝖑 ✧'
+                    }
+                }
+
+            }, { quoted: message })
         }
 
     } catch (error) {
-        console.error(error);
-        await sock.sendMessage(chatId, { text: helpMessage }, { quoted: message });
+
+        console.error(error)
+
+        await sock.sendMessage(chatId, {
+            text: helpMessage
+        }, { quoted: message })
     }
 }
 
-module.exports = helpCommand;
+module.exports = helpCommand
