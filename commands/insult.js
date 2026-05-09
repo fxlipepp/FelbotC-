@@ -1,90 +1,163 @@
 const insults = [
-    "You're like a cloud. When you disappear, it's a beautiful day!",
-    "You bring everyone so much joy when you leave the room!",
-    "I'd agree with you, but then we'd both be wrong.",
-    "You're not stupid; you just have bad luck thinking.",
-    "Your secrets are always safe with me. I never even listen to them.",
-    "You're proof that even evolution takes a break sometimes.",
-    "You have something on your chin... no, the third one down.",
-    "You're like a software update. Whenever I see you, I think, 'Do I really need this right now?'",
-    "You bring everyone happiness... you know, when you leave.",
-    "You're like a penny—two-faced and not worth much.",
-    "You have something on your mind... oh wait, never mind.",
-    "You're the reason they put directions on shampoo bottles.",
-    "You're like a cloud. Always floating around with no real purpose.",
-    "Your jokes are like expired milk—sour and hard to digest.",
-    "You're like a candle in the wind... useless when things get tough.",
-    "You have something unique—your ability to annoy everyone equally.",
-    "You're like a Wi-Fi signal—always weak when needed most.",
-    "You're proof that not everyone needs a filter to be unappealing.",
-    "Your energy is like a black hole—it just sucks the life out of the room.",
-    "You have the perfect face for radio.",
-    "You're like a traffic jam—nobody wants you, but here you are.",
-    "You're like a broken pencil—pointless.",
-    "Your ideas are so original, I'm sure I've heard them all before.",
-    "You're living proof that even mistakes can be productive.",
-    "You're not lazy; you're just highly motivated to do nothing.",
-    "Your brain's running Windows 95—slow and outdated.",
-    "You're like a speed bump—nobody likes you, but everyone has to deal with you.",
-    "You're like a cloud of mosquitoes—just irritating.",
-    "You bring people together... to talk about how annoying you are."
-];
+
+    "Eres tan fastidioso que hasta el WiFi se desconecta cuando hablas 😭",
+    "Tienes menos futuro que un Nokia sin cargador JAJA",
+    "Hablas mucha mierda pa tan poca neurona 🧠",
+    "Eres la prueba de que respirar no requiere inteligencia 😔",
+    "Tu personalidad da sueño hp 😭",
+    "Ni Google encuentra sentido a lo que dices JAJA",
+    "Tienes cara de pedir fiado y desaparecer 😭",
+    "Tu árbol genealógico seguro es un círculo 🔄",
+    "Eres tan inútil que ni pa ejemplo sirves 😭",
+    "Tu mamá te hizo y Dios dijo: 'uy no qué pena' 😭",
+    "Eres más cansón que anuncio de YouTube de 2 horas 😩",
+    "Si la estupidez doliera vivirías gritando 😭",
+    "Tienes menos brillo que un bombillo fundido 💀",
+    "Das más pena que hablar solo en público 😭",
+    "Pareces error de sistema JAJA",
+    "Tienes cara de oler a humedad 😭",
+    "Ni el autocorrector entiende las babosadas que escribes 😩",
+    "Tu presencia baja el IQ del grupo 🧠⬇️",
+    "Hablas como si pensar fuera opcional 😭",
+    "Tienes tremenda energía de NPC dañado 🎮",
+    "Eres más falso que billete de 3 mil 😭",
+    "Tu sentido común está en mantenimiento desde nacimiento 💀",
+    "Das más vueltas que ventilador dañado 😭",
+    "Tienes cara de llorar por estados 😭",
+    "Tu existencia parece castigo divino 😔",
+    "Eres tan intenso que hasta los bots te ignoran JAJA",
+    "Tienes menos personalidad que una cuchara 🥄",
+    "Pareces comentario de Facebook escrito por un tío borracho 😭",
+    "Hablas mucho pa no decir nada 😩",
+    "Tienes carisma de poste mojado 😭",
+    "Das más cringe que bailar solo en TikTok 😭",
+    "Tu cerebro está corriendo en 144p 💀",
+    "Eres más perdido que pingüino en Medellín 😭",
+    "Tienes cara de pedir cargador y no devolverlo nunca 😭",
+    "Tu humor parece castigo del SENA 😭",
+    "Eres la razón por la que ponen instrucciones en el shampoo JAJA",
+    "Tu vida amorosa debe ser igual de vacía que tu cabeza 😭",
+    "Das más rabia que perder una partida por lag 😩",
+    "Eres más lento que fila de EPS 😭",
+    "Tienes cara de escribir 'ola k ase' en pleno 2026 💀",
+    "Tu opinión vale menos que los centavos del piso 😭",
+    "Ni ChatGPT entiende tus estupideces JAJA",
+    "Eres más incómodo que abrazo sudado 😭",
+    "Pareces villano secundario mal escrito 🎬",
+    "Das más miedo que abrir la cámara frontal 😭",
+    "Tu existencia parece bug de la Matrix 💀",
+    "Tienes la inteligencia emocional de una piedra 🪨",
+    "Hablar contigo quita años de vida 😭",
+    "Tienes cara de quedarse viendo reels 14 horas seguidas 😭",
+    "Eres tan insoportable que hasta Siri se silencia 😩",
+    "Tu nivel de lógica da dolor físico 😭",
+    "Das más pena que mandar mensaje y borrarlo rápido 💀",
+    "Eres tan cansón que seguramente el grupo te tiene archivado 😭",
+    "Tienes cara de pelear por Free Fire 😭",
+    "Tu cerebro parece demo gratis sin desbloquear 😭",
+    "Das más decepción que examen sorpresa 😩",
+    "Pareces audio reenviado por la tía conspiranoica 😭",
+    "Tienes menos calle que Barbie princesa 💀",
+    "Hablas como si fueras importante JAJA",
+    "Tu actitud da ganas de reiniciar el universo 😭",
+    "Eres más inútil que semáforo en GTA 😭",
+    "Das más estrés que internet lento 😩",
+    "Tienes cara de decir 'yo no fui' con pruebas al frente 😭",
+    "Tu energía espanta hasta los mosquitos 💀",
+    "Eres tan paila que ni el autocorrector te salva 😭",
+    "Tienes más ego que talento 😩",
+    "Das más sueño que clase virtual a las 6am 😭",
+    "Pareces un meme malo reciclado 😭",
+    "Tu lógica parece hecha con IA pirata 💀",
+    "Tienes cara de terminar funado 😭",
+    "Eres tan fastidioso que hasta tus estados aburren 😩",
+    "Das más pena que gritar 'profe no revisó tarea' 😭",
+    "Tienes menos gracia que una pared blanca 😭",
+    "Tu existencia se siente como anuncio sin botón de saltar 💀",
+    "Hablar contigo debería contar como trabajo comunitario 😭"
+
+]
 
 async function insultCommand(sock, chatId, message) {
+
     try {
+
         if (!message || !chatId) {
-            console.log('Invalid message or chatId:', { message, chatId });
-            return;
+            console.log('Invalid message or chatId:', { message, chatId })
+            return
         }
 
-        let userToInsult;
-        
-        // Check for mentioned users
+        let userToInsult
+
+        // 📌 Usuario mencionado
         if (message.message?.extendedTextMessage?.contextInfo?.mentionedJid?.length > 0) {
-            userToInsult = message.message.extendedTextMessage.contextInfo.mentionedJid[0];
+
+            userToInsult =
+                message.message.extendedTextMessage.contextInfo.mentionedJid[0]
         }
-        // Check for replied message
+
+        // 📌 Usuario respondido
         else if (message.message?.extendedTextMessage?.contextInfo?.participant) {
-            userToInsult = message.message.extendedTextMessage.contextInfo.participant;
+
+            userToInsult =
+                message.message.extendedTextMessage.contextInfo.participant
         }
-        
+
         if (!userToInsult) {
-            await sock.sendMessage(chatId, { 
-                text: 'Please mention someone or reply to their message to insult them!'
-            });
-            return;
+
+            await sock.sendMessage(chatId, {
+                text: '💀 Menciona a alguien o responde un mensaje para insultarlo.'
+            })
+
+            return
         }
 
-        const insult = insults[Math.floor(Math.random() * insults.length)];
+        const insult =
+            insults[Math.floor(Math.random() * insults.length)]
 
-        // Add delay to avoid rate limiting
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise(resolve => setTimeout(resolve, 1000))
 
-        await sock.sendMessage(chatId, { 
-            text: `Hey @${userToInsult.split('@')[0]}, ${insult}`,
+        await sock.sendMessage(chatId, {
+
+            text: `☠️ @${userToInsult.split('@')[0]} ${insult}`,
+
             mentions: [userToInsult]
-        });
+
+        })
+
     } catch (error) {
-        console.error('Error in insult command:', error);
-        if (error.data === 429) {
-            await new Promise(resolve => setTimeout(resolve, 2000));
+
+        console.error('Error in insult command:', error)
+
+        if (error?.data === 429) {
+
+            await new Promise(resolve => setTimeout(resolve, 2000))
+
             try {
-                await sock.sendMessage(chatId, { 
-                    text: 'Please try again in a few seconds.'
-                });
+
+                await sock.sendMessage(chatId, {
+                    text: '⏳ Espera unos segundos antes de volver a usar el comando.'
+                })
+
             } catch (retryError) {
-                console.error('Error sending retry message:', retryError);
+
+                console.error('Retry error:', retryError)
             }
+
         } else {
+
             try {
-                await sock.sendMessage(chatId, { 
-                    text: 'An error occurred while sending the insult.'
-                });
+
+                await sock.sendMessage(chatId, {
+                    text: '❌ Ocurrió un error enviando el insulto.'
+                })
+
             } catch (sendError) {
-                console.error('Error sending error message:', sendError);
+
+                console.error('Error sending error message:', sendError)
             }
         }
     }
 }
 
-module.exports = { insultCommand };
+module.exports = { insultCommand }

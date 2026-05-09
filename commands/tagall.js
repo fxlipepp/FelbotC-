@@ -1,45 +1,93 @@
-const isAdmin = require('../lib/isAdmin');  // Move isAdmin to helpers
+const isAdmin = require('../lib/isAdmin')
 
 async function tagAllCommand(sock, chatId, senderId, message) {
+
     try {
-        const { isSenderAdmin, isBotAdmin } = await isAdmin(sock, chatId, senderId);
-        
+
+        const { isSenderAdmin, isBotAdmin } = await isAdmin(sock, chatId, senderId)
 
         if (!isBotAdmin) {
-            await sock.sendMessage(chatId, { text: 'Please make the bot an admin first.' }, { quoted: message });
-            return;
+            return await sock.sendMessage(chatId, {
+                text: '⚠️ El bot necesita ser administrador primero.'
+            }, { quoted: message })
         }
 
         if (!isSenderAdmin) {
-            await sock.sendMessage(chatId, { text: 'Only group admins can use the .tagall command.' }, { quoted: message });
-            return;
+            return await sock.sendMessage(chatId, {
+                text: '❌ Solo los administradores pueden usar este comando.'
+            }, { quoted: message })
         }
 
-        // Get group metadata
-        const groupMetadata = await sock.groupMetadata(chatId);
-        const participants = groupMetadata.participants;
+        // 📌 Obtener metadata del grupo
+        const metadata = await sock.groupMetadata(chatId)
+        const participantes = metadata.participants
 
-        if (!participants || participants.length === 0) {
-            await sock.sendMessage(chatId, { text: 'No participants found in the group.' });
-            return;
+        if (!participantes || participantes.length === 0) {
+            return await sock.sendMessage(chatId, {
+                text: '❌ No se encontraron participantes en el grupo.'
+            }, { quoted: message })
         }
 
-        // Create message with each member on a new line
-        let messageText = '🔊 *Hello Everyone:*\n\n';
-        participants.forEach(participant => {
-            messageText += `@${participant.id.split('@')[0]}\n`; // Add \n for new line
-        });
+        const mentions = participantes.map(p => p.id)
 
-        // Send message with mentions
+        // 🌤️ Greeting
+        const hora = new Date().getHours()
+
+        let greeting = 'Buenas noches 🌙'
+
+        if (hora >= 5 && hora < 12) {
+            greeting = 'Buenos días ☀️'
+        } else if (hora >= 12 && hora < 18) {
+            greeting = 'Buenas tardes 🌤️'
+        }
+
+        // 📝 TEXTO
+        const texto = `
+✦━━━〔  *MENCION*  〕━━━✦
+📢 *Mencionando a todos*
+
+👑 *Solicitado por:* @${senderId.split('@')[0]}
+🥷 *Grupo:* ${metadata.subject}
+🧩 *Miembros:* ${participantes.length}
+
+✦━━━━━━━━━━✦
+${participantes.map(p => `➤ @${p.id.split('@')[0]}`).join('\n')}
+✦━━━━━━━✦
+        `.trim()
+
+        // 🚀 ENVIAR
         await sock.sendMessage(chatId, {
-            text: messageText,
-            mentions: participants.map(p => p.id)
-        });
+            text: texto,
+            mentions,
+
+            contextInfo: {
+                forwardingScore: 999,
+                isForwarded: true,
+
+                forwardedNewsletterMessageInfo: {
+                    newsletterJid: '120363409628624676@newsletter',
+                    newsletterName: '✧ 𝕱𝖊𝖑𝖇𝖔𝖙 夜 | 𝕮𝖆𝖓𝖆𝖑 𝕺𝖋𝖎𝖈𝖎𝖆𝖑 ✧'
+                },
+
+                externalAdReply: {
+                    title: '✨ Felbot++ • Mención General',
+                    body: `${greeting} • 🚀 Notificando a todos`,
+                    thumbnailUrl: '',
+                    mediaType: 1,
+                    renderLargerThumbnail: true
+                }
+            }
+
+        }, { quoted: message })
 
     } catch (error) {
-        console.error('Error in tagall command:', error);
-        await sock.sendMessage(chatId, { text: 'Failed to tag all members.' });
+
+        console.error('Error en comando tagall:', error)
+
+        await sock.sendMessage(chatId, {
+            text: '❌ Ocurrió un error al mencionar a todos.'
+        }, { quoted: message })
     }
 }
 
-module.exports = tagAllCommand;  // Export directly
+module.exports = tagAllCommand
