@@ -64,8 +64,8 @@ setInterval(() => {
 // Memory monitoring - Restart if RAM gets too high
 setInterval(() => {
     const used = process.memoryUsage().rss / 1024 / 1024
-    if (used > 400) {
-        console.log('⚠️ RAM too high (>400MB), restarting bot...')
+    if (used > 900) {
+        console.log('⚠️ RAM too high (>900MB), restarting bot...')
         process.exit(1) // Panel will auto-restart
     }
 }, 30_000) // check every 30 seconds

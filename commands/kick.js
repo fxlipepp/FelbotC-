@@ -1,130 +1,108 @@
-const isAdmin = require('../lib/isAdmin');
+const isAdmin = require('../lib/isAdmin')
 
 async function kickCommand(sock, chatId, senderId, mentionedJids, message) {
-    const isOwner = message.key.fromMe;
-    if (!isOwner) {
-        const { isSenderAdmin, isBotAdmin } = await isAdmin(sock, chatId, senderId);
 
-        if (!isBotAdmin) {
-            await sock.sendMessage(chatId, { text: 'Please make the bot an admin first.' }, { quoted: message });
-            return;
-        }
+   try {
 
-        if (!isSenderAdmin) {
-            await sock.sendMessage(chatId, { text: 'Only group admins can use the kick command.' }, { quoted: message });
-            return;
-        }
-    }
+      const isOwner = message.key.fromMe
 
-    let usersToKick = [];
-    
-    if (mentionedJids && mentionedJids.length > 0) {
-        usersToKick = mentionedJids;
-    }
-    else if (message.message?.extendedTextMessage?.contextInfo?.participant) {
-        usersToKick = [message.message.extendedTextMessage.contextInfo.participant];
-    }
-    
-    if (usersToKick.length === 0) {
-        await sock.sendMessage(chatId, { 
-            text: 'Please mention the user or reply to their message to kick!'
-        }, { quoted: message });
-        return;
-    }
+      if (!isOwner) {
 
-    const botId = sock.user?.id || '';
-    const botLid = sock.user?.lid || '';
-    const botPhoneNumber = botId.includes(':') ? botId.split(':')[0] : (botId.includes('@') ? botId.split('@')[0] : botId);
-    const botIdFormatted = botPhoneNumber + '@s.whatsapp.net';
-    
-    // Extract numeric part from bot LID (remove session identifier like :4)
-    const botLidNumeric = botLid.includes(':') ? botLid.split(':')[0] : (botLid.includes('@') ? botLid.split('@')[0] : botLid);
-    const botLidWithoutSuffix = botLid.includes('@') ? botLid.split('@')[0] : botLid;
+         const { isSenderAdmin, isBotAdmin } =
+            await isAdmin(sock, chatId, senderId)
 
-    const metadata = await sock.groupMetadata(chatId);
-    const participants = metadata.participants || [];
+         if (!isBotAdmin) {
+            return await sock.sendMessage(chatId, {
+               text: '❌ Ponme admin primero.'
+            }, { quoted: message })
+         }
 
-    const isTryingToKickBot = usersToKick.some(userId => {
-        const userPhoneNumber = userId.includes(':') ? userId.split(':')[0] : (userId.includes('@') ? userId.split('@')[0] : userId);
-        const userLidNumeric = userId.includes('@lid') ? userId.split('@')[0].split(':')[0] : '';
-        
-        // Direct match checks
-        const directMatch = (
-            userId === botId ||
-            userId === botLid ||
-            userId === botIdFormatted ||
-            userPhoneNumber === botPhoneNumber ||
-            (userLidNumeric && botLidNumeric && userLidNumeric === botLidNumeric)
-        );
-        
-        if (directMatch) {
-            return true;
-        }
-        
-        // Check against participants
-        const participantMatch = participants.some(p => {
-            const pPhoneNumber = p.phoneNumber ? p.phoneNumber.split('@')[0] : '';
-            const pId = p.id ? p.id.split('@')[0] : '';
-            const pLid = p.lid ? p.lid.split('@')[0] : '';
-            const pFullId = p.id || '';
-            const pFullLid = p.lid || '';
-            
-            // Extract numeric part from participant LID
-            const pLidNumeric = pLid.includes(':') ? pLid.split(':')[0] : pLid;
-            
-            // Check if this participant is the bot
-            const isThisParticipantBot = (
-                pFullId === botId ||
-                pFullLid === botLid ||
-                pLidNumeric === botLidNumeric ||
-                pPhoneNumber === botPhoneNumber ||
-                pId === botPhoneNumber ||
-                p.phoneNumber === botIdFormatted ||
-                (botLid && pLid && botLidWithoutSuffix === pLid)
-            );
-            
-            if (isThisParticipantBot) {
-                // Check if the userId matches this bot participant
-                return (
-                    userId === pFullId ||
-                    userId === pFullLid ||
-                    userPhoneNumber === pPhoneNumber ||
-                    userPhoneNumber === pId ||
-                    userId === p.phoneNumber ||
-                    (pLid && userLidNumeric && userLidNumeric === pLidNumeric) ||
-                    (userLidNumeric && pLidNumeric && userLidNumeric === pLidNumeric)
-                );
-            }
-            return false;
-        });
-        
-        return participantMatch;
-    });
+         if (!isSenderAdmin) {
+            return await sock.sendMessage(chatId, {
+               text: '🚫 Solo admins pueden usar esto.'
+            }, { quoted: message })
+         }
+      }
 
-    if (isTryingToKickBot) {
-        await sock.sendMessage(chatId, { 
-            text: "I can't kick myself🤖"
-        }, { quoted: message });
-        return;
-    }
+      let usersToKick = []
 
-    try {
-        await sock.groupParticipantsUpdate(chatId, usersToKick, "remove");
-        
-        const usernames = await Promise.all(usersToKick.map(async jid => {
-            return `@${jid.split('@')[0]}`;
-        }));
-        
-        await sock.sendMessage(chatId, { 
-            text: `${usernames.join(', ')} has been kicked successfully!`,
-            mentions: usersToKick
-        });
-    } catch (error) {
-        console.error('Error in kick command:', error);
-        await sock.sendMessage(chatId, { 
-            text: 'Failed to kick user(s)!'
-        });
-    }
+      if (mentionedJids && mentionedJids.length > 0) {
+         usersToKick = mentionedJids
+      }
+
+      else if (message.message?.extendedTextMessage?.contextInfo?.participant) {
+         usersToKick = [
+            message.message.extendedTextMessage.contextInfo.participant
+         ]
+      }
+
+      if (!usersToKick.length) {
+         return await sock.sendMessage(chatId, {
+            text: '⚠️ Menciona o responde a alguien.'
+         }, { quoted: message })
+      }
+
+      const botId = sock.user?.id || ''
+      const botNumber = botId.split(':')[0].split('@')[0]
+
+      const tryingKickBot = usersToKick.some(user => {
+         const userNumber = user.split(':')[0].split('@')[0]
+         return userNumber === botNumber
+      })
+
+      if (tryingKickBot) {
+         return await sock.sendMessage(chatId, {
+            text: '🤖 No me voy a expulsar yo mismo.'
+         }, { quoted: message })
+      }
+
+      const metadata = await sock.groupMetadata(chatId)
+      const participants = metadata.participants || []
+
+      const filteredUsers = usersToKick.filter(user => {
+         const participant = participants.find(p => p.id === user)
+         return !participant?.admin
+      })
+
+      if (!filteredUsers.length) {
+         return await sock.sendMessage(chatId, {
+            text: '🚫 No puedo expulsar admins.'
+         }, { quoted: message })
+      }
+
+      await sock.groupParticipantsUpdate(
+         chatId,
+         filteredUsers,
+         'remove'
+      )
+
+      const mentions = filteredUsers.map(
+         user => `@${user.split('@')[0]}`
+      )
+
+      const executor = `@${senderId.split('@')[0]}`
+
+      await sock.sendMessage(chatId, {
+
+         text:
+`❌ Usuario expulsado:
+${mentions.join('\n')}
+
+⚡ By:
+${executor}`,
+
+         mentions: [...filteredUsers, senderId]
+
+      }, { quoted: message })
+
+   } catch (error) {
+
+      console.error('KICK ERROR:', error)
+
+      await sock.sendMessage(chatId, {
+         text: '❌ Error al expulsar usuario.'
+      }, { quoted: message })
+   }
 }
 
-module.exports = kickCommand;
+module.exports = kickCommand
