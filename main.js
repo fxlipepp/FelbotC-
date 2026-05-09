@@ -750,7 +750,7 @@ if (userData?.banned) {
             case userMessage.startsWith('.wm') || userMessage.startsWith('.steal'):
                 {
                     const isSteal = userMessage.startsWith('.steal');
-                    const sliceLen = isSteal ? 6 : 5; // '.steal' vs '.take'
+                   const sliceLen = isSteal ? '.steal'.length : '.wm'.length;
                     const takeArgs = rawText.slice(sliceLen).trim().split(' ');
                     await takeCommand(sock, chatId, message, takeArgs);
                 }
