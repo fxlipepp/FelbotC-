@@ -148,8 +148,8 @@ const channelInfo = {
         forwardingScore: 1,
         isForwarded: true,
         forwardedNewsletterMessageInfo: {
-            newsletterJid: '120363161513685998@newsletter',
-            newsletterName: 'KnightBot MD',
+            newsletterJid: '120363409628624676@newsletter',
+            newsletterName: '✧ 𝕱𝖊𝖑𝖇𝖔𝖙 夜 | 𝕺𝖋𝖎𝖈𝖎𝖆𝖑 𝕮𝖍𝖆𝖓𝖓𝖊𝖑 ✧',
             serverMessageId: -1
         }
     }
@@ -183,25 +183,16 @@ async function handleMessages(sock, messageUpdate, printLog) {
         const isGroup = chatId.endsWith('@g.us');
 
 
-        // SISTEMA MUTE
+        const mutedUser = await User.findOne({ userId: senderId })
 
-if (
-    global.muted?.[chatId]?.includes(senderId)
-) {
+if (mutedUser?.muted) {
 
+    // opcional: borrar mensaje
     try {
-
         await sock.sendMessage(chatId, {
             delete: message.key
         })
-
-    } catch (e) {
-
-        console.log(
-            'Error deleting muted message:',
-            e
-        )
-    }
+    } catch {}
 
     return
 }
