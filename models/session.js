@@ -1,7 +1,7 @@
 const mongoose = require('mongoose')
 
 const sessionSchema = new mongoose.Schema({
-  id: String,
+  id: { type: String, unique: true },
   data: Object
 })
 

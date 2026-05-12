@@ -3,6 +3,7 @@ require('./server')
 require('./settings')
 const { Boom } = require('@hapi/boom')
 const fs = require('fs')
+const BOT_MODE = process.env.BOT_MODE || "dev"
 const chalk = require('chalk')
 const FileType = require('file-type')
 const path = require('path')
@@ -75,7 +76,7 @@ let owner = JSON.parse(fs.readFileSync('./data/owner.json'))
 
 global.botname = "KNIGHT BOT"
 global.themeemoji = "•"
-const pairingCode = !!phoneNumber || process.argv.includes("--pairing-code")
+const pairingCode = BOT_MODE !== "render"
 const useMobile = process.argv.includes("--mobile")
 
 // Only create readline interface if we're in an interactive environment
@@ -93,7 +94,25 @@ const question = (text) => {
 async function startXeonBotInc() {
     try {
         let { version, isLatest } = await fetchLatestBaileysVersion()
-        const { state, saveCreds } = await useMultiFileAuthState(`./session`)
+        let state, saveCreds
+
+if (BOT_MODE === "render") {
+    const { useMongoAuthState } = require('./lib/mongoAuthState')
+    const auth = await useMongoAuthState('main')
+
+    state = auth.state
+    saveCreds = auth.saveCreds
+
+    console.log("🔥 Render: usando MongoDB")
+} else {
+    const { useMultiFileAuthState } = require("@whiskeysockets/baileys")
+    const local = await useMultiFileAuthState('./session')
+
+    state = local.state
+    saveCreds = local.saveCreds
+
+    console.log("🟢 Dev: usando archivos locales")
+}
         const msgRetryCounterCache = new NodeCache()
 
         const XeonBotInc = makeWASocket({
