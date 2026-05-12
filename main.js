@@ -1,6 +1,7 @@
 // 🧹 Fix for ENOSPC / temp overflow in hosted panels
 const fs = require('fs');
 const User = require('./models/User')
+const Group = require('./models/Group')
 const path = require('path');
 
 // Redirect temp storage away from system /tmp
@@ -47,6 +48,7 @@ const banCommand = require('./commands/ban');
 const { promoteCommand } = require('./commands/promote');
 const { demoteCommand } = require('./commands/demote');
 const muteCommand = require('./commands/mute');
+const modoAdminCommand = require('./commands/modoadmin')
 const unmuteCommand = require('./commands/unmute');
 const stickerCommand = require('./commands/sticker');
 const isAdmin = require('./lib/isAdmin');
@@ -67,6 +69,7 @@ const tagNotAdminCommand = require('./commands/tagnotadmin');
 const hideTagCommand = require('./commands/hidetag');
 const kickCommand = require('./commands/kick');
 const simageCommand = require('./commands/simage');
+const { welcomeCommand, handleJoinEvent } = require('./commands/welcome')
 const attpCommand = require('./commands/attp');
 const { startHangman, guessLetter } = require('./commands/hangman');
 const { startTrivia, answerTrivia } = require('./commands/trivia');
@@ -78,8 +81,6 @@ const { truthCommand } = require('./commands/truth');
 const pingCommand = require('./commands/ping');
 const aliveCommand = require('./commands/alive');
 const blurCommand = require('./commands/img-blur');
-const { welcomeCommand, handleJoinEvent } = require('./commands/welcome');
-const { goodbyeCommand, handleLeaveEvent } = require('./commands/goodbye');
 const githubCommand = require('./commands/github');
 const { handleChatbotCommand, handleChatbotResponse } = require('./commands/chatbot');
 const takeCommand = require('./commands/take');
@@ -343,6 +344,18 @@ if (userData?.banned) {
         let isSenderAdmin = false;
         let isBotAdmin = false;
 
+        if (isGroup) {
+
+    const adminStatus = await isAdmin(
+        sock,
+        chatId,
+        senderId
+    )
+
+    isSenderAdmin = adminStatus.isSenderAdmin
+    isBotAdmin = adminStatus.isBotAdmin
+}
+
         // Check admin status only for admin commands in groups
         if (isGroup && isAdminCommand) {
             const adminStatus = await isAdmin(sock, chatId, senderId);
@@ -379,6 +392,20 @@ if (userData?.banned) {
                 return;
             }
         }
+
+
+        const groupData = await Group.findOne({
+    groupId: chatId
+})
+
+if (
+    isGroup &&
+    groupData?.adminMode &&
+    !isSenderAdmin &&
+    !message.key.fromMe
+) {
+    return
+}
 
         // Command handlers - Execute commands immediately without waiting for typing indicator
         // We'll show typing indicator after command execution if needed
@@ -449,6 +476,32 @@ if (userData?.banned) {
                 const mentionedJidListWarn = message.message.extendedTextMessage?.contextInfo?.mentionedJid || [];
                 await warnCommand(sock, chatId, senderId, mentionedJidListWarn, message);
                 break;
+                case userMessage.startsWith('.modoadmin'):
+{
+    if (!isGroup) {
+        await sock.sendMessage(chatId, {
+            text: '❌ Este comando solo funciona en grupos.'
+        }, { quoted: message })
+        return
+    }
+
+    if (!isSenderAdmin && !message.key.fromMe) {
+        await sock.sendMessage(chatId, {
+            text: '❌ Solo admins.'
+        }, { quoted: message })
+        return
+    }
+
+    const args = userMessage.split(' ').slice(1)
+
+    await modoAdminCommand(
+        sock,
+        chatId,
+        message,
+        args
+    )
+}
+break;
             case userMessage.startsWith('.tts'):
                 const text = userMessage.slice(4).trim();
                 await ttsCommand(sock, chatId, text, message);
@@ -681,23 +734,34 @@ if (userData?.banned) {
                 const quotedMessage = message.message?.extendedTextMessage?.contextInfo?.quotedMessage;
                 await blurCommand(sock, chatId, message, quotedMessage);
                 break;
-            case userMessage.startsWith('.welcome'):
-                if (isGroup) {
-                    // Check admin status if not already checked
-                    if (!isSenderAdmin) {
-                        const adminStatus = await isAdmin(sock, chatId, senderId);
-                        isSenderAdmin = adminStatus.isSenderAdmin;
-                    }
 
-                    if (isSenderAdmin || message.key.fromMe) {
-                        await welcomeCommand(sock, chatId, message);
-                    } else {
-                        await sock.sendMessage(chatId, { text: 'Sorry, only group admins can use this command.', ...channelInfo }, { quoted: message });
-                    }
-                } else {
-                    await sock.sendMessage(chatId, { text: 'This command can only be used in groups.', ...channelInfo }, { quoted: message });
-                }
-                break;
+         case userMessage.startsWith('.welcome'):
+
+    if (!isGroup) {
+
+        await sock.sendMessage(chatId, {
+            text: '❌ Este comando solo funciona en grupos.'
+        }, { quoted: message })
+
+        break
+    }
+
+    const welcomeAdminStatus = await isAdmin(sock, chatId, senderId)
+    isSenderAdmin = welcomeAdminStatus.isSenderAdmin
+
+    if (!isSenderAdmin && !message.key.fromMe) {
+
+        await sock.sendMessage(chatId, {
+            text: '❌ Solo admins pueden usar este comando.'
+        }, { quoted: message })
+
+        break
+    }
+
+    await welcomeCommand(sock, chatId, message)
+
+    break
+           
             case userMessage.startsWith('.goodbye'):
                 if (isGroup) {
                     // Check admin status if not already checked
@@ -1218,10 +1282,11 @@ async function handleGroupParticipantUpdate(sock, update) {
             return;
         }
 
-        // Handle join events
         if (action === 'add') {
-            await handleJoinEvent(sock, id, participants);
-        }
+    await handleJoinEvent(sock, id, participants, author)
+}
+
+
 
         // Handle leave events
         if (action === 'remove') {
