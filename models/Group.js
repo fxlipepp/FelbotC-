@@ -21,6 +21,23 @@ const groupSchema = new mongoose.Schema({
    antilinkResetAt: {
       type: Number,
       default: 0
+   },
+
+   adminMode: {
+      type: Boolean,
+      default: false
+   },
+
+   welcome: {
+      enabled: {
+         type: Boolean,
+         default: false
+      },
+
+      message: {
+         type: String,
+         default: null
+      }
    }
 
 })

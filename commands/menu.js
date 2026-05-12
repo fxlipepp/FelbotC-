@@ -100,6 +100,12 @@ async function helpCommand(sock, chatId, message) {
 ❀ \`.antilink\` on/off
 > Activar o desactivar anti enlaces.
 
+❀ \`.modoadmin\` on/off
+> Activar o desactivar modo admin.
+
+❀ \`.welcome\` on/off
+> Activar o desactivar bienvenidas.
+
 ❀ \`.n\` + <texto>
 > Mencionar a todos los miembros.
 

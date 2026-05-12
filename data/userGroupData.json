@@ -24,6 +24,11 @@
       "enabled": true,
       "message": "Welcome {user} to {group}! 🎉",
       "channelId": "120363161513685998@newsletter"
+    },
+    "120363425763457914@g.us": {
+      "enabled": true,
+      "message": "Welcome {user} to {group}! 🎉",
+      "channelId": "120363161513685998@newsletter"
     }
   },
   "goodbye": {},
