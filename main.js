@@ -64,6 +64,7 @@ const { handleAntitagCommand, handleTagDetection } = require('./commands/antitag
 const { Antilink } = require('./lib/antilink');
 const { handleMentionDetection, mentionToggleCommand, setMentionCommand } = require('./commands/mention');
 const memeCommand = require('./commands/meme');
+const { besarCommand } = require('./commands/besar')
 const tagCommand = require('./commands/tag');
 const tagNotAdminCommand = require('./commands/tagnotadmin');
 const hideTagCommand = require('./commands/hidetag');
@@ -584,6 +585,13 @@ break;
             case userMessage === '.owner':
                 await ownerCommand(sock, chatId);
                 break;
+                case userMessage.startsWith('.besar'):
+    await besarCommand(
+        sock,
+        chatId,
+        message
+    )
+    break;
             case userMessage === '.todos':
                 await tagAllCommand(sock, chatId, senderId, message);
                 break;
