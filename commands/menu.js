@@ -214,8 +214,8 @@ async function helpCommand(sock, chatId, message) {
 ❀ \`.cry\`
 > Llorar estilo anime.
 
-❀ \`.kiss\`
-> Besar a alguien.
+❀ \`.besar\` + <@usuario>
+> Besar a Usuario.
 
 ❀ \`.pat\`
 > Dar palmadas en la cabeza.
