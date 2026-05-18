@@ -47,6 +47,8 @@ const helpCommand = require('./commands/menu');
 const banCommand = require('./commands/ban');
 const { promoteCommand } = require('./commands/promote');
 const { demoteCommand } = require('./commands/demote');
+const bratCommand = require('./commands/brat')
+const groupCloseCommand = require('./commands/groupclose')
 const muteCommand = require('./commands/mute');
 const modoAdminCommand = require('./commands/modoadmin')
 const unmuteCommand = require('./commands/unmute');
@@ -905,6 +907,42 @@ break;
             case userMessage.startsWith('.neon'):
                 await textmakerCommand(sock, chatId, message, userMessage, 'neon');
                 break;
+                case userMessage === '.open':
+case userMessage === '.close':
+case userMessage === '.abrir':
+case userMessage === '.cerrar':
+{
+    if (!isGroup) {
+        await sock.sendMessage(chatId, {
+            text: '❌ Este comando solo funciona en grupos.'
+        }, { quoted: message })
+        return
+    }
+
+    if (!isSenderAdmin && !message.key.fromMe) {
+        await sock.sendMessage(chatId, {
+            text: '❌ Solo admins.'
+        }, { quoted: message })
+        return
+    }
+
+    if (!isBotAdmin) {
+        await sock.sendMessage(chatId, {
+            text: '❌ El bot debe ser admin.'
+        }, { quoted: message })
+        return
+    }
+
+    const action = userMessage.slice(1)
+
+    await groupCloseCommand(
+        sock,
+        chatId,
+        message,
+        action
+    )
+}
+break;
             case userMessage.startsWith('.devil'):
                 await textmakerCommand(sock, chatId, message, userMessage, 'devil');
                 break;
@@ -982,6 +1020,18 @@ break;
             case userMessage.startsWith('.music'):
                 await playCommand(sock, chatId, message);
                 break;
+                case userMessage.startsWith('.brat'):
+{
+    const text = rawText.slice(5).trim()
+
+    await bratCommand(
+        sock,
+        chatId,
+        message,
+        text
+    )
+}
+break;
             case userMessage.startsWith('.spotify'):
                 await spotifyCommand(sock, chatId, message);
                 break;
@@ -1208,17 +1258,53 @@ break;
             case userMessage.startsWith('.sora'):
                 await soraCommand(sock, chatId, message);
                 break;
-            default:
-                if (isGroup) {
-                    // Handle non-command group messages
-                    if (userMessage) {  // Make sure there's a message
-                        await handleChatbotResponse(sock, chatId, message, userMessage, senderId);
-                    }
-                    await handleTagDetection(sock, chatId, message, senderId);
-                    await handleMentionDetection(sock, chatId, message);
+           default:
+
+    try {
+
+        const imagePath = path.join(
+            __dirname,
+            'assets',
+            'imagenes',
+            'admin',
+            'admin.png'
+        )
+
+        const imageBuffer = fs.readFileSync(imagePath)
+
+        const texto =
+`🍛 El comando \`${userMessage.split(' ')[0]}\` no existe.
+> 🍜 Usa *.menu* para ver la lista de comandos.`
+
+        await sock.sendMessage(chatId, {
+
+            image: imageBuffer,
+            caption: texto,
+
+            mentions: [senderId],
+
+            contextInfo: {
+                forwardingScore: 999,
+                isForwarded: true,
+
+                forwardedNewsletterMessageInfo: {
+                    newsletterJid: '120363409628624676@newsletter',
+                    newsletterName: '✧ 𝕱𝖊𝖑𝖇𝖔𝖙 夜 | Oficial ✧'
                 }
-                commandExecuted = false;
-                break;
+            }
+
+        }, { quoted: message })
+
+    } catch (e) {
+
+        console.log(e)
+
+        await sock.sendMessage(chatId, {
+            text: '❌ Ese comando no existe.\nUsa *.menu*'
+        }, { quoted: message })
+    }
+
+    break;
         }
 
         // If a command was executed, show typing status after command execution
