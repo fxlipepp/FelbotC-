@@ -1,312 +1,160 @@
-// commands/demote.js
-
 const isAdmin = require('../lib/isAdmin')
+const fs = require('fs')
+const path = require('path')
 
 // =========================
 // COMANDO DEMOTE
 // =========================
 
-async function demoteCommand(
-    sock,
-    chatId,
-    mentionedJids,
-    message
-) {
+async function demoteCommand(sock, chatId, mentionedJids, message) {
 
     try {
 
-        // Solo grupos
         if (!chatId.endsWith('@g.us')) {
-
             return await sock.sendMessage(chatId, {
-                text:
-                    '❌ Este comando solo funciona en grupos.'
-            }, {
-                quoted: message
-            })
+                text: '❌ Este comando solo funciona en grupos.'
+            }, { quoted: message })
         }
 
-        // Verificar admins
         const adminStatus = await isAdmin(
             sock,
             chatId,
-            message.key.participant ||
-            message.key.remoteJid
+            message.key.participant || message.key.remoteJid
         )
 
-        // Bot admin
         if (!adminStatus.isBotAdmin) {
-
             return await sock.sendMessage(chatId, {
-                text:
-                    '❌ El bot necesita ser administrador.'
-            }, {
-                quoted: message
-            })
+                text: '❌ El bot necesita ser administrador.'
+            }, { quoted: message })
         }
 
-        // Usuario admin
         if (!adminStatus.isSenderAdmin) {
-
             return await sock.sendMessage(chatId, {
-                text:
-                    '❌ Solo los administradores pueden usar este comando.'
-            }, {
-                quoted: message
-            })
+                text: '❌ Solo los administradores pueden usar este comando.'
+            }, { quoted: message })
         }
 
         let userToDemote = []
 
-        // Menciones
-        if (
-            mentionedJids &&
-            mentionedJids.length > 0
-        ) {
-
+        if (mentionedJids?.length) {
             userToDemote = mentionedJids
-        }
-
-        // Reply
-        else if (
-            message.message?.extendedTextMessage
-                ?.contextInfo?.participant
+        } else if (
+            message.message?.extendedTextMessage?.contextInfo?.participant
         ) {
-
             userToDemote = [
-                message.message.extendedTextMessage
-                    .contextInfo.participant
+                message.message.extendedTextMessage.contextInfo.participant
             ]
         }
 
-        // No encontró usuario
-        if (userToDemote.length === 0) {
-
+        if (!userToDemote.length) {
             return await sock.sendMessage(chatId, {
-                text:
-                    '❌ Menciona o responde al usuario que deseas degradar.'
-            }, {
-                quoted: message
-            })
+                text: '❌ Menciona o responde al usuario.'
+            }, { quoted: message })
         }
 
-        // Delay anti flood
-        await new Promise(resolve =>
-            setTimeout(resolve, 1000)
-        )
-
-        // Degradar
         await sock.groupParticipantsUpdate(
             chatId,
             userToDemote,
             'demote'
         )
 
-        // Usuarios
-        const usernames =
-            userToDemote.map(jid => {
-                return `@${jid.split('@')[0]}`
-            })
-
-        // Admin
-        const demoter =
-            message.key.participant ||
-            message.key.remoteJid
-
-        // Fecha
-        const date =
-            new Date().toLocaleString('es-CO')
-
-        // Mensaje bonito
-        const demotionMessage =
-`╭━━━〔 💀 REMOCIÓN DE ADMIN 💀 〕━━⬣
-┃
-┃ ⚠️ Usuario degradado correctamente
-┃
-┃ 👥 Usuario${userToDemote.length > 1 ? 's' : ''}:
-${usernames.map(u => `┃ ➜ ${u}`).join('\n')}
-┃
-┃ 👑 Degradado por:
-┃ ➜ @${demoter.split('@')[0]}
-┃
-┃ 📅 Fecha:
-┃ ➜ ${date}
-┃
-╰━━━━━━━━━━━━━━━━━━⬣`
-
-        // Enviar
-        await sock.sendMessage(chatId, {
-
-            text: demotionMessage,
-
-            mentions: [
-                ...userToDemote,
-                demoter
-            ],
-
-            contextInfo: {
-                forwardingScore: 999,
-                isForwarded: true,
-
-                forwardedNewsletterMessageInfo: {
-                    newsletterJid:
-                        '120363409628624676@newsletter',
-
-                    newsletterName:
-                        '✧ 𝕱𝖊𝖑𝖇𝖔𝖙 夜 | 𝕺𝖋𝖎𝖈𝖎𝖆𝖑 𝕮𝖍𝖆𝖓𝖓𝖊𝖑 ✧'
-                }
-            }
-
-        }, {
-            quoted: message
-        })
-
-    } catch (error) {
-
-        console.error(
-            'Error in demote command:',
-            error
-        )
-
-        if (error.data === 429) {
-
-            await new Promise(resolve =>
-                setTimeout(resolve, 2000)
-            )
-
-            return await sock.sendMessage(chatId, {
-                text:
-                    '❌ Demasiadas solicitudes. Espera unos segundos.'
-            }, {
-                quoted: message
-            })
-        }
-
-        await sock.sendMessage(chatId, {
-            text:
-                '❌ No se pudo degradar al usuario.'
-        }, {
-            quoted: message
-        })
+    } catch (err) {
+        console.error(err)
+        return await sock.sendMessage(chatId, {
+            text: '❌ Error al degradar usuario.'
+        }, { quoted: message })
     }
 }
 
 // =========================
-// EVENTO AUTOMÁTICO
+// EVENTO DEMOTE (FINAL PRO)
 // =========================
 
-async function handleDemotionEvent(
-    sock,
-    groupId,
-    participants,
-    author
-) {
+async function handleDemotionEvent(sock, groupId, participants, author) {
 
     try {
 
-        if (
-            !Array.isArray(participants) ||
-            participants.length === 0
-        ) return
+        if (!Array.isArray(participants) || !participants.length) return
 
-        // Delay anti flood
-        await new Promise(resolve =>
-            setTimeout(resolve, 1000)
-        )
+        const safeJid = (jid) => {
+            if (!jid) return null
+            if (typeof jid === 'string') return jid
+            if (jid.id) return jid.id
+            if (jid.toString) return jid.toString()
+            return null
+        }
 
-        // Usuarios
-        const demotedUsers =
-            participants.map(jid => {
+        const demotedUsers = participants.map(jid => {
+            const id = safeJid(jid)
+            return id ? `@${id.split('@')[0]}` : '@desconocido'
+        })
 
-                const jidString =
-                    typeof jid === 'string'
-                        ? jid
-                        : (jid.id || jid.toString())
+        let mentionList = participants
+            .map(jid => safeJid(jid))
+            .filter(Boolean)
 
-                return `@${jidString.split('@')[0]}`
-            })
-
-        // Mention list
-        let mentionList =
-            participants.map(jid => {
-
-                return typeof jid === 'string'
-                    ? jid
-                    : (jid.id || jid.toString())
-            })
-
-        // Autor
         let demotedBy = 'Sistema'
 
         if (author) {
-
-            const authorJid =
-                typeof author === 'string'
-                    ? author
-                    : (author.id || author.toString())
-
-            demotedBy =
-                `@${authorJid.split('@')[0]}`
-
-            mentionList.push(authorJid)
+            const aid = safeJid(author)
+            if (aid) {
+                demotedBy = `@${aid.split('@')[0]}`
+                mentionList.push(aid)
+            }
         }
 
-        // Fecha
-        const date =
-            new Date().toLocaleString('es-CO')
+        const date = new Date().toLocaleString('es-CO')
 
-        // Mensaje bonito
-        const demotionMessage =
-`╭━〔 💀 ADMIN DEMOTE💀 〕━⬣
-┃
-┃ ⚠️ Cambio de administración detectado
-┃
-┃ 👥 Usuario${participants.length > 1 ? 's' : ''}:
-${demotedUsers.map(u => `┃ ➜ ${u}`).join('\n')}
-┃
-┃ 👑 Degradado por:
-┃ ➜ ${demotedBy}
-┃
-┃ 📅 Fecha:
-┃ ➜ ${date}
-┃
-╰━━━━━━━━━━━━⬣`
+        // 🔥 IMAGEN LOCAL
+        const imagePath = path.join(
+            __dirname,
+            '..',
+            'assets',
+            'imagenes',
+            'admin',
+            'admin.png'
+        )
 
-        // Enviar
+        const imageBuffer = fs.readFileSync(imagePath)
+
+        const text =
+`> ❀ ${demotedUsers.join(', ')} deja${participants.length > 1 ? 'n' : ''} de ser admin del grupo.
+> ✦ Acción hecha por: ${demotedBy}
+
+> 📅 ${date}`
+
+        const fake = {
+            key: {
+                fromMe: false,
+                participant: '0@s.whatsapp.net',
+                remoteJid: 'status@broadcast'
+            },
+            message: {
+                conversation: '𝕱𝖊𝖑𝖇𝖔𝖙 夜'
+            }
+        }
+
         await sock.sendMessage(groupId, {
 
-            text: demotionMessage,
-
-            mentions: mentionList,
+            image: imageBuffer,
+            caption: text,
 
             contextInfo: {
                 forwardingScore: 999,
                 isForwarded: true,
 
                 forwardedNewsletterMessageInfo: {
-                    newsletterJid:
-                        '120363409628624676@newsletter',
-
-                    newsletterName:
-                        '✧ 𝕱𝖊𝖑𝖇𝖔𝖙 夜 | 𝕺𝖋𝖎𝖈𝖎𝖆𝖑 𝕮𝖍𝖆𝖓𝖓𝖊𝖑 ✧'
+                    newsletterJid: '120363409628624676@newsletter',
+                    newsletterName: '✧ 𝕱𝖊𝖑𝖇𝖔𝖙 夜 | 𝕺𝖋𝖎𝖈𝖎𝖆𝖑 𝕮𝖍𝖆𝖓𝖓𝖊𝖑  ✧'
                 }
-            }
+            },
 
-        })
+            mentions: mentionList
 
-    } catch (error) {
+        }, { quoted: fake })
 
-        console.error(
-            'Error handling demotion event:',
-            error
-        )
-
-        if (error.data === 429) {
-
-            await new Promise(resolve =>
-                setTimeout(resolve, 2000)
-            )
-        }
+    } catch (err) {
+        console.error('Error demotion event:', err)
     }
 }
 

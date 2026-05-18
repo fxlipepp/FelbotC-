@@ -120,6 +120,12 @@ async function helpCommand(sock, chatId, message) {
 
 ❀ \`.setgdesc\` + <texto>
 > Cambiar descripción del grupo.
+
+❀ \`.abrir\` 
+> Abrir el grupo.
+
+❀ \`.cerrar\` 
+> Cerrar el grupo.
 ╰━━━━━━━━━━━━━━━━⬣
 
 ╭━━〔 🎨 STICKERS 〕━━⬣
@@ -128,7 +134,10 @@ async function helpCommand(sock, chatId, message) {
 ❀ \`.s\`
 > Convertir imagen o video en sticker.
 
-❀ \`.wmm\`
+❀ \`.brat\`
+> Convertir texto sticker.
+
+❀ \`.wm\`
 > Cambiar packname de un sticker.
 
 ❀ \`.attp\` + <texto>
