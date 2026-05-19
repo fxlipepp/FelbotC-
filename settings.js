@@ -2,15 +2,16 @@ const settings = {
   packname: '𝕱𝖊𝖑𝖇𝖔𝖙 夜',
   author: '‎',
   botName: "𝕱𝖊𝖑𝖇𝖔𝖙 夜",
-  botOwner: 'Fxlipe 夜', // Your name
-  ownerNumber: '919876543210', //Set your number here without + symbol, just add country code & number without any space
+
+  ownerNumber: '573117354305',
+  ownerLid: '274517599482100@lid', // 👈 ESTE ES EL IMPORTANTE
+
   giphyApiKey: 'qnl7ssQChTdPjsKta2Ax2LMaGXz303tq',
   commandMode: "public",
-  maxStoreMessages: 20, 
+  maxStoreMessages: 20,
   storeWriteInterval: 10000,
-  description: "This is a bot for managing group commands and automating tasks.",
+  description: "Bot",
   version: "3.0.7",
-  updateZipUrl: "https://github.com/mruniquehacker/Knightbot-MD/archive/refs/heads/main.zip",
 };
 
 module.exports = settings;

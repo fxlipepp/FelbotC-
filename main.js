@@ -401,6 +401,19 @@ if (userData?.banned) {
     groupId: chatId
 })
 
+const isCommand = userMessage.startsWith('.')
+
+// 🔴 FELBOT GLOBAL BLOCK
+if (isGroup && isCommand) {
+
+    const groupData = await Group.findOne({ groupId: chatId })
+
+    // si está apagado y NO es el comando de control
+    if (groupData && groupData.felbot?.enabled === false && !userMessage.startsWith('.felbot')) {
+        return
+    }
+}
+
 if (
     isGroup &&
     groupData?.adminMode &&
@@ -572,6 +585,117 @@ break;
                     await sock.sendMessage(chatId, { text: 'Only owner/sudo can use anticall.' }, { quoted: message });
                     break;
                 }
+               case userMessage.startsWith('.felbot'):
+{
+    if (!isGroup) return
+
+    if (!isSenderAdmin && !message.key.fromMe) {
+        await sock.sendMessage(chatId, {
+            text: '❌ Solo admins pueden usar esto.'
+        }, { quoted: message })
+        break
+    }
+
+    let groupData = await Group.findOne({ groupId: chatId })
+
+    if (!groupData) {
+        groupData = await Group.create({ groupId: chatId })
+    }
+
+    const action = userMessage.split(' ')[1]
+
+    const imagePath = path.join(
+        __dirname,
+        'assets',
+        'imagenes',
+        'admin',
+        'admin.png'
+    )
+
+    const imageBuffer = fs.readFileSync(imagePath)
+
+    // =========================
+    // 📌 MENÚ
+    // =========================
+    if (!action) {
+        await sock.sendMessage(chatId, {
+            text:
+`╭─〔 👋  𝕱𝖊𝖑𝖇𝖔𝖙 夜 〕─╮
+
+📌 ESTADO: ${groupData.felbot?.enabled ? 'ON' : 'OFF'}
+
+✅ .felbot on
+> Activar felbot en el grupo
+
+❌ .felbot off
+> Desactivar felbot en el grupo
+
+╰────────────────╯`
+        }, { quoted: message })
+
+        break
+    }
+
+    // =========================
+    // 📌 ON
+    // =========================
+    if (action === 'on') {
+
+        groupData.felbot.enabled = true
+        await groupData.save()
+
+        await sock.sendMessage(chatId, {
+            image: imageBuffer,
+            caption:
+`> 𝕱𝖊𝖑𝖇𝖔𝖙 夜 ᴀᴄᴛɪᴠᴀᴅᴏ ᴇɴ ᴇꜱᴛᴇ ɢʀᴜᴘᴏ
+> ESTADO: ON`,
+            contextInfo: {
+                forwardingScore: 999,
+                isForwarded: true,
+                forwardedNewsletterMessageInfo: {
+                    newsletterJid: '120363409628624676@newsletter',
+                    newsletterName: '✧ 𝕱𝖊𝖑𝖇𝖔𝖙 夜 | 𝕺𝖋𝖎𝖈𝖎𝖆𝗅 ✧'
+                }
+            }
+        }, { quoted: message })
+
+        break
+    }
+
+    // =========================
+    // 📌 OFF
+    // =========================
+    if (action === 'off') {
+
+        groupData.felbot.enabled = false
+        await groupData.save()
+
+        await sock.sendMessage(chatId, {
+            image: imageBuffer,
+            caption:
+`> 𝕱𝖊𝖑𝖇𝖔𝖙 夜 ᴅᴇꜱᴀᴄᴛɪᴠᴀᴅᴏ ᴇɴ ᴇꜱᴛᴇ ɢʀᴜᴘᴏ
+> ESTADO: OFF`,
+            contextInfo: {
+                forwardingScore: 999,
+                isForwarded: true,
+                forwardedNewsletterMessageInfo: {
+                    newsletterJid: '120363409628624676@newsletter',
+                    newsletterName: '✧ 𝕱𝖊𝖑𝖇𝖔𝖙 夜 | 𝕺𝖋𝖎𝖈𝖎𝖆𝗅 ✧'
+                }
+            }
+        }, { quoted: message })
+
+        break
+    }
+
+    // =========================
+    // ❌ ERROR
+    // =========================
+    await sock.sendMessage(chatId, {
+        text: '❌ Usa: .felbot on / .felbot off'
+    }, { quoted: message })
+}
+break
                 {
                     const args = userMessage.split(' ').slice(1).join(' ');
                     await anticallCommand(sock, chatId, message, args);
