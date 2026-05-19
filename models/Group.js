@@ -33,10 +33,17 @@ const groupSchema = new mongoose.Schema({
          type: Boolean,
          default: false
       },
-
       message: {
          type: String,
          default: null
+      }
+   },
+
+   // 🔥 AQUI AGREGAMOS FELBOT
+   felbot: {
+      enabled: {
+         type: Boolean,
+         default: true
       }
    }
 

@@ -26,6 +26,17 @@ async function helpCommand(sock, chatId, message) {
 ┃ ✧ FELBOT 夜 | Oficial ✧
 ╰━━━━━━━━━━━━━━━━⬣
 
+╭━━〔 👑 OWNER 〕━━⬣
+> ✦ Comandos de administracion.
+
+❀ \`.felbot on\`
+> Activar Felbot en el grupo.
+
+❀ \`.felbot off\`
+> Desactivar Felbot en el grupo.
+
+╰━━━━━━━━━━━━━━━━⬣
+
 ╭━━〔 🌐 GENERAL 〕━━⬣
 > ✦ Comandos principales e información del bot.
 
@@ -72,6 +83,9 @@ async function helpCommand(sock, chatId, message) {
 
 ❀ \`.ban\` + <@usuario>
 > Banear un usuario del bot.
+
+❀ \`.unban\` + <@usuario>
+> Desbanear un usuario del bot.
 
 ❀ \`.kick\` + <@usuario>
 > Expulsar un miembro del grupo.
@@ -145,9 +159,6 @@ async function helpCommand(sock, chatId, message) {
 
 ❀ \`.emojimix\` + <emoji+emoji>
 > Combinar emojis en stickers.
-
-❀ \`.meme\`
-> Crear memes automáticamente.
 
 ❀ \`.removebg\`
 > Eliminar fondo de imágenes.
@@ -311,9 +322,9 @@ async function helpCommand(sock, chatId, message) {
 > Descargar videos de YouTube.
 ╰━━━━━━━━━━━━━━━━⬣
 
-╭━━━〔 ⚡ 𝕱𝖊𝖑𝖇𝖔𝖙 夜 ⚡ 〕━━━⬣
-┃ 🚀 Powered By Fxlipe 夜
-╰━━━━━━━━━━━━━━━━━━⬣
+╭━〔  𝕱𝖊𝖑𝖇𝖔𝖙 夜  〕━⬣
+> *🚀 Powered By Fxlipe 夜*
+╰━━━━━━━━━━━━⬣
 `
 
     try {
