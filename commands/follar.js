@@ -1,36 +1,20 @@
 const fs = require('fs')
 const path = require('path')
-const ffmpeg = require('fluent-ffmpeg')
 
-async function convertToMp4(inputPath, outputPath) {
-
-    return new Promise((resolve, reject) => {
-
-        ffmpeg(inputPath)
-
-            .outputOptions([
-                '-movflags faststart',
-                '-pix_fmt yuv420p'
-            ])
-
-            .toFormat('mp4')
-
-            .save(outputPath)
-
-            .on('end', () => resolve(outputPath))
-
-            .on('error', err => reject(err))
-    })
-}
+// ======================================
+// 🧠 CACHE GLOBAL POR GRUPO
+// evita repetir gifs hasta acabarlos
+// ======================================
+const usedFilesByChat = new Map()
 
 async function follarCommand(sock, chatId, message) {
 
     try {
 
-        // =========================
+        // ======================================
         // 📁 CARPETA
-        // =========================
-        const mediaPath = path.join(
+        // ======================================
+        const gifsPath = path.join(
             __dirname,
             '..',
             'assets',
@@ -38,30 +22,37 @@ async function follarCommand(sock, chatId, message) {
             'follar'
         )
 
-        // =========================
+        // ======================================
         // 📦 ARCHIVOS
-        // =========================
-        const files = fs.readdirSync(mediaPath)
+        // ======================================
+        const files = fs.readdirSync(gifsPath)
             .filter(file =>
-                /\.(gif|mp4|webm|mov|mkv|avi)$/i.test(file)
+                /\.(gif|mp4|webm|mov|mkv)$/i.test(file)
             )
 
-        // =========================
+        // ======================================
         // ❌ SIN ARCHIVOS
-        // =========================
+        // ======================================
         if (files.length === 0) {
 
             return await sock.sendMessage(chatId, {
                 text:
-`❌ No hay archivos en:
+`❌ No hay gifs/videos en:
 
-assets/gifs/follar`
+assets/gifs/follar
+
+Formatos permitidos:
+• .gif
+• .mp4
+• .webm
+• .mov
+• .mkv`
             }, { quoted: message })
         }
 
-        // =========================
+        // ======================================
         // 👥 MENCIONES
-        // =========================
+        // ======================================
         const mentioned =
             message.message?.extendedTextMessage
                 ?.contextInfo?.mentionedJid || []
@@ -77,9 +68,9 @@ Ejemplo:
             }, { quoted: message })
         }
 
-        // =========================
+        // ======================================
         // 👤 USUARIOS
-        // =========================
+        // ======================================
         const sender =
             message.key.participant ||
             message.key.remoteJid
@@ -87,13 +78,31 @@ Ejemplo:
         const senderNumber =
             sender.split('@')[0]
 
-        const targetNumber =
-            mentioned[0].split('@')[0]
+        const target =
+            mentioned[0]
 
-        // =========================
-        // 💬 50 FRASES
-        // =========================
-        const frases = [
+        const targetNumber =
+            target.split('@')[0]
+
+        // ======================================
+        // 🚫 AUTOFOLLAR
+        // ======================================
+        if (sender === target) {
+
+            return await sock.sendMessage(chatId, {
+                text:
+`🤨 @${senderNumber} intentó follarse a sí mismo... qué solo.`,
+                mentions: [sender]
+            }, { quoted: message })
+        }
+
+        // ======================================
+        // 💬 FRASES +18
+        // ======================================
+      // ======================================
+// 💬 FRASES +18
+// ======================================
+const frases = [
 
 `💋 @${senderNumber} \`marcó completamente a\` @${targetNumber} \`sin darle descanso\``,
 
@@ -101,164 +110,189 @@ Ejemplo:
 
 `🥵 @${senderNumber} \`dominó lentamente a\` @${targetNumber} \`contra la pared\``,
 
-`😈 @${senderNumber} \`tomó el control de\` @${targetNumber} \`sin piedad\``,
+`😈 @${senderNumber} \`tomó el control total de\` @${targetNumber} \`sin ninguna piedad\``,
 
-`💦 @${senderNumber} \`dejó sin fuerzas a\` @${targetNumber} \``,
+`💦 @${senderNumber} \`dejó completamente agotado a\` @${targetNumber} \`en la cama\``,
 
-`🛏️ @${senderNumber} \`pasó toda la noche encima de\` @${targetNumber} \``,
+`🛏️ @${senderNumber} \`pasó toda la noche encima de\` @${targetNumber} \`sin detenerse\``,
 
-`💋 @${senderNumber} \`besó intensamente a\` @${targetNumber} \`hasta perder el control\``,
+`💋 @${senderNumber} \`besó intensamente a\` @${targetNumber} \`hasta hacerlo perder el control\``,
 
-`🔥 @${senderNumber} \`calentó demasiado a\` @${targetNumber} \``,
+`🔥 @${senderNumber} \`calentó demasiado a\` @${targetNumber} \`hasta hacerlo gemir\``,
 
-`😏 @${senderNumber} \`provocó sin parar a\` @${targetNumber} \``,
+`😏 @${senderNumber} \`provocó sin parar a\` @${targetNumber} \`durante toda la madrugada\``,
 
-`🥵 @${senderNumber} \`dejó temblando a\` @${targetNumber} \``,
+`🥵 @${senderNumber} \`hizo temblar completamente a\` @${targetNumber} \`con cada movimiento\``,
 
-`💦 @${senderNumber} \`terminó agotando a\` @${targetNumber} \`en la cama\``,
+`💦 @${senderNumber} \`terminó agotando a\` @${targetNumber} \`hasta dejarlo sin fuerzas\``,
 
-`😈 @${senderNumber} \`dominó cada movimiento de\` @${targetNumber} \``,
+`😈 @${senderNumber} \`dominó cada parte del cuerpo de\` @${targetNumber} \`sin descanso\``,
 
-`🔥 @${senderNumber} \`encerró entre besos a\` @${targetNumber} \``,
+`🔥 @${senderNumber} \`encerró entre besos y caricias a\` @${targetNumber} \`durante horas\``,
 
-`🖤 @${senderNumber} \`se volvió loco con\` @${targetNumber} \``,
+`🖤 @${senderNumber} \`se volvió completamente loco por\` @${targetNumber} \`esa noche\``,
 
-`💋 @${senderNumber} \`devoró lentamente a\` @${targetNumber} \``,
+`💋 @${senderNumber} \`devoró lentamente a\` @${targetNumber} \`sin dejar escapar ningún gemido\``,
 
-`🥵 @${senderNumber} \`hizo jadear demasiado a\` @${targetNumber} \``,
+`🥵 @${senderNumber} \`dejó jadeando intensamente a\` @${targetNumber} \`sobre la cama\``,
 
-`💦 @${senderNumber} \`acabó empapando a\` @${targetNumber} \``,
+`💦 @${senderNumber} \`acabó empapando completamente a\` @${targetNumber} \`de placer\``,
 
-`😏 @${senderNumber} \`no dejó descansar a\` @${targetNumber} \``,
+`😏 @${senderNumber} \`no dejó descansar ni un segundo a\` @${targetNumber} \``,
 
-`🔥 @${senderNumber} \`se aprovechó completamente de\` @${targetNumber} \``,
+`🔥 @${senderNumber} \`se aprovechó totalmente de\` @${targetNumber} \`durante toda la noche\``,
 
-`🛏️ @${senderNumber} \`pasó una noche prohibida con\` @${targetNumber} \``,
+`🛏️ @${senderNumber} \`pasó una noche demasiado intensa con\` @${targetNumber} \``,
 
-`💋 @${senderNumber} \`llenó de pasión a\` @${targetNumber} \``,
+`💋 @${senderNumber} \`dejó lleno de marcas y besos a\` @${targetNumber} \``,
 
-`😈 @${senderNumber} \`perdió el control junto a\` @${targetNumber} \``,
+`🥵 @${senderNumber} \`hizo gemir tan fuerte a\` @${targetNumber} \`que todos escucharon\``,
 
-`🔥 @${senderNumber} \`dejó marcado a\` @${targetNumber} \``,
+`💦 @${senderNumber} \`terminó drenando toda la energía de\` @${targetNumber} \``,
 
-`🥵 @${senderNumber} \`hizo explotar de placer a\` @${targetNumber} \``,
+`😈 @${senderNumber} \`hizo suyo completamente a\` @${targetNumber} \`durante horas\``,
 
-`💦 @${senderNumber} \`se puso demasiado intenso con\` @${targetNumber} \``,
+`🔥 @${senderNumber} \`dejó temblando las piernas de\` @${targetNumber} \`después de esa noche\``,
 
-`🛏️ @${senderNumber} \`pasó horas disfrutando de\` @${targetNumber} \``,
+`💋 @${senderNumber} \`no dejó rincón del cuerpo de\` @${targetNumber} \`sin besar\``,
 
-`😏 @${senderNumber} \`volvió loco a\` @${targetNumber} \``,
+`🥵 @${senderNumber} \`terminó haciendo sudar y jadear a\` @${targetNumber} \`sin parar\``,
 
-`🔥 @${senderNumber} \`dejó agotado a\` @${targetNumber} \``,
+`💦 @${senderNumber} \`acabó encima de\` @${targetNumber} \`hasta el amanecer\``,
 
-`💋 @${senderNumber} \`hizo perder el control a\` @${targetNumber} \``,
+`😏 @${senderNumber} \`jugó toda la noche con\` @${targetNumber} \`sin cansarse\``,
 
-`🥵 @${senderNumber} \`acabó dominando totalmente a\` @${targetNumber} \``,
+`🔥 @${senderNumber} \`hizo perder totalmente la inocencia de\` @${targetNumber} \``,
 
-`😈 @${senderNumber} \`jugó toda la noche con\` @${targetNumber} \``,
+`🖤 @${senderNumber} \`hizo quedar completamente enamorado a\` @${targetNumber} \`después de esa noche\``,
 
-`💦 @${senderNumber} \`llenó de besos a\` @${targetNumber} \``,
+`💋 @${senderNumber} \`mordió lentamente el cuello de\` @${targetNumber} \`hasta hacerlo estremecer\``,
 
-`🔥 @${senderNumber} \`encendió cada parte de\` @${targetNumber} \``,
+`🥵 @${senderNumber} \`hizo que\` @${targetNumber} \`no pudiera caminar después\``,
 
-`🖤 @${senderNumber} \`atrapó completamente a\` @${targetNumber} \``,
+`💦 @${senderNumber} \`dejó totalmente rendido a\` @${targetNumber} \`sobre las sábanas\``,
 
-`💋 @${senderNumber} \`hizo sudar demasiado a\` @${targetNumber} \``,
+`😈 @${senderNumber} \`susurró cosas prohibidas al oído de\` @${targetNumber} \`toda la noche\``,
 
-`🥵 @${senderNumber} \`dejó sin aliento a\` @${targetNumber} \``,
+`🔥 @${senderNumber} \`terminó encerrado en una noche salvaje con\` @${targetNumber} \``,
 
-`😏 @${senderNumber} \`dominó la situación con\` @${targetNumber} \``,
+`🛏️ @${senderNumber} \`pasó horas enteras disfrutando de\` @${targetNumber} \`sin detenerse\``,
 
-`🔥 @${senderNumber} \`llevó al límite a\` @${targetNumber} \``,
+`💋 @${senderNumber} \`hizo sonrojar completamente a\` @${targetNumber} \`con sus movimientos\``,
 
-`💦 @${senderNumber} \`acabó agotando a\` @${targetNumber} \`sin descanso\``,
+`🥵 @${senderNumber} \`dejó totalmente sin aliento a\` @${targetNumber} \``,
 
-`🛏️ @${senderNumber} \`pasó toda la madrugada con\` @${targetNumber} \``,
+`💦 @${senderNumber} \`terminó haciendo gritar de placer a\` @${targetNumber} \``,
 
-`😈 @${senderNumber} \`provocó intensamente a\` @${targetNumber} \``,
+`😏 @${senderNumber} \`no tuvo ninguna piedad con\` @${targetNumber} \`esa madrugada\``,
 
-`💋 @${senderNumber} \`se adueñó completamente de\` @${targetNumber} \``,
+`🔥 @${senderNumber} \`encendió cada parte del cuerpo de\` @${targetNumber} \``,
 
-`🔥 @${senderNumber} \`calentó la habitación junto a\` @${targetNumber} \``,
+`🖤 @${senderNumber} \`terminó completamente obsesionado con\` @${targetNumber} \``,
 
-`🥵 @${senderNumber} \`hizo temblar completamente a\` @${targetNumber} \``,
+`💋 @${senderNumber} \`hizo perder el control a\` @${targetNumber} \`con solo un beso\``,
 
-`💦 @${senderNumber} \`pasó una noche intensa con\` @${targetNumber} \``,
+`🥵 @${senderNumber} \`dejó a\` @${targetNumber} \`rogando por otra ronda\``,
 
-`😏 @${senderNumber} \`descontroló totalmente a\` @${targetNumber} \``,
+`💦 @${senderNumber} \`acabó completamente encima de\` @${targetNumber} \`hasta dejarlo agotado\``,
 
-`🖤 @${senderNumber} \`dejó completamente satisfecho a\` @${targetNumber} \``,
+`😈 @${senderNumber} \`terminó dominando salvajemente a\` @${targetNumber} \`contra la cama\``,
 
-`🔥 @${senderNumber} \`terminó encima de\` @${targetNumber} \`sin parar\``,
+`🔥 @${senderNumber} \`hizo arder toda la noche de\` @${targetNumber} \``,
 
-`💋 @${senderNumber} \`acabó enamorando a\` @${targetNumber} \`con pasión\``,
+`🛏️ @${senderNumber} \`dejó completamente destruido a\` @${targetNumber} \`después de tantas horas\``
 
-`😈 @${senderNumber} \`se entregó completamente a\` @${targetNumber} \``
-
-        ]
-
-        // =========================
-        // 🎲 RANDOM
-        // =========================
+]
+        // ======================================
+        // 🎲 FRASE RANDOM
+        // ======================================
         const randomPhrase =
             frases[Math.floor(Math.random() * frases.length)]
 
+        // ======================================
+        // 🧠 SISTEMA ANTI-REPETICIÓN
+        // POR GRUPO
+        // ======================================
+
+        // obtener usados del grupo
+        let usedFiles =
+            usedFilesByChat.get(chatId) || []
+
+        // archivos disponibles
+        let availableFiles =
+            files.filter(file =>
+                !usedFiles.includes(file)
+            )
+
+        // si ya se usaron todos
+        // reinicia la lista
+        if (availableFiles.length === 0) {
+
+            usedFiles = []
+            availableFiles = [...files]
+
+            console.log(
+                `♻️ Reiniciando gifs usados en ${chatId}`
+            )
+        }
+
+        // elegir random
         const randomFile =
-            files[Math.floor(Math.random() * files.length)]
+            availableFiles[
+                Math.floor(
+                    Math.random() * availableFiles.length
+                )
+            ]
 
-        // =========================
-        // 📂 PATHS
-        // =========================
-        const inputPath = path.join(
-            mediaPath,
-            randomFile
+        // guardar usado
+        usedFiles.push(randomFile)
+
+        usedFilesByChat.set(
+            chatId,
+            usedFiles
         )
 
-        const outputPath = path.join(
-            mediaPath,
-            `converted_${Date.now()}.mp4`
+        // ======================================
+        // 📂 BUFFER
+        // ======================================
+        const mediaBuffer = fs.readFileSync(
+            path.join(gifsPath, randomFile)
         )
 
-        // =========================
-        // 🔄 CONVERTIR A MP4
-        // =========================
-        await convertToMp4(
-            inputPath,
-            outputPath
-        )
-
-        // =========================
-        // 📦 BUFFER
-        // =========================
-        const videoBuffer =
-            fs.readFileSync(outputPath)
-
-        // =========================
+        // ======================================
         // 📤 ENVIAR
-        // =========================
+        // ======================================
         await sock.sendMessage(chatId, {
 
-            video: videoBuffer,
+            video: mediaBuffer,
 
             gifPlayback: true,
 
-            caption: randomPhrase,
+            caption:
+`${randomPhrase}
 
+┌─⊷
+▢ 🎬 Archivo: ${randomFile}
+▢ 📦 Restantes: ${availableFiles.length - 1}/${files.length}
+└───────────`,
+            
             mentions: [
                 sender,
-                mentioned[0]
+                target
             ]
 
         }, { quoted: message })
 
-        // =========================
-        // 🧹 BORRAR TEMP
-        // =========================
-        fs.unlinkSync(outputPath)
+        console.log(
+            `✅ .follar enviado en ${chatId}: ${randomFile}`
+        )
 
     } catch (err) {
 
-        console.log(err)
+        console.log(
+            '❌ Error comando .follar:',
+            err
+        )
 
         await sock.sendMessage(chatId, {
 
@@ -266,9 +300,10 @@ Ejemplo:
 `❌ Error usando el comando.
 
 Verifica:
-• ffmpeg instalado
-• archivos válidos
-• carpeta correcta`
+• que exista la carpeta
+• que tenga gifs/videos
+• formatos válidos
+• permisos del archivo`
 
         }, { quoted: message })
     }
