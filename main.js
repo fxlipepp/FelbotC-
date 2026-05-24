@@ -33,6 +33,7 @@ const { isBanned } = require('./lib/isBanned');
 const yts = require('yt-search');
 const { fetchBuffer } = require('./lib/myfunc');
 const fetch = require('node-fetch');
+const { follarCommand } = require('./commands/follar')
 const ytdl = require('ytdl-core');
 const axios = require('axios');
 const ffmpeg = require('fluent-ffmpeg');
@@ -1225,6 +1226,13 @@ break;
                     const args = ['lgbt', ...parts.slice(1)];
                     await miscCommand(sock, chatId, message, args);
                 }
+                case userMessage.startsWith('.follar'):
+    await follarCommand(
+        sock,
+        chatId,
+        message
+    )
+    break;
                 break;
             case userMessage.startsWith('.lolice'):
                 {
