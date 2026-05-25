@@ -148,6 +148,9 @@ async function helpCommand(sock, chatId, message) {
 ❀ \`.s\`
 > Convertir imagen o video en sticker.
 
+❀ \`.crop\`
+> Imagen-Video a stiker (centrado).
+
 ❀ \`.brat\`
 > Convertir texto sticker.
 

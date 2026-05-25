@@ -595,13 +595,13 @@ break;
                     await sock.sendMessage(chatId, { text: 'Only owner/sudo can use anticall.' }, { quoted: message });
                     break;
                 }
-               case userMessage.startsWith('.felbot'):
+              case userMessage.startsWith('.felbot'):
 {
     if (!isGroup) return
 
-    if (!isSenderAdmin && !message.key.fromMe) {
+    if (!senderIsOwnerOrSudo && !message.key.fromMe) {
         await sock.sendMessage(chatId, {
-            text: '❌ Solo admins pueden usar esto.'
+            text: '❌ Solo el owner puede usar este comando.'
         }, { quoted: message })
         break
     }
