@@ -45,7 +45,16 @@ const groupSchema = new mongoose.Schema({
          type: Boolean,
          default: true
       }
-   }
+   },
+
+    nsfw: {
+
+        enabled: {
+            type: Boolean,
+            default: false
+        }
+
+           }
 
 })
 
