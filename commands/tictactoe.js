@@ -104,7 +104,7 @@ async function handleTicTacToeMove(sock, chatId, senderId, text) {
 
         const isSurrender = /^(surrender|give up)$/i.test(text);
         
-        if (!isSurrender && !/^[1-9]$/.test(text)) return;
+        if (!isSurrender && !/^[1-9]$/ && activeGame.test(text)) return;
 
         // Allow surrender at any time, not just during player's turn
         if (senderId !== room.game.currentTurn && !isSurrender) {

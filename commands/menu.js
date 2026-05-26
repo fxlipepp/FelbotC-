@@ -142,6 +142,19 @@ async function helpCommand(sock, chatId, message) {
 > Cerrar el grupo.
 ╰━━━━━━━━━━━━━━━━⬣
 
+╭━━〔 🔞 NSFW 〕━━⬣
+> ✦ Comandos Pornograficos .
+
+❀ \`.xxnx\` + <texto>
+> Busqueda porno (Para descarga).
+
+❀ \`.follar\` + <@usuario>
+> Follarse a un usuario.
+
+❀ \`.cum\` + <@usuario>
+> Cum sobre un usuario.
+╰━━━━━━━━━━━━━━━━⬣
+
 ╭━━〔 🎨 STICKERS 〕━━⬣
 > ✦ Herramientas de stickers e imágenes.
 

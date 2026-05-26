@@ -1,5 +1,7 @@
 const fs = require('fs')
 const path = require('path')
+const Group = require('../models/Group')
+const nsfwCheck = require('../lib/nsfwCheck')
 
 // ======================================
 // 🧠 CACHE GLOBAL POR GRUPO
@@ -8,6 +10,20 @@ const path = require('path')
 const usedFilesByChat = new Map()
 
 async function follarCommand(sock, chatId, message) {
+
+     const allowed =
+        await nsfwCheck(
+            sock,
+            chatId,
+            message
+        )
+    
+    if (!allowed) return
+    
+        const groupData = await Group.findOne({
+            groupId: chatId
+        })
+
 
     try {
 

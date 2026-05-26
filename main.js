@@ -45,13 +45,15 @@ const { autoreadCommand, isAutoreadEnabled, handleAutoread } = require('./comman
 // Command imports
 const tagAllCommand = require('./commands/tagall');
 const helpCommand = require('./commands/menu');
-const { masturbarseCommand } = require('./commands/masturbarse')
+const { cumCommand } = require('./commands/cum')
 const banCommand = require('./commands/ban');
 const { promoteCommand } = require('./commands/promote');
 const { demoteCommand } = require('./commands/demote');
 const bratCommand = require('./commands/brat')
 const groupCloseCommand = require('./commands/groupclose')
 const muteCommand = require('./commands/mute');
+const { nsfwCommand } = require('./commands/nsfw')
+const { xnxxCommand, xnxxNumberReply} = require('./commands/xnxx')
 const modoAdminCommand = require('./commands/modoadmin')
 const unmuteCommand = require('./commands/unmute');
 const stickerCommand = require('./commands/sticker');
@@ -278,6 +280,24 @@ if (userData?.banned) {
             return;
         }
 
+        // ===============================
+// 🔞 XNXX NUMBER REPLY
+// ===============================
+
+if (/^\d+$/.test(userMessage)) {
+
+    const handled =
+        await xnxxNumberReply(
+            sock,
+            chatId,
+            message,
+            userMessage
+        )
+
+    if (handled) return
+
+}
+
         // First check if it's a game move
         if (/^[1-9]$/.test(userMessage) || userMessage.toLowerCase() === 'surrender') {
             await handleTicTacToeMove(sock, chatId, senderId, userMessage);
@@ -315,6 +335,21 @@ if (userData?.banned) {
                 }
             } catch (e) { }
         }
+
+
+        if (/^\d+$/.test(userMessage)) {
+
+    const handled =
+        await xnxxNumberReply(
+            sock,
+            chatId,
+            message,
+            userMessage
+        )
+
+    if (handled) return
+
+}
 
         // Then check for command prefix
         if (!userMessage.startsWith('.')) {
@@ -425,6 +460,25 @@ if (
     return
 }
 
+// ===============================
+// 🔞 XNXX NUMBER REPLY
+// ===============================
+
+if (/^\d+$/.test(userMessage)) {
+
+    const handled =
+        await xnxxNumberReply(
+            sock,
+            chatId,
+            message,
+            userMessage
+        )
+
+    if (handled) return
+
+}
+
+const command = rawText.split(' ')[0].toLowerCase()
         // Command handlers - Execute commands immediately without waiting for typing indicator
         // We'll show typing indicator after command execution if needed
         let commandExecuted = false;
@@ -490,8 +544,8 @@ if (
                 const mentionedJidListWarnings = message.message.extendedTextMessage?.contextInfo?.mentionedJid || [];
                 await warningsCommand(sock, chatId, mentionedJidListWarnings);
                 break;
-                case userMessage.startsWith('.masturbarse'):
-    await masturbarseCommand(
+                case userMessage.startsWith('.cum'):
+    await cumCommand(
         sock,
         chatId,
         message
@@ -741,7 +795,7 @@ break
                     await hideTagCommand(sock, chatId, senderId, messageText, replyMessage, message);
                 }
                 break;
-            case userMessage.startsWith('.n'):
+            case command === '.n':
                 const messageText = rawText.substring(2).trim();// use rawText here, not userMessage
                 const replyMessage = message.message?.extendedTextMessage?.contextInfo?.quotedMessage || null;
                 await tagCommand(sock, chatId, senderId, messageText, replyMessage, message);
@@ -1188,6 +1242,37 @@ break;
             case userMessage.startsWith('.areact') || userMessage.startsWith('.autoreact') || userMessage.startsWith('.autoreaction'):
                 await handleAreactCommand(sock, chatId, message, isOwnerOrSudoCheck);
                 break;
+                
+
+case userMessage.startsWith('.nsfw'): {
+
+    const args = rawText.split(' ').slice(1)
+
+    await nsfwCommand(
+        sock,
+        chatId,
+        message,
+        args
+    )
+
+}
+break
+
+
+case userMessage.startsWith('.xnxx'): {
+
+    const args =
+        rawText.split(' ').slice(1)
+
+    await xnxxCommand(
+        sock,
+        chatId,
+        message,
+        args
+    )
+
+}
+break
             case userMessage.startsWith('.sudo'):
                 await sudoCommand(sock, chatId, message);
                 break;
