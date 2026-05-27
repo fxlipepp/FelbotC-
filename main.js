@@ -584,7 +584,7 @@ case userMessage === '.masturbarse':
         sock,
         chatId,
         message
-    )
+    )//a
 
     commandExecuted = true
     break;
