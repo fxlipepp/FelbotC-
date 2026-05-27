@@ -153,6 +153,12 @@ async function helpCommand(sock, chatId, message) {
 
 ❀ \`.cum\` + <@usuario>
 > Cum sobre un usuario.
+
+❀ \`.masturbarsef\` (Femenino)
+> Masturbarse.
+
+❀ \`.masturbarsem\` (Masculino)
+> Masturbarse.
 ╰━━━━━━━━━━━━━━━━⬣
 
 ╭━━〔 🎨 STICKERS 〕━━⬣
