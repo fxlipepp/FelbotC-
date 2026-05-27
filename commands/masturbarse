@@ -1,0 +1,266 @@
+const fs = require('fs')
+const path = require('path')
+const nsfwCheck = require('../lib/nsfwCheck')
+
+// ======================================
+// 🧠 CACHE POR GRUPO
+// ======================================
+const usedFilesByChat = new Map()
+
+// ======================================
+// 📌 FUNCIÓN PRINCIPAL
+// ======================================
+async function masturbarseCommand(
+    sock,
+    chatId,
+    message,
+    genero = 'general'
+) {
+
+    const allowed =
+        await nsfwCheck(
+            sock,
+            chatId,
+            message
+        )
+
+    if (!allowed) return
+
+    try {
+
+        // ======================================
+        // 📁 CARPETAS
+        // ======================================
+        let folder = ''
+
+        if (genero === 'f') {
+
+            folder = 'masturbarsef'
+        }
+
+        else if (genero === 'm') {
+
+            folder = 'masturbarsem'
+        }
+
+        // ======================================
+        // ❓ SIN GÉNERO
+        // ======================================
+        else {
+
+            return await sock.sendMessage(chatId, {
+
+                text:
+`🥵 Usa uno de estos comandos:
+
+♀️ *.masturbarsef* (Femenino)
+♂️ *.masturbarsem* (Masculino)
+
+JAJA cuál quieres usar degenerado 💀`
+
+            }, { quoted: message })
+        }
+
+        // ======================================
+        // 📂 PATH
+        // ======================================
+        const gifsPath = path.join(
+            __dirname,
+            '..',
+            'assets',
+            'gifs',
+            folder
+        )
+
+        // ======================================
+        // 📦 ARCHIVOS
+        // ======================================
+        const files = fs.readdirSync(gifsPath)
+            .filter(file =>
+                /\.(gif|mp4|webm|mov|mkv)$/i.test(file)
+            )
+
+        // ======================================
+        // ❌ VACÍO
+        // ======================================
+        if (files.length === 0) {
+
+            return await sock.sendMessage(chatId, {
+
+                text:
+`❌ No hay gifs/videos en:
+
+assets/gifs/${folder}`
+
+            }, { quoted: message })
+        }
+
+        // ======================================
+        // 👤 USUARIO
+        // ======================================
+        const sender =
+            message.key.participant ||
+            message.key.remoteJid
+
+        const senderNumber =
+            sender.split('@')[0]
+
+        // ======================================
+        // 💬 FRASES FEMENINO
+        // ======================================
+        const frasesF = [
+
+`🥵 @${senderNumber} \`anda demasiado cachonda hoy\``,
+
+`💋 @${senderNumber} \`anda en busca de pene desesperadamente\``,
+
+`🔥 @${senderNumber} \`quiere sexo ahora mismo\``,
+
+`😈 @${senderNumber} \`anda necesitando que le quiten la calentura\``,
+
+`💦 @${senderNumber} \`ya no sabe ni qué hacer con tantas ganas\``,
+
+`🖤 @${senderNumber} \`anda más necesitada que nunca\``,
+
+`🥵 @${senderNumber} \`anda pidiendo acción urgentemente\``,
+
+`💋 @${senderNumber} \`se despertó con ganas de pecar\``,
+
+`🔥 @${senderNumber} \`anda buscando quién le quite lo caliente\``,
+
+`😈 @${senderNumber} \`anda peligrosamente horny hoy\``,
+
+`💦 @${senderNumber} \`no deja de pensar en sexo\``,
+
+`🖤 @${senderNumber} \`anda necesitando cariño… del intenso\``
+
+        ]
+
+        // ======================================
+        // 💬 FRASES MASCULINO
+        // ======================================
+        const frasesM = [
+
+`🥵 @${senderNumber} \`anda más caliente que CPU sin ventilador\``,
+
+`💦 @${senderNumber} \`anda buscando dónde meterlo\``,
+
+`😈 @${senderNumber} \`quiere sexo ya mismo\``,
+
+`🔥 @${senderNumber} \`anda necesitando una buena revolcada\``,
+
+`🖤 @${senderNumber} \`anda pensando con la de abajo\``,
+
+`💀 @${senderNumber} \`anda entrenando la muñeca otra vez\``,
+
+`🥵 @${senderNumber} \`anda desesperado por acción\``,
+
+`💋 @${senderNumber} \`no aguanta ni cinco minutos tranquilo\``,
+
+`🔥 @${senderNumber} \`anda buscando con quién pecar\``,
+
+`😈 @${senderNumber} \`anda más salido que nunca\``,
+
+`💦 @${senderNumber} \`anda necesitando descargar estrés\``,
+
+`🖤 @${senderNumber} \`ya perdió la pelea contra la calentura\``
+
+        ]
+
+        // ======================================
+        // 🎲 FRASE RANDOM
+        // ======================================
+        const frases =
+            genero === 'f'
+                ? frasesF
+                : frasesM
+
+        const randomPhrase =
+            frases[
+                Math.floor(
+                    Math.random() * frases.length
+                )
+            ]
+
+        // ======================================
+        // 🚫 NO REPETIR
+        // ======================================
+        const cacheKey =
+            `${chatId}_${folder}`
+
+        let usedFiles =
+            usedFilesByChat.get(cacheKey) || []
+
+        let availableFiles =
+            files.filter(file =>
+                !usedFiles.includes(file)
+            )
+
+        if (availableFiles.length === 0) {
+
+            usedFiles = []
+            availableFiles = [...files]
+        }
+
+        // ======================================
+        // 🎲 RANDOM FILE
+        // ======================================
+        const randomFile =
+            availableFiles[
+                Math.floor(
+                    Math.random() * availableFiles.length
+                )
+            ]
+
+        usedFiles.push(randomFile)
+
+        usedFilesByChat.set(
+            cacheKey,
+            usedFiles
+        )
+
+        // ======================================
+        // 📂 BUFFER
+        // ======================================
+        const mediaBuffer = fs.readFileSync(
+            path.join(gifsPath, randomFile)
+        )
+
+        // ======================================
+        // 📤 ENVIAR
+        // ======================================
+        await sock.sendMessage(chatId, {
+
+            video: mediaBuffer,
+
+            gifPlayback: true,
+
+            caption: randomPhrase,
+
+            mentions: [sender]
+
+        }, { quoted: message })
+
+        console.log(
+            `✅ .masturbarse usado: ${randomFile}`
+        )
+
+    } catch (err) {
+
+        console.log(
+            '❌ Error comando .masturbarse:',
+            err
+        )
+
+        await sock.sendMessage(chatId, {
+
+            text:
+`❌ Error usando el comando .masturbarse`
+
+        }, { quoted: message })
+    }
+}
+
+module.exports = {
+    masturbarseCommand
+}

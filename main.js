@@ -46,6 +46,7 @@ const { autoreadCommand, isAutoreadEnabled, handleAutoread } = require('./comman
 const tagAllCommand = require('./commands/tagall');
 const helpCommand = require('./commands/menu');
 const { cumCommand } = require('./commands/cum')
+const { masturbarseCommand } = require('./commands/masturbarse')
 const banCommand = require('./commands/ban');
 const { promoteCommand } = require('./commands/promote');
 const { demoteCommand } = require('./commands/demote');
@@ -552,6 +553,42 @@ const command = rawText.split(' ')[0].toLowerCase()
     )
     commandExecuted = true
     break;
+
+   case userMessage.startsWith('.masturbarsef'):
+
+    await masturbarseCommand(
+        sock,
+        chatId,
+        message,
+        'f'
+    )
+
+    commandExecuted = true
+    break;
+
+case userMessage.startsWith('.masturbarsem'):
+
+    await masturbarseCommand(
+        sock,
+        chatId,
+        message,
+        'm'
+    )
+
+    commandExecuted = true
+    break;
+
+case userMessage === '.masturbarse':
+
+    await masturbarseCommand(
+        sock,
+        chatId,
+        message
+    )
+
+    commandExecuted = true
+    break;
+    
             case userMessage.startsWith('.warn'):
                 const mentionedJidListWarn = message.message.extendedTextMessage?.contextInfo?.mentionedJid || [];
                 await warnCommand(sock, chatId, senderId, mentionedJidListWarn, message);
