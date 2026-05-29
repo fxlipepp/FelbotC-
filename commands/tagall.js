@@ -8,52 +8,47 @@ async function tagAllCommand(sock, chatId, senderId, message) {
 
         if (!isBotAdmin) {
             return await sock.sendMessage(chatId, {
-                text: '⚠️ El bot necesita ser administrador primero.'
+                text: '❀ El bot necesita ser admin para ejecutar esto.'
             }, { quoted: message })
         }
 
         if (!isSenderAdmin) {
             return await sock.sendMessage(chatId, {
-                text: '❌ Solo los administradores pueden usar este comando.'
+                text: '❀ Solo administradores pueden usar este comando.'
             }, { quoted: message })
         }
 
-        // 📌 Obtener metadata del grupo
+        // 📌 Metadata del grupo
         const metadata = await sock.groupMetadata(chatId)
         const participantes = metadata.participants
 
         if (!participantes || participantes.length === 0) {
             return await sock.sendMessage(chatId, {
-                text: '❌ No se encontraron participantes en el grupo.'
+                text: '❀ No hay participantes en el grupo.'
             }, { quoted: message })
         }
 
         const mentions = participantes.map(p => p.id)
 
-        // 🌤️ Greeting
-        const hora = new Date().getHours()
-
-        let greeting = 'Buenas noches 🌙'
-
-        if (hora >= 5 && hora < 12) {
-            greeting = 'Buenos días ☀️'
-        } else if (hora >= 12 && hora < 18) {
-            greeting = 'Buenas tardes 🌤️'
-        }
-
-        // 📝 TEXTO
+        // 📝 TEXTO PREMIUM
         const texto = `
-✦━━━〔  *MENCION*  〕━━━✦
-📢 *Mencionando a todos*
+╭─❀「 𝙈𝙀𝙉𝘾𝙄𝙊𝙉 𝙂𝙀𝙉𝙀𝙍𝘼𝙇 」❀
 
-👑 *Solicitado por:* @${senderId.split('@')[0]}
-🥷 *Grupo:* ${metadata.subject}
-🧩 *Miembros:* ${participantes.length}
+ ✦ Grupo:
+> ${metadata.subject}
 
-✦━━━━━━━━━━✦
-${participantes.map(p => `➤ @${p.id.split('@')[0]}`).join('\n')}
-✦━━━━━━━✦
-        `.trim()
+ ✦ Admin:
+> @${senderId.split('@')[0]}
+
+ ✦ Miembros:
+> ${participantes.length}
+
+────୨ৎ────
+
+${participantes.map(p => ` ❀ @${p.id.split('@')[0]}`).join('\n')}
+
+╰─❀
+`.trim()
 
         // 🚀 ENVIAR
         await sock.sendMessage(chatId, {
@@ -66,15 +61,7 @@ ${participantes.map(p => `➤ @${p.id.split('@')[0]}`).join('\n')}
 
                 forwardedNewsletterMessageInfo: {
                     newsletterJid: '120363409628624676@newsletter',
-                    newsletterName: '✧ 𝕱𝖊𝖑𝖇𝖔𝖙 夜 | 𝕮𝖆𝖓𝖆𝖑 𝕺𝖋𝖎𝖈𝖎𝖆𝖑 ✧'
-                },
-
-                externalAdReply: {
-                    title: '✨ Felbot++ • Mención General',
-                    body: `${greeting} • 🚀 Notificando a todos`,
-                    thumbnailUrl: '',
-                    mediaType: 1,
-                    renderLargerThumbnail: true
+                    newsletterName: '✧ 𝕱𝖊𝖑𝖇𝖔𝖙 夜 | 𝕺𝖋𝖎𝖈𝖎𝖆𝖑 𝕮𝖍𝖆𝖓𝖓𝖚𝖊𝖑 ✧'
                 }
             }
 
@@ -82,10 +69,10 @@ ${participantes.map(p => `➤ @${p.id.split('@')[0]}`).join('\n')}
 
     } catch (error) {
 
-        console.error('Error en comando tagall:', error)
+        console.error('Error tagall:', error)
 
         await sock.sendMessage(chatId, {
-            text: '❌ Ocurrió un error al mencionar a todos.'
+            text: '❀ Error ejecutando la mención general.'
         }, { quoted: message })
     }
 }
