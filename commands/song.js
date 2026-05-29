@@ -1,113 +1,317 @@
 const axios = require('axios')
-const yts = require('yt-search')
-const { toAudio } = require('../lib/converter')
+const play = require('play-dl')
+const fs = require('fs')
+const path = require('path')
+const https = require('https')
+const ffmpeg = require('fluent-ffmpeg')
 
-const searchCache = new Map()
+// ===============================
+// KEEP ALIVE
+// ===============================
 
-const AXIOS_DEFAULTS = {
-   timeout: 20000,
-   headers: {
-      'User-Agent': 'Mozilla/5.0',
-      'Accept': '*/*'
-   }
+const httpsAgent = new https.Agent({
+    keepAlive: true,
+    maxSockets: 20
+})
+
+// ===============================
+// AXIOS
+// ===============================
+
+const axiosConfig = {
+    timeout: 20000,
+    httpsAgent,
+    headers: {
+        'User-Agent': 'Mozilla/5.0',
+        'Accept': '*/*'
+    }
 }
 
 // ===============================
-// FAST RETRY
+// CACHE
 // ===============================
 
-async function tryRequest(getter, attempts = 2) {
+const searchCache = new Map()
+const downloadCache = new Map()
 
-   let lastError
+// ===============================
+// HELPERS
+// ===============================
 
-   for (let i = 0; i < attempts; i++) {
+function createBar(percent) {
 
-      try {
-         return await getter()
-      } catch (err) {
-         lastError = err
-      }
-   }
+    const total = 10
+    const filled = Math.round(percent / 10)
 
-   throw lastError
+    return '▰'.repeat(filled) + '▱'.repeat(total - filled)
+}
+
+function formatBytes(bytes) {
+
+    if (!bytes) return 'Desconocido'
+
+    const sizes = ['B', 'KB', 'MB', 'GB']
+    const i = Math.floor(Math.log(bytes) / Math.log(1024))
+
+    return `${(bytes / Math.pow(1024, i)).toFixed(1)} ${sizes[i]}`
+}
+
+function safeFilename(name) {
+
+    return name
+        .replace(/[<>:"/\\|?*]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim()
+}
+
+function limitMapSize(map, max = 100) {
+
+    if (map.size > max) {
+
+        const firstKey = map.keys().next().value
+
+        map.delete(firstKey)
+
+        console.log(`🧹 Cache limpiada automáticamente (${map.size}/${max})`)
+    }
+}
+
+// ===============================
+// CLEAN MEMORY
+// ===============================
+
+function cleanMemory() {
+
+    try {
+
+        // CLEAR MAPS
+
+        if (searchCache.size > 50) {
+            searchCache.clear()
+            console.log('🧠 Search cache liberada')
+        }
+
+        if (downloadCache.size > 50) {
+            downloadCache.clear()
+            console.log('⚡ Download cache liberada')
+        }
+
+        // TMP CLEAN
+
+        const tmpDir = path.join(__dirname, '../tmp')
+
+        fs.readdir(tmpDir, (err, files) => {
+
+            if (err) return
+
+            let deleted = 0
+
+            files.forEach(file => {
+
+                const filePath = path.join(tmpDir, file)
+
+                fs.unlink(filePath, err => {
+
+                    if (!err) {
+
+                        deleted++
+
+                        console.log(`🗑️ TMP eliminado: ${file}`)
+                    }
+                })
+            })
+
+            if (deleted > 0) {
+                console.log(`✨ Limpieza completada (${deleted} archivos eliminados)`)
+            }
+        })
+
+        // FORCE GC
+
+        if (global.gc) {
+
+            global.gc()
+
+            console.log('🧠 Garbage Collector ejecutado')
+        }
+
+        // RAM STATUS
+
+        const memory = process.memoryUsage()
+
+        console.log(`
+╭──────────────────────⬣
+│ 🧠 RAM OPTIMIZATION
+├──────────────────────⬣
+│ RSS: ${(memory.rss / 1024 / 1024).toFixed(2)} MB
+│ Heap Used: ${(memory.heapUsed / 1024 / 1024).toFixed(2)} MB
+│ Heap Total: ${(memory.heapTotal / 1024 / 1024).toFixed(2)} MB
+│ External: ${(memory.external / 1024 / 1024).toFixed(2)} MB
+╰──────────────────────⬣
+`)
+
+    } catch (e) {
+
+        console.log('❌ Error limpiando memoria:', e)
+    }
+}
+
+// ===============================
+// AUTO CLEAN EVERY 30 MIN
+// ===============================
+
+setInterval(() => {
+
+    console.log('⏰ Ejecutando limpieza automática...')
+
+    cleanMemory()
+
+}, 1000 * 60 * 30)
+
+// ===============================
+// CONVERT MP3
+// ===============================
+
+async function convertToMp3(input, output) {
+
+    return new Promise((resolve, reject) => {
+
+        ffmpeg(input)
+            .audioCodec('libmp3lame')
+            .audioBitrate(128)
+            .audioFrequency(44100)
+            .audioChannels(2)
+            .outputOptions([
+                '-preset ultrafast',
+                '-movflags +faststart'
+            ])
+            .format('mp3')
+            .save(output)
+            .on('start', () => {
+                console.log('🎵 Iniciando conversión FFmpeg...')
+            })
+            .on('end', () => {
+                console.log('✅ Conversión completada')
+                resolve()
+            })
+            .on('error', err => {
+                console.log('❌ FFmpeg Error:', err)
+                reject(err)
+            })
+
+    })
 }
 
 // ===============================
 // APIS
 // ===============================
 
-async function elite(url) {
+async function elite(url, signal) {
 
-   const { data } = await tryRequest(() =>
-      axios.get(
-         `https://eliteprotech-apis.zone.id/ytdown?url=${encodeURIComponent(url)}&format=mp3`,
-         AXIOS_DEFAULTS
-      )
-   )
+    const start = Date.now()
 
-   if (!data?.downloadURL) {
-      throw new Error('Elite failed')
-   }
+    const { data } = await axios.get(
+        `https://eliteprotech-apis.zone.id/ytdown?url=${encodeURIComponent(url)}&format=mp3`,
+        {
+            ...axiosConfig,
+            signal
+        }
+    )
 
-   return {
-      download: data.downloadURL,
-      title: data.title
-   }
+    console.log(`⚡ Elite respondió en ${Date.now() - start}ms`)
+
+    if (!data?.downloadURL) {
+        throw new Error('Elite failed')
+    }
+
+    return {
+        download: data.downloadURL,
+        title: data.title
+    }
 }
 
-async function yupra(url) {
+async function yupra(url, signal) {
 
-   const { data } = await tryRequest(() =>
-      axios.get(
-         `https://api.yupra.my.id/api/downloader/ytmp3?url=${encodeURIComponent(url)}`,
-         AXIOS_DEFAULTS
-      )
-   )
+    const start = Date.now()
 
-   if (!data?.data?.download_url) {
-      throw new Error('Yupra failed')
-   }
+    const { data } = await axios.get(
+        `https://api.yupra.my.id/api/downloader/ytmp3?url=${encodeURIComponent(url)}`,
+        {
+            ...axiosConfig,
+            signal
+        }
+    )
 
-   return {
-      download: data.data.download_url,
-      title: data.data.title,
-      thumbnail: data.data.thumbnail
-   }
+    console.log(`⚡ Yupra respondió en ${Date.now() - start}ms`)
+
+    if (!data?.data?.download_url) {
+        throw new Error('Yupra failed')
+    }
+
+    return {
+        download: data.data.download_url,
+        title: data.data.title
+    }
 }
 
-async function okatsu(url) {
+async function okatsu(url, signal) {
 
-   const { data } = await tryRequest(() =>
-      axios.get(
-         `https://okatsu-rolezapiiz.vercel.app/downloader/ytmp3?url=${encodeURIComponent(url)}`,
-         AXIOS_DEFAULTS
-      )
-   )
+    const start = Date.now()
 
-   if (!data?.dl) {
-      throw new Error('Okatsu failed')
-   }
+    const { data } = await axios.get(
+        `https://okatsu-rolezapiiz.vercel.app/downloader/ytmp3?url=${encodeURIComponent(url)}`,
+        {
+            ...axiosConfig,
+            signal
+        }
+    )
 
-   return {
-      download: data.dl,
-      title: data.title,
-      thumbnail: data.thumb
-   }
+    console.log(`⚡ Okatsu respondió en ${Date.now() - start}ms`)
+
+    if (!data?.dl) {
+        throw new Error('Okatsu failed')
+    }
+
+    return {
+        download: data.dl,
+        title: data.title
+    }
 }
 
 // ===============================
-// CHECK MP3
+// FASTEST API
 // ===============================
 
-function isRealMp3(buffer) {
+async function getFastestDownload(url) {
 
-   return (
-      buffer.slice(0, 3).toString() === 'ID3' ||
-      (
-         buffer[0] === 0xff &&
-         (buffer[1] & 0xe0) === 0xe0
-      )
-   )
+    if (downloadCache.has(url)) {
+
+        console.log('⚡ Usando download cache')
+
+        return downloadCache.get(url)
+    }
+
+    const controllers = [
+        new AbortController(),
+        new AbortController(),
+        new AbortController()
+    ]
+
+    const promises = [
+        elite(url, controllers[0].signal),
+        yupra(url, controllers[1].signal),
+        okatsu(url, controllers[2].signal)
+    ]
+
+    const result = await Promise.any(promises)
+
+    controllers.forEach(c => c.abort())
+
+    downloadCache.set(url, result)
+
+    limitMapSize(downloadCache)
+
+    return result
 }
 
 // ===============================
@@ -116,253 +320,298 @@ function isRealMp3(buffer) {
 
 async function songCommand(sock, chatId, message) {
 
-   try {
+    const startTime = Date.now()
 
-      const text =
-         message.message?.conversation ||
-         message.message?.extendedTextMessage?.text ||
-         ''
+    try {
 
-      const query = text.split(' ').slice(1).join(' ').trim()
+        console.log('\n🎶 Nueva descarga iniciada')
 
-      if (!query) {
+        const text =
+            message.message?.conversation ||
+            message.message?.extendedTextMessage?.text ||
+            ''
 
-         return await sock.sendMessage(chatId, {
-            text: '🎵 Escribe el nombre de una canción.'
-         }, { quoted: message })
-      }
+        const query = text.split(' ').slice(1).join(' ').trim()
 
-      // ===============================
-      // SEARCH
-      // ===============================
+        if (!query) {
 
-      let video
+            return await sock.sendMessage(chatId, {
+                text: '🎵 Escribe una canción 😭'
+            }, {
+                quoted: message
+            })
+        }
 
-      if (
-         query.includes('youtube.com') ||
-         query.includes('youtu.be')
-      ) {
+        let video
 
-         video = {
-            url: query,
-            title: 'YouTube Audio',
-            thumbnail: 'https://i.imgur.com/AfFp7pu.png',
-            timestamp: 'Unknown',
-            author: { name: 'Unknown' },
-            views: 0,
-            ago: 'Unknown'
-         }
+        // ===============================
+        // SEARCH
+        // ===============================
 
-      } else {
+        if (
+            query.includes('youtube.com') ||
+            query.includes('youtu.be')
+        ) {
 
-         if (searchCache.has(query)) {
+            const info = await play.video_basic_info(query)
 
-            video = searchCache.get(query)
-
-         } else {
-
-            const search = await yts(query)
-
-            if (!search?.videos?.length) {
-
-               return await sock.sendMessage(chatId, {
-                  text: '❌ No encontré resultados.'
-               }, { quoted: message })
+            video = {
+                url: query,
+                title: info.video_details.title,
+                thumbnail: info.video_details.thumbnails?.pop()?.url,
+                durationRaw: info.video_details.durationRaw,
+                views: info.video_details.views,
+                channel: {
+                    name: info.video_details.channel?.name
+                }
             }
 
-            video =
-               search.videos.find(v =>
-                  v.seconds > 30 &&
-                  v.seconds < 1800 &&
-                  !v.title.toLowerCase().includes('playlist')
-               ) || search.videos[0]
+        } else {
 
-            searchCache.set(query, video)
+            if (searchCache.has(query)) {
 
-            setTimeout(() => {
-               searchCache.delete(query)
-            }, 1000 * 60 * 5)
-         }
-      }
+                console.log('⚡ Usando search cache')
 
-      // ===============================
-      // LOADING
-      // ===============================
+                video = searchCache.get(query)
 
-      const loading = await sock.sendMessage(chatId, {
-         image: { url: video.thumbnail },
-         caption:
-`🎵 *${video.title}*
+            } else {
 
-👤 Autor: ${video.author?.name || 'Unknown'}
-⏱️ Duración: ${video.timestamp || 'Unknown'}
-👀 Vistas: ${video.views?.toLocaleString() || '0'}
-📅 Subido: ${video.ago || 'Unknown'}
-👍 Likes: Desconocidos
+                const results = await play.search(query, {
+                    limit: 1
+                })
 
-⬇️ Descargando audio...
+                if (!results.length) {
 
-▰▱▱▱▱▱▱▱▱▱ 10%`
-      }, { quoted: message })
+                    return await sock.sendMessage(chatId, {
+                        text: '❌ No encontré resultados 😭'
+                    }, {
+                        quoted: message
+                    })
+                }
 
-      // ===============================
-      // FASTEST API
-      // ===============================
+                const r = results[0]
 
-      const audioData = await Promise.any([
-         elite(video.url),
-         yupra(video.url),
-         okatsu(video.url)
-      ])
+                video = {
+                    url: r.url,
+                    title: r.title,
+                    thumbnail: r.thumbnails?.[0]?.url,
+                    durationRaw: r.durationRaw,
+                    views: r.views,
+                    channel: {
+                        name: r.channel?.name
+                    }
+                }
 
-      if (!audioData?.download) {
-         throw new Error('No download URL')
-      }
+                searchCache.set(query, video)
 
-      // ===============================
-      // UPDATE
-      // ===============================
+                limitMapSize(searchCache)
+            }
+        }
 
-      await sock.sendMessage(chatId, {
-         edit: loading.key,
-         image: { url: video.thumbnail },
-         caption:
-`🎵 *${video.title}*
+        // ===============================
+        // LOADING
+        // ===============================
 
-👤 Autor: ${video.author?.name || 'Unknown'}
-⏱️ Duración: ${video.timestamp || 'Unknown'}
-👀 Vistas: ${video.views?.toLocaleString() || '0'}
-📅 Subido: ${video.ago || 'Unknown'}
-👍 Likes: Desconocidos
+        const loading = await sock.sendMessage(chatId, {
+            image: {
+                url: video.thumbnail
+            },
+            caption:
+`🎶 *DESCARGANDO AUDIO*
 
-📥 Procesando audio...
+> ❀ Título: ${video.title}
+> ❀ Autor: ${video.channel?.name || 'Unknown'}
+> ❀ Duración: ${video.durationRaw || 'Unknown'}
+> ❀ Vistas: ${Number(video.views || 0).toLocaleString()}
 
-▰▰▰▰▰▰▱▱▱▱ 60%`
-      })
+> 🚀 Buscando servidor...
+> ${createBar(5)} 5%`
+        }, {
+            quoted: message
+        })
 
-      // ===============================
-      // DOWNLOAD
-      // ===============================
+        // ===============================
+        // GET DOWNLOAD
+        // ===============================
 
-      const audioResponse = await axios.get(
-         audioData.download,
-         {
-            responseType: 'arraybuffer',
-            timeout: 35000,
-            maxContentLength: Infinity,
-            maxBodyLength: Infinity,
+        const audioData = await getFastestDownload(video.url)
+
+        const response = await axios({
+            url: audioData.download,
+            method: 'GET',
+            responseType: 'stream',
+            timeout: 40000,
+            httpsAgent,
             headers: {
-               'User-Agent': 'Mozilla/5.0'
+                'User-Agent': 'Mozilla/5.0'
             }
-         }
-      )
+        })
 
-      const audioBuffer = Buffer.from(audioResponse.data)
+        const total = Number(response.headers['content-length']) || 0
 
-      if (!audioBuffer || audioBuffer.length < 10000) {
-         throw new Error('Invalid audio buffer')
-      }
+        const safeTitle = safeFilename(
+            audioData.title ||
+            video.title ||
+            'song'
+        )
 
-      // ===============================
-      // FAST MP3 CHECK
-      // ===============================
+        const inputPath = path.join(
+            __dirname,
+            `../tmp/${Date.now()}_${safeTitle}.tmp`
+        )
 
-      let finalBuffer
+        const outputPath = path.join(
+            __dirname,
+            `../tmp/${Date.now()}_${safeTitle}.mp3`
+        )
 
-      if (isRealMp3(audioBuffer)) {
+        const writer = fs.createWriteStream(inputPath)
 
-         // NO conversion needed
-         finalBuffer = audioBuffer
+        let downloaded = 0
+        let lastPercent = 0
 
-      } else {
+        response.data.on('data', async chunk => {
 
-         // Convert ONLY if needed
-         try {
+            downloaded += chunk.length
 
-            finalBuffer = await toAudio(audioBuffer, 'mp4')
+            if (!total) return
 
-         } catch {
+            const percent = Math.floor(
+                (downloaded / total) * 100
+            )
 
-            try {
+            if (
+                percent >= lastPercent + 25
+            ) {
 
-               finalBuffer = await toAudio(audioBuffer, 'webm')
+                lastPercent = percent
 
-            } catch {
+                try {
 
-               finalBuffer = await toAudio(audioBuffer, 'mp3')
+                    await sock.sendMessage(chatId, {
+                        edit: loading.key,
+                        image: {
+                            url: video.thumbnail
+                        },
+                        caption:
+`📥 *DESCARGANDO AUDIO*
+
+> ❀ Título: ${video.title}
+> ❀ Autor: ${video.channel?.name || 'Unknown'}
+> ❀ Peso: ${formatBytes(total)}
+
+> ⚡ Descargando...
+> ${createBar(percent)} ${percent}%`
+                    })
+
+                } catch {}
             }
-         }
-      }
+        })
 
-      if (!finalBuffer || finalBuffer.length < 10000) {
-         throw new Error('Conversion failed')
-      }
+        response.data.pipe(writer)
 
-      // ===============================
-      // TITLE
-      // ===============================
+        await new Promise((resolve, reject) => {
 
-      const safeTitle = (
-         audioData.title ||
-         video.title ||
-         'song'
-      )
-         .replace(/[^\w\s-]/g, '')
-         .trim()
+            writer.on('finish', resolve)
+            writer.on('error', reject)
 
-      // ===============================
-      // SEND AUDIO
-      // ===============================
+        })
 
-      await sock.sendMessage(
-         chatId,
-         {
-            audio: finalBuffer,
+        // ===============================
+        // CONVERT
+        // ===============================
+
+        await sock.sendMessage(chatId, {
+            edit: loading.key,
+            image: {
+                url: video.thumbnail
+            },
+            caption:
+`🔄 *PROCESANDO AUDIO*
+
+> ❀ Título: ${video.title}
+
+> ⚡ Convirtiendo a MP3...
+> ${createBar(90)} 90%`
+        })
+
+        await convertToMp3(inputPath, outputPath)
+
+        // ===============================
+        // SEND AUDIO
+        // ===============================
+
+        await sock.sendMessage(chatId, {
+            audio: {
+                url: outputPath
+            },
             mimetype: 'audio/mpeg',
             fileName: `${safeTitle}.mp3`,
             ptt: false
-         },
-         { quoted: message }
-      )
+        }, {
+            quoted: message
+        })
 
-      // ===============================
-      // FINAL UPDATE
-      // ===============================
+        // ===============================
+        // FINAL
+        // ===============================
 
-      await sock.sendMessage(chatId, {
-         edit: loading.key,
-         image: { url: video.thumbnail },
-         caption:
-`🎵 *${safeTitle}*
+        await sock.sendMessage(chatId, {
+            edit: loading.key,
+            image: {
+                url: video.thumbnail
+            },
+            caption:
+`✅ *AUDIO ENVIADO*
 
-👤 Autor: ${video.author?.name || 'Unknown'}
-⏱️ Duración: ${video.timestamp || 'Unknown'}
-👀 Vistas: ${video.views?.toLocaleString() || '0'}
-📅 Subido: ${video.ago || 'Unknown'}
-👍 Likes: Desconocidos
+> ❀ Título: ${safeTitle}
+> ❀ Autor: ${video.channel?.name || 'Unknown'}
+> ❀ Duración: ${video.durationRaw || 'Unknown'}
+> ❀ Peso: ${formatBytes(total)}
 
-✅ Audio enviado correctamente
+> 🚀 Completado
+> ${createBar(100)} 100%`
+        })
 
-▰▰▰▰▰▰▰▰▰▰ 100%`
-      })
+        // ===============================
+        // CLEAN FILES
+        // ===============================
 
-   } catch (err) {
+        fs.unlink(inputPath, () => {
+            console.log(`🗑️ Eliminado: ${path.basename(inputPath)}`)
+        })
 
-      console.error('SONG ERROR:', err)
+        fs.unlink(outputPath, () => {
+            console.log(`🗑️ Eliminado: ${path.basename(outputPath)}`)
+        })
 
-      let msg = '❌ Error descargando el audio.'
+        // ===============================
+        // CLEAN RAM
+        // ===============================
 
-      if (
-         err?.response?.status === 451 ||
-         err?.message?.includes('451')
-      ) {
-         msg = '❌ Contenido bloqueado o restringido.'
-      }
+        cleanMemory()
 
-      await sock.sendMessage(chatId, {
-         text: msg
-      }, { quoted: message })
-   }
+        console.log(`
+╭──────────────────────⬣
+│ ✅ DESCARGA COMPLETADA
+├──────────────────────⬣
+│ 🎧 ${safeTitle}
+│ ⏱️ ${((Date.now() - startTime) / 1000).toFixed(1)}s
+╰──────────────────────⬣
+`)
+
+    } catch (err) {
+
+        console.error('❌ SONG ERROR:', err)
+
+        await sock.sendMessage(chatId, {
+            text: '❌ Error descargando el audio 😭'
+        }, {
+            quoted: message
+        })
+
+        cleanMemory()
+    }
 }
 
 module.exports = songCommand
