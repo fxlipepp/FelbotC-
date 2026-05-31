@@ -16,7 +16,7 @@ async function muteCommand(sock, chatId, senderId, message) {
 
    if (!chatId.endsWith('@g.us')) {
       return sock.sendMessage(chatId, {
-         text: '❌ Este comando solo funciona en grupos.'
+         text: '❌ Este comando funciona solo dentro de un grupo. Por favor, úsalo allí.'
       }, { quoted: message })
    }
 
@@ -30,7 +30,7 @@ async function muteCommand(sock, chatId, senderId, message) {
 
    if (!isSenderAdmin) {
       return sock.sendMessage(chatId, {
-         text: '❌ Solo admins pueden usar este comando.'
+         text: '🚫 Solo administradores pueden usar este comando.'
       }, { quoted: message })
    }
 

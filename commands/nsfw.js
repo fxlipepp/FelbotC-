@@ -23,7 +23,7 @@ async function nsfwCommand(
 
         return await sock.sendMessage(chatId, {
             text:
-'❌ Este comando solo funciona en grupos.'
+'❌ Este comando funciona solo dentro de un grupo. Por favor, úsalo allí.'
         }, { quoted: message })
 
     }
@@ -52,7 +52,7 @@ async function nsfwCommand(
 
         return await sock.sendMessage(chatId, {
             text:
-'❌ Solo administradores pueden usar este comando.'
+'🚫 Este comando está disponible solo para administradores.'
         }, { quoted: message })
 
     }
