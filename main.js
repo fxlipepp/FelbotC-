@@ -1,5 +1,6 @@
 // 🧹 Fix for ENOSPC / temp overflow in hosted panels
 const fs = require('fs');
+const chalk = require('chalk');
 const User = require('./models/User')
 const Group = require('./models/Group')
 const path = require('path');
@@ -257,7 +258,28 @@ if (userData?.banned) {
 
         // Only log command usage
         if (userMessage.startsWith('.')) {
-            console.log(`📝 Command used in ${isGroup ? 'group' : 'private'}: ${userMessage}`);
+            const sourceLabel = isGroup ? 'Grupo' : 'Privado';
+            const commandLabel = userMessage.split(' ')[0];
+            const senderName = message.pushName || senderId.split('@')[0];
+            let groupName = sourceLabel;
+
+            if (isGroup) {
+                try {
+                    const metadata = await sock.groupMetadata(chatId);
+                    groupName = metadata?.subject || chatId;
+                } catch (error) {
+                    groupName = chatId;
+                }
+            }
+
+            console.log(chalk.blue('────────────────────────────────────────'));
+            console.log(chalk.cyan.bold('📝 COMANDO EJECUTADO'));
+            console.log(chalk.white(`  • Origen     : ${chalk.yellow(sourceLabel)}`));
+            console.log(chalk.white(`  • Remitente  : ${chalk.magenta(senderName)}`));
+            console.log(chalk.white(`  • Grupo      : ${chalk.green(groupName)}`));
+            console.log(chalk.white(`  • Comando    : ${chalk.green(commandLabel)}`));
+            console.log(chalk.white(`  • Texto      : ${userMessage}`));
+            console.log(chalk.blue('────────────────────────────────────────'));
         }
         // Read bot mode once; don't early-return so moderation can still run in private mode
         let isPublic = true;
@@ -597,14 +619,14 @@ case userMessage === '.masturbarse':
 {
     if (!isGroup) {
         await sock.sendMessage(chatId, {
-            text: '❌ Este comando solo funciona en grupos.'
+            text: '❌ Este comando funciona solo dentro de un grupo. Por favor, úsalo allí.'
         }, { quoted: message })
         return
     }
 
     if (!isSenderAdmin && !message.key.fromMe) {
         await sock.sendMessage(chatId, {
-            text: '❌ Solo admins.'
+            text: '🚫 Solo administradores pueden usar este comando.'
         }, { quoted: message })
         return
     }
@@ -692,7 +714,7 @@ break;
 
     if (!senderIsOwnerOrSudo && !message.key.fromMe) {
         await sock.sendMessage(chatId, {
-            text: '❌ Solo el owner puede usar este comando.'
+            text: '🚫 Solo el owner puede ejecutar este comando.'
         }, { quoted: message })
         break
     }
@@ -975,7 +997,7 @@ break
     if (!isGroup) {
 
         await sock.sendMessage(chatId, {
-            text: '❌ Este comando solo funciona en grupos.'
+            text: '❌ Este comando funciona solo dentro de un grupo. Por favor, úsalo allí.'
         }, { quoted: message })
 
         break
@@ -987,7 +1009,7 @@ break
     if (!isSenderAdmin && !message.key.fromMe) {
 
         await sock.sendMessage(chatId, {
-            text: '❌ Solo admins pueden usar este comando.'
+            text: '🚫 Solo administradores pueden usar este comando.'
         }, { quoted: message })
 
         break
@@ -1139,14 +1161,14 @@ case userMessage === '.cerrar':
 {
     if (!isGroup) {
         await sock.sendMessage(chatId, {
-            text: '❌ Este comando solo funciona en grupos.'
+            text: '❌ Este comando funciona solo dentro de un grupo. Por favor, úsalo allí.'
         }, { quoted: message })
         return
     }
 
     if (!isSenderAdmin && !message.key.fromMe) {
         await sock.sendMessage(chatId, {
-            text: '❌ Solo admins.'
+            text: '🚫 Solo administradores pueden usar este comando.'
         }, { quoted: message })
         return
     }

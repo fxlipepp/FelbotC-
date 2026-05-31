@@ -7,7 +7,7 @@ module.exports = async (sock, msg, args, senderId, chatId) => {
 
     if (!isOwner) {
         return sock.sendMessage(chatId, {
-            text: '❌ Solo el owner puede usar este comando'
+            text: '🚫 Solo el owner puede ejecutar este comando.'
         })
     }
 

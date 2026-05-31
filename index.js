@@ -90,9 +90,65 @@ const question = (text) => {
     }
 }
 
+const DEFAULT_LOG_WIDTH = 60
+const ANSI_REGEX = /\x1b\[[0-9;]*m/g
+
+function getLogWidth() {
+    const cols = process.stdout.columns || DEFAULT_LOG_WIDTH
+    return Math.max(50, Math.min(DEFAULT_LOG_WIDTH, cols - 4))
+}
+
+function padCenter(text = '', width = getLogWidth()) {
+    const cleanText = String(text)
+    const stripped = cleanText.replace(ANSI_REGEX, '')
+    if (stripped.length >= width) return cleanText.slice(0, width)
+    const left = Math.floor((width - stripped.length) / 2)
+    const right = width - stripped.length - left
+    return ' '.repeat(left) + cleanText + ' '.repeat(right)
+}
+
+function frameLog(lines = [], style = chalk.cyan) {
+    const width = getLogWidth()
+    console.log(style(`╔${'═'.repeat(width)}╗`))
+    lines.forEach(line => {
+        console.log(style('║') + padCenter(line, width) + style('║'))
+    })
+    console.log(style(`╚${'═'.repeat(width)}╝`))
+}
+
+function printStartupBanner() {
+    frameLog([
+        chalk.bold.magenta('𝕱𝖊𝖑𝖇𝖔𝖙 夜'),
+        '',
+        chalk.bold.white(`Mode : ${BOT_MODE.toUpperCase()}`),
+        chalk.bold.white(`Env  : ${process.env.NODE_ENV || 'production'}`),
+        chalk.bold.white(`Owner: ${String(settings.ownerNumber || 'unknown').slice(0, 24)}`),
+        chalk.bold.white(`Ver  : ${settings.version || '1.0.0'}`),
+        '',
+        chalk.bold.green('🚀 Launching the bot...'),
+    ], chalk.blue)
+    console.log()
+}
+
+function printConnectedBanner(user) {
+    const number = user?.id?.split(':')[0] || 'unknown'
+    frameLog([
+        chalk.bold.green('🤖 BOT CONNECTED'),
+        '',
+        chalk.white(`Bot  : ${global.botname || 'KNIGHT BOT'}`),
+        chalk.white(`User : ${user?.name || user?.id || 'unknown'}`),
+        chalk.white(`Num  : ${number}`),
+        chalk.white(`Time : ${new Date().toLocaleString()}`),
+        '',
+        chalk.bold.yellow('STATUS: ONLINE'),
+    ], chalk.green)
+    console.log()
+}
+
 
 async function startXeonBotInc() {
     try {
+        printStartupBanner()
         let { version, isLatest } = await fetchLatestBaileysVersion()
         let state, saveCreds
 
@@ -255,8 +311,19 @@ if (BOT_MODE === "render") {
             try {
                 let code = await XeonBotInc.requestPairingCode(phoneNumber)
                 code = code?.match(/.{1,4}/g)?.join("-") || code
-                console.log(chalk.black(chalk.bgGreen(`Your Pairing Code : `)), chalk.black(chalk.white(code)))
-                console.log(chalk.yellow(`\nPlease enter this code in your WhatsApp app:\n1. Open WhatsApp\n2. Go to Settings > Linked Devices\n3. Tap "Link a Device"\n4. Enter the code shown above`))
+
+                console.log(chalk.blue('────────────────────────────────────────'))
+                console.log(chalk.bold.green('✨  PAIRING CODE GENERADO  ✨'))
+                console.log(chalk.blue('────────────────────────────────────────'))
+                console.log(chalk.white('Usa este código para vincular el bot con tu WhatsApp:'))
+                console.log(chalk.bold.black(chalk.bgGreen(`  ${code}  `)))
+                console.log()
+                console.log(chalk.yellow('Sigue estos pasos:'))
+                console.log(chalk.white('  1. Abre WhatsApp'))
+                console.log(chalk.white('  2. Ve a Ajustes > Dispositivos vinculados'))
+                console.log(chalk.white('  3. Toca "Vincular un dispositivo"'))
+                console.log(chalk.white('  4. Ingresa el código que ves arriba'))
+                console.log(chalk.blue('────────────────────────────────────────'))
             } catch (error) {
                 console.error('Error requesting pairing code:', error)
                 console.log(chalk.red('Failed to get pairing code. Please check your phone number and try again.'))
@@ -277,13 +344,20 @@ if (BOT_MODE === "render") {
         }
         
         if (connection == "open") {
-            console.log(chalk.magenta(` `))
-            console.log(chalk.yellow(`🌿Connected to => ` + JSON.stringify(XeonBotInc.user, null, 2)))
+            console.log(chalk.green.bold('✨ Conexión establecida con WhatsApp'))
+            console.log(chalk.white(`Usuario: ${XeonBotInc.user?.name || 'desconocido'}`))
+            console.log(chalk.white(`ID     : ${XeonBotInc.user?.id || 'desconocido'}`))
+            console.log(chalk.green('✅ Bot listo para usar'))
 
             try {
                 const botNumber = XeonBotInc.user.id.split(':')[0] + '@s.whatsapp.net';
                 await XeonBotInc.sendMessage(botNumber, {
-                    text: `🤖 Bot Connected Successfully!\n\n⏰ Time: ${new Date().toLocaleString()}\n✅ Status: Online and Ready!\n\n✅Make sure to join below channel`,
+                    text: `🤖 Felbot está conectado.
+
+⏰ ${new Date().toLocaleString()}
+✅ Estado: En línea y listo para recibir comandos.
+
+✨ ¡Que comience la magia!`,
                     contextInfo: {
                         forwardingScore: 1,
                         isForwarded: true,
@@ -299,14 +373,7 @@ if (BOT_MODE === "render") {
             }
 
             await delay(1999)
-            console.log(chalk.yellow(`\n\n                  ${chalk.bold.blue(`[ ${global.botname || 'KNIGHT BOT'} ]`)}\n\n`))
-            console.log(chalk.cyan(`< ================================================== >`))
-            console.log(chalk.magenta(`\n${global.themeemoji || '•'} ✧ 𝕱𝖊𝖑𝖇𝖔𝖙 夜 | 𝕺𝖋𝖎𝖈𝖎𝖆𝖑 𝕮𝖍𝖆𝖓𝖓𝖊𝖑 ✧`))
-            console.log(chalk.magenta(`${global.themeemoji || '•'} ✧ 𝕱𝖊𝖑𝖇𝖔𝖙 夜 | 𝕺𝖋𝖎𝖈𝖎𝖆𝖑 𝕮𝖍𝖆𝖓𝖓𝖊𝖑 ✧`))
-            console.log(chalk.magenta(`${global.themeemoji || '•'} WA NUMBER: ${owner}`))
-            console.log(chalk.magenta(`${global.themeemoji || '•'} ✧ 𝕱𝖊𝖑𝖇𝖔𝖙 夜 | 𝕺𝖋𝖎𝖈𝖎𝖆𝖑 𝕮𝖍𝖆𝖓𝖓𝖊𝖑 ✧`))
-            console.log(chalk.green(`${global.themeemoji || '•'} 🤖 Bot Connected Successfully! ✅`))
-            console.log(chalk.blue(`Bot Version: ${settings.version}`))
+            printConnectedBanner(XeonBotInc.user)
         }
         
         if (connection === 'close') {

@@ -14,7 +14,7 @@ async function promoteCommand(sock, chatId, mentionedJids, message) {
 
         if (!chatId.endsWith('@g.us')) {
             return await sock.sendMessage(chatId, {
-                text: '❌ Este comando solo funciona en grupos.'
+                text: '❌ Este comando funciona solo dentro de un grupo. Por favor, úsalo allí.'
             }, { quoted: message })
         }
 

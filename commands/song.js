@@ -527,18 +527,13 @@ async function songCommand(sock, chatId, message) {
       } else {
 
          try {
-
-            finalBuffer = await toAudio(audioBuffer, 'mp4')
-
+            // Try mp3 first to avoid extra transcodes on render-like environments
+            finalBuffer = await toAudio(audioBuffer, 'mp3')
          } catch {
-
             try {
-
-               finalBuffer = await toAudio(audioBuffer, 'webm')
-
+               finalBuffer = await toAudio(audioBuffer, 'mp4')
             } catch {
-
-               finalBuffer = await toAudio(audioBuffer, 'mp3')
+               finalBuffer = await toAudio(audioBuffer, 'webm')
             }
          }
       }

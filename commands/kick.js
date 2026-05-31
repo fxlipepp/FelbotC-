@@ -3,6 +3,11 @@ const isAdmin = require('../lib/isAdmin')
 async function kickCommand(sock, chatId, senderId, mentionedJids, message) {
 
    try {
+      if (!chatId.endsWith('@g.us')) {
+         return await sock.sendMessage(chatId, {
+            text: '❌ Este comando funciona solo dentro de un grupo. Por favor, úsalo en un chat grupal.'
+         }, { quoted: message })
+      }
 
       const isOwner = message.key.fromMe
 
@@ -13,13 +18,13 @@ async function kickCommand(sock, chatId, senderId, mentionedJids, message) {
 
          if (!isBotAdmin) {
             return await sock.sendMessage(chatId, {
-               text: '❌ Ponme admin primero.'
+               text: '⚠️ Necesito ser administrador para poder expulsar usuarios. Por favor, dame admin primero.'
             }, { quoted: message })
          }
 
          if (!isSenderAdmin) {
             return await sock.sendMessage(chatId, {
-               text: '🚫 Solo admins pueden usar esto.'
+               text: '🚫 Solo los administradores del grupo pueden usar este comando.'
             }, { quoted: message })
          }
       }
@@ -38,7 +43,7 @@ async function kickCommand(sock, chatId, senderId, mentionedJids, message) {
 
       if (!usersToKick.length) {
          return await sock.sendMessage(chatId, {
-            text: '⚠️ Menciona o responde a alguien.'
+            text: '⚠️ Por favor menciona o responde a alguien para expulsar.'
          }, { quoted: message })
       }
 
@@ -52,7 +57,7 @@ async function kickCommand(sock, chatId, senderId, mentionedJids, message) {
 
       if (tryingKickBot) {
          return await sock.sendMessage(chatId, {
-            text: '🤖 No me voy a expulsar yo mismo.'
+            text: '🤖 No puedo expulsarme a mí mismo.'
          }, { quoted: message })
       }
 
@@ -66,7 +71,7 @@ async function kickCommand(sock, chatId, senderId, mentionedJids, message) {
 
       if (!filteredUsers.length) {
          return await sock.sendMessage(chatId, {
-            text: '🚫 No puedo expulsar admins.'
+            text: '🚫 No puedo expulsar a otro administrador.'
          }, { quoted: message })
       }
 
@@ -83,16 +88,15 @@ async function kickCommand(sock, chatId, senderId, mentionedJids, message) {
       const executor = `@${senderId.split('@')[0]}`
 
       await sock.sendMessage(chatId, {
-
          text:
-`❌ Usuario expulsado:
+`✅ Expulsión realizada con éxito.
+
+Usuarios removidos:
 ${mentions.join('\n')}
 
-⚡ By:
+👤 Ejecutado por:
 ${executor}`,
-
          mentions: [...filteredUsers, senderId]
-
       }, { quoted: message })
 
    } catch (error) {
@@ -100,7 +104,7 @@ ${executor}`,
       console.error('KICK ERROR:', error)
 
       await sock.sendMessage(chatId, {
-         text: '❌ Error al expulsar usuario.'
+         text: '❌ No pude expulsar al usuario. Intenta de nuevo en un momento.'
       }, { quoted: message })
    }
 }

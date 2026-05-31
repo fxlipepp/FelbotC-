@@ -1,0 +1,5 @@
+Patch changes log
+- Added apiLatency map for tracking API latencies
+- Adjusted single-attempt timeouts to 4s
+- Added parallel download attempt across candidate URLs and pick first streaming
+- Added logs for latencies and stream winner
