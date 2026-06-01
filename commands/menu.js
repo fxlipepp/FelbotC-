@@ -208,13 +208,6 @@ async function helpCommand(sock, chatId, message) {
 > Eliminar fondo de imágenes.
 ╰━━━━━━━━━━━━━━━━⬣
 
-╭━━〔 🤡 DIVERSION 〕━━⬣
-> ✦ Comandos de diversion.
-
-❀ \`.top\` + <texto>
-> Top 5 (categoria).
-╰━━━━━━━━━━━━━━━━⬣
-
 ╭━━〔 🔤 TEXTMAKER 〕━━⬣
 > ✦ Crear textos con estilos épicos.
 
@@ -328,6 +321,12 @@ async function helpCommand(sock, chatId, message) {
 
 ❀ \`.compliment\` + <@usuario>
 > Enviar cumplidos a alguien.
+
+❀ \`.top\` + <texto>
+> Top 5 (categoria).
+
+❀ \`.piropo\` + <@usuario>
+> Enviar piropos a alguien.
 
 ❀ \`.insult\` + <@usuario>
 > Insultar amistosamente a alguien.

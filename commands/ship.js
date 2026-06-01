@@ -23,17 +23,41 @@ async function shipCommand(sock, chatId, msg) {
 
         const users = participants.map(p => p.id)
 
-        // 📌 Elegir usuarios random
+        // 📌 Detectar mención
+        const mentionedUser =
+            msg.message?.extendedTextMessage?.contextInfo?.mentionedJid?.[0]
+
         let user1
         let user2
 
-        user1 = users[Math.floor(Math.random() * users.length)]
+        if (mentionedUser) {
 
-        do {
+            // Usuario que ejecuta el comando
+            user1 = msg.key.participant || msg.key.remoteJid
 
-            user2 = users[Math.floor(Math.random() * users.length)]
+            // Usuario etiquetado
+            user2 = mentionedUser
 
-        } while (user1 === user2)
+            if (user1 === user2) {
+
+                return await sock.sendMessage(chatId, {
+                    text: '💀 No puedes hacer ship contigo mismo JAJA'
+                }, { quoted: msg })
+
+            }
+
+        } else {
+
+            // Modo aleatorio normal
+            user1 = users[Math.floor(Math.random() * users.length)]
+
+            do {
+
+                user2 = users[Math.floor(Math.random() * users.length)]
+
+            } while (user1 === user2)
+
+        }
 
         // 📌 Compatibilidad random
         const percentage = Math.floor(Math.random() * 101)
@@ -98,7 +122,7 @@ async function shipCommand(sock, chatId, msg) {
         const randomMessage =
             shipMessages[Math.floor(Math.random() * shipMessages.length)]
 
-        // 📌 Barra visual pro
+        // 📌 Barra visual
         const totalBars = 10
         const filledBars = Math.floor(percentage / 10)
         const emptyBars = totalBars - filledBars
@@ -149,11 +173,10 @@ ${resultMessage}
 ╰━━━━━━━━━━━━━━━━⬣
 `.trim()
 
-        // 📌 Enviar
+        // 📌 Enviar resultado
         await sock.sendMessage(chatId, {
 
             text: shipText,
-
             mentions: [user1, user2]
 
         }, { quoted: msg })
@@ -167,7 +190,9 @@ ${resultMessage}
             text: '❌ Ocurrió un error usando el comando ship.'
 
         }, { quoted: msg })
+
     }
+
 }
 
 module.exports = shipCommand
