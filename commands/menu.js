@@ -37,13 +37,6 @@ async function helpCommand(sock, chatId, message) {
 
 ╰━━━━━━━━━━━━━━━━⬣
 
-╭━━〔 🤡 DIVERSION 〕━━⬣
-> ✦ Comandos de diversion.
-
-❀ \`.top\` + <texto>
-> Top 5 (categoria).
-╰━━━━━━━━━━━━━━━━⬣
-
 ╭━━〔 🌐 GENERAL 〕━━⬣
 > ✦ Comandos principales e información del bot.
 
@@ -149,6 +142,28 @@ async function helpCommand(sock, chatId, message) {
 > Cerrar el grupo.
 ╰━━━━━━━━━━━━━━━━⬣
 
+╭━━〔 🔫 FREE FIRE 〕━━⬣
+> ✦ Comandos para ff.
+
+❀ \`.2vs2\` + <hora>
+> Lista de 2vs2.
+
+❀ \`.4vs4\` + <hora>
+> Lista de 4vs4.
+
+❀ \`.6vs6\` + <hora>
+> Lista de 6vs6.
+
+❀ \`.int2\` 
+> Lista de 2vs2 (interna).
+
+❀ \`.int4\` 
+> Lista de 4vs4 (interna).
+
+❀ \`.int6\` 
+> Lista de 6vs6 (interna).
+╰━━━━━━━━━━━━━━━━⬣
+
 ╭━━〔 🔞 NSFW 〕━━⬣
 > ✦ Comandos Pornograficos .
 
@@ -191,6 +206,13 @@ async function helpCommand(sock, chatId, message) {
 
 ❀ \`.removebg\`
 > Eliminar fondo de imágenes.
+╰━━━━━━━━━━━━━━━━⬣
+
+╭━━〔 🤡 DIVERSION 〕━━⬣
+> ✦ Comandos de diversion.
+
+❀ \`.top\` + <texto>
+> Top 5 (categoria).
 ╰━━━━━━━━━━━━━━━━⬣
 
 ╭━━〔 🔤 TEXTMAKER 〕━━⬣

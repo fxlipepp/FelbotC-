@@ -66,6 +66,7 @@ const warningsCommand = require('./commands/warnings');
 const ttsCommand = require('./commands/tts');
 const { tictactoeCommand, handleTicTacToeMove } = require('./commands/tictactoe');
 const { incrementMessageCount, topMembers } = require('./commands/topmembers');
+const { versusCommand, handleVersusReaction } = require('./commands/versus');
 const ownerCommand = require('./commands/owner');
 const deleteCommand = require('./commands/delete');
 const { handleAntilinkCommand, handleLinkDetection } = require('./commands/antilink');
@@ -164,6 +165,10 @@ const channelInfo = {
 };
 
 async function handleMessages(sock, messageUpdate, printLog) {
+    let chatId
+    let senderId
+    let isGroup
+
     try {
         const { messages, type } = messageUpdate;
         if (type !== 'notify') return;
@@ -186,9 +191,9 @@ async function handleMessages(sock, messageUpdate, printLog) {
             return;
         }
 
-        const chatId = message.key.remoteJid;
-        const senderId = message.key.participant || message.key.remoteJid;
-        const isGroup = chatId.endsWith('@g.us');
+        chatId = message.key.remoteJid;
+        senderId = message.key.participant || message.key.remoteJid;
+        isGroup = chatId.endsWith('@g.us');
 
 
         const mutedUser = await User.findOne({ userId: senderId })
@@ -645,6 +650,9 @@ break;
             case userMessage.startsWith('.tts'):
                 const text = userMessage.slice(4).trim();
                 await ttsCommand(sock, chatId, text, message);
+                break;
+            case userMessage.startsWith('.2vs2') || userMessage.startsWith('.2v2') || userMessage.startsWith('.4vs4') || userMessage.startsWith('.4v4') || userMessage.startsWith('.6vs6') || userMessage.startsWith('.6v6') || userMessage.startsWith('.int2') || userMessage.startsWith('.int4') || userMessage.startsWith('.int6'):
+                await versusCommand(sock, chatId, senderId, message);
                 break;
             case userMessage.startsWith('.top'):
                 await topCommand(sock, chatId, senderId, message);
@@ -1681,10 +1689,22 @@ async function handleGroupParticipantUpdate(sock, update) {
 }
 
 // Instead, export the handlers along with handleMessages
+async function handleReaction(sock, status) {
+    try {
+        const events = Array.isArray(status) ? status : [status]
+        for (const event of events) {
+            await handleVersusReaction(sock, event)
+        }
+    } catch (error) {
+        console.error('Error in handleReaction:', error)
+    }
+}
+
 module.exports = {
     handleMessages,
     handleGroupParticipantUpdate,
     handleStatus: async (sock, status) => {
         await handleStatusUpdate(sock, status);
-    }
+    },
+    handleReaction
 };

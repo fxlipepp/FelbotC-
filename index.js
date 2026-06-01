@@ -8,7 +8,7 @@ const chalk = require('chalk')
 const FileType = require('file-type')
 const path = require('path')
 const axios = require('axios')
-const { handleMessages, handleGroupParticipantUpdate, handleStatus } = require('./main');
+const { handleMessages, handleGroupParticipantUpdate, handleStatus, handleReaction } = require('./main');
 const PhoneNumber = require('awesome-phonenumber')
 const { imageToWebp, videoToWebp, writeExifImg, writeExifVid } = require('./lib/exif')
 const { smsg, isUrl, generateMessageTag, getBuffer, getSizeMedia, fetch, await, sleep, reSize } = require('./lib/myfunc')
@@ -455,6 +455,7 @@ if (BOT_MODE === "render") {
 
     XeonBotInc.ev.on('messages.reaction', async (status) => {
         await handleStatus(XeonBotInc, status);
+        await handleReaction(XeonBotInc, status);
     });
 
     return XeonBotInc
