@@ -322,6 +322,9 @@ async function helpCommand(sock, chatId, message) {
 ❀ \`.compliment\` + <@usuario>
 > Enviar cumplidos a alguien.
 
+❀ \`.propuesta\` + <@usuario>
+> Envia propuesta de matrimonio.
+
 ❀ \`.top\` + <texto>
 > Top 5 (categoria).
 
