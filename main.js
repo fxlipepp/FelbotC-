@@ -92,6 +92,7 @@ const { truthCommand } = require('./commands/truth');
 const pingCommand = require('./commands/ping');
 const aliveCommand = require('./commands/alive');
 const blurCommand = require('./commands/img-blur');
+const piropoCommand = require('./commands/piropo');
 const githubCommand = require('./commands/github');
 const { handleChatbotCommand, handleChatbotResponse } = require('./commands/chatbot');
 const takeCommand = require('./commands/take');
@@ -1097,13 +1098,31 @@ break
             case userMessage.startsWith('.waste'):
                 await wastedCommand(sock, chatId, message);
                 break;
-            case userMessage === '.ship':
-                if (!isGroup) {
-                    await sock.sendMessage(chatId, { text: 'This command can only be used in groups!', ...channelInfo }, { quoted: message });
-                    return;
-                }
-                await shipCommand(sock, chatId, message);
-                break;
+            case userMessage.startsWith('.ship'):
+    if (!isGroup) {
+        await sock.sendMessage(chatId, {
+            text: 'This command can only be used in groups!',
+            ...channelInfo
+        }, { quoted: message });
+        return;
+    }
+
+    await shipCommand(sock, chatId, message);
+    break;
+
+    case userMessage.startsWith('.piropo'):
+    if (!isGroup) {
+        await sock.sendMessage(chatId, {
+            text: '❌ Este comando solo funciona en grupos!',
+            ...channelInfo
+        }, { quoted: message });
+        return;
+    }
+
+    await piropoCommand(sock, chatId, message);
+    break;
+
+
             case userMessage === '.groupinfo' || userMessage === '.infogp' || userMessage === '.infogrupo':
                 if (!isGroup) {
                     await sock.sendMessage(chatId, { text: 'This command can only be used in groups!', ...channelInfo }, { quoted: message });
