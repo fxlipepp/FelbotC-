@@ -1,0 +1,344 @@
+{
+  "120363409589697138@g.us|3EB087E002B37D81136F4C": {
+    "chatId": "120363409589697138@g.us",
+    "messageId": "3EB087E002B37D81136F4C",
+    "key": {
+      "remoteJid": "120363409589697138@g.us",
+      "fromMe": true,
+      "id": "3EB087E002B37D81136F4C"
+    },
+    "type": "4vs4",
+    "title": "4 VS 4 CLK",
+    "time": "10 pm mx",
+    "groupName": "夜 🕸️",
+    "maxTitular": 4,
+    "maxSuplentes": 2,
+    "titular": [],
+    "suplentes": []
+  },
+  "120363409589697138@g.us|3EB02BC3FDB1E01EFC9A9F": {
+    "chatId": "120363409589697138@g.us",
+    "messageId": "3EB02BC3FDB1E01EFC9A9F",
+    "key": {
+      "remoteJid": "120363409589697138@g.us",
+      "fromMe": true,
+      "id": "3EB02BC3FDB1E01EFC9A9F"
+    },
+    "type": "2vs2",
+    "title": "2 VS 2 CLK",
+    "time": "10pm mx",
+    "groupName": "夜 🕸️",
+    "maxTitular": 2,
+    "maxSuplentes": 1,
+    "titular": [
+      "274517599482100@lid"
+    ],
+    "suplentes": []
+  },
+  "120363409589697138@g.us|3EB06D0AC55B770F05611E": {
+    "chatId": "120363409589697138@g.us",
+    "messageId": "3EB06D0AC55B770F05611E",
+    "key": {
+      "remoteJid": "120363409589697138@g.us",
+      "fromMe": true,
+      "id": "3EB06D0AC55B770F05611E"
+    },
+    "type": "int2",
+    "title": "INT 2 VS 2 CLK",
+    "time": "10pm mx",
+    "groupName": "夜 🕸️",
+    "maxTitular": 2,
+    "maxSuplentes": 1,
+    "titular": [],
+    "suplentes": []
+  },
+  "120363409589697138@g.us|3EB0139716AE4E6A135EE0": {
+    "chatId": "120363409589697138@g.us",
+    "messageId": "3EB0139716AE4E6A135EE0",
+    "key": {
+      "remoteJid": "120363409589697138@g.us",
+      "fromMe": true,
+      "id": "3EB0139716AE4E6A135EE0"
+    },
+    "type": "2vs2",
+    "title": "2 VS 2 CLK",
+    "time": "10pm mx",
+    "groupName": "夜 🕸️",
+    "maxTitular": 2,
+    "maxSuplentes": 1,
+    "titular": [
+      "274517599482100@lid"
+    ],
+    "suplentes": []
+  },
+  "120363409589697138@g.us|3EB016B36401C5B3565E8D": {
+    "chatId": "120363409589697138@g.us",
+    "messageId": "3EB016B36401C5B3565E8D",
+    "key": {
+      "remoteJid": "120363409589697138@g.us",
+      "fromMe": true,
+      "id": "3EB016B36401C5B3565E8D"
+    },
+    "type": "4vs4",
+    "title": "4 VS 4 CLK",
+    "time": "8pm mx",
+    "groupName": "夜 🕸️",
+    "maxTitular": 4,
+    "maxSuplentes": 2,
+    "titular": [],
+    "suplentes": []
+  },
+  "120363409589697138@g.us|3EB0740EA0FC37CEA2763D": {
+    "chatId": "120363409589697138@g.us",
+    "messageId": "3EB0740EA0FC37CEA2763D",
+    "key": {
+      "remoteJid": "120363409589697138@g.us",
+      "fromMe": true,
+      "id": "3EB0740EA0FC37CEA2763D"
+    },
+    "type": "4vs4",
+    "title": "4 VS 4 CLK",
+    "time": null,
+    "groupName": "夜 🕸️",
+    "maxTitular": 4,
+    "maxSuplentes": 2,
+    "titular": [],
+    "suplentes": []
+  },
+  "120363409589697138@g.us|3EB010D6CE421C0F5B39D5": {
+    "chatId": "120363409589697138@g.us",
+    "messageId": "3EB010D6CE421C0F5B39D5",
+    "key": {
+      "remoteJid": "120363409589697138@g.us",
+      "fromMe": true,
+      "id": "3EB010D6CE421C0F5B39D5"
+    },
+    "type": "2vs2",
+    "title": "2 VS 2 CLK",
+    "time": null,
+    "groupName": "夜 🕸️",
+    "maxTitular": 2,
+    "maxSuplentes": 1,
+    "titular": [],
+    "suplentes": []
+  },
+  "120363409589697138@g.us|3EB0A8FEC602D96B9A094C": {
+    "chatId": "120363409589697138@g.us",
+    "messageId": "3EB0A8FEC602D96B9A094C",
+    "key": {
+      "remoteJid": "120363409589697138@g.us",
+      "fromMe": true,
+      "id": "3EB0A8FEC602D96B9A094C"
+    },
+    "type": "4vs4",
+    "title": "4 VS 4 CLK",
+    "time": null,
+    "groupName": "夜 🕸️",
+    "maxTitular": 4,
+    "maxSuplentes": 2,
+    "titular": [],
+    "suplentes": []
+  },
+  "120363409589697138@g.us|3EB07F7D30CE48D572C7A1": {
+    "chatId": "120363409589697138@g.us",
+    "messageId": "3EB07F7D30CE48D572C7A1",
+    "key": {
+      "remoteJid": "120363409589697138@g.us",
+      "fromMe": true,
+      "id": "3EB07F7D30CE48D572C7A1"
+    },
+    "type": "4vs4",
+    "title": "4 VS 4 CLK",
+    "time": null,
+    "groupName": "夜 🕸️",
+    "maxTitular": 4,
+    "maxSuplentes": 2,
+    "titular": [],
+    "suplentes": []
+  },
+  "120363409589697138@g.us|3EB0CD23F6AB79AC3B5BD4": {
+    "chatId": "120363409589697138@g.us",
+    "messageId": "3EB0CD23F6AB79AC3B5BD4",
+    "key": {
+      "remoteJid": "120363409589697138@g.us",
+      "fromMe": true,
+      "id": "3EB0CD23F6AB79AC3B5BD4"
+    },
+    "type": "4vs4",
+    "title": "4 VS 4 CLK",
+    "time": null,
+    "groupName": "夜 🕸️",
+    "maxTitular": 4,
+    "maxSuplentes": 2,
+    "titular": [
+      "274517599482100@lid"
+    ],
+    "suplentes": []
+  },
+  "120363409589697138@g.us|3EB08828E57CDEFDFC93AB": {
+    "chatId": "120363409589697138@g.us",
+    "messageId": "3EB08828E57CDEFDFC93AB",
+    "key": {
+      "remoteJid": "120363409589697138@g.us",
+      "fromMe": true,
+      "id": "3EB08828E57CDEFDFC93AB"
+    },
+    "type": "2vs2",
+    "title": "2 VS 2 CLK",
+    "time": null,
+    "groupName": "夜 🕸️",
+    "maxTitular": 2,
+    "maxSuplentes": 1,
+    "titular": [],
+    "suplentes": []
+  },
+  "120363409589697138@g.us|3EB06435A8AE40818FB512": {
+    "chatId": "120363409589697138@g.us",
+    "messageId": "3EB06435A8AE40818FB512",
+    "key": {
+      "remoteJid": "120363409589697138@g.us",
+      "fromMe": true,
+      "id": "3EB06435A8AE40818FB512"
+    },
+    "type": "int2",
+    "title": "INT 2 VS 2 CLK",
+    "time": null,
+    "groupName": "夜 🕸️",
+    "maxTitular": 2,
+    "maxSuplentes": 1,
+    "titular": [
+      "274517599482100@lid"
+    ],
+    "suplentes": []
+  },
+  "120363409589697138@g.us|3EB0CC9800CD75E36E15C0": {
+    "chatId": "120363409589697138@g.us",
+    "messageId": "3EB0CC9800CD75E36E15C0",
+    "key": {
+      "remoteJid": "120363409589697138@g.us",
+      "fromMe": true,
+      "id": "3EB0CC9800CD75E36E15C0"
+    },
+    "type": "4vs4",
+    "title": "4 VS 4 CLK",
+    "time": null,
+    "groupName": "夜 🕸️",
+    "maxTitular": 4,
+    "maxSuplentes": 2,
+    "titular": [],
+    "suplentes": [],
+    "equipo2": []
+  },
+  "120363409589697138@g.us|3EB0E480BF22A760377432": {
+    "chatId": "120363409589697138@g.us",
+    "messageId": "3EB0E480BF22A760377432",
+    "key": {
+      "remoteJid": "120363409589697138@g.us",
+      "fromMe": true,
+      "id": "3EB0E480BF22A760377432"
+    },
+    "type": "int4",
+    "title": "INT 4 VS 4 CLK",
+    "time": null,
+    "groupName": "夜 🕸️",
+    "maxTitular": 4,
+    "maxSuplentes": 2,
+    "titular": [],
+    "suplentes": [],
+    "equipo2": []
+  },
+  "120363409589697138@g.us|3EB08335E42966C29D4116": {
+    "chatId": "120363409589697138@g.us",
+    "messageId": "3EB08335E42966C29D4116",
+    "key": {
+      "remoteJid": "120363409589697138@g.us",
+      "fromMe": true,
+      "id": "3EB08335E42966C29D4116"
+    },
+    "type": "int6",
+    "title": "INT 6 VS 6 CLK",
+    "time": null,
+    "groupName": "夜 🕸️",
+    "maxTitular": 6,
+    "maxSuplentes": 3,
+    "titular": [],
+    "suplentes": [],
+    "equipo2": [
+      "274517599482100@lid"
+    ]
+  },
+  "120363409589697138@g.us|3EB0D5DC69C19BCD0A1EC8": {
+    "chatId": "120363409589697138@g.us",
+    "messageId": "3EB0D5DC69C19BCD0A1EC8",
+    "key": {
+      "remoteJid": "120363409589697138@g.us",
+      "fromMe": true,
+      "id": "3EB0D5DC69C19BCD0A1EC8"
+    },
+    "type": "2vs2",
+    "title": "2 VS 2 CLK",
+    "time": "10pm col",
+    "groupName": "夜 🕸️",
+    "maxTitular": 2,
+    "maxSuplentes": 1,
+    "titular": [],
+    "suplentes": [],
+    "equipo2": []
+  },
+  "120363409589697138@g.us|3EB0C404184F5626C94F3B": {
+    "chatId": "120363409589697138@g.us",
+    "messageId": "3EB0C404184F5626C94F3B",
+    "key": {
+      "remoteJid": "120363409589697138@g.us",
+      "fromMe": true,
+      "id": "3EB0C404184F5626C94F3B"
+    },
+    "type": "4vs4",
+    "title": "4 VS 4 CLK",
+    "time": "11pm MX",
+    "groupName": "夜 🕸️",
+    "maxTitular": 4,
+    "maxSuplentes": 2,
+    "titular": [],
+    "suplentes": [
+      "112863855280332@lid"
+    ],
+    "equipo2": []
+  },
+  "120363409589697138@g.us|3EB0F21B7032E04D062076": {
+    "chatId": "120363409589697138@g.us",
+    "messageId": "3EB0F21B7032E04D062076",
+    "key": {
+      "remoteJid": "120363409589697138@g.us",
+      "fromMe": true,
+      "id": "3EB0F21B7032E04D062076"
+    },
+    "type": "4vs4",
+    "title": "4 VS 4 CLK",
+    "time": "10pm RD",
+    "groupName": "夜 🕸️",
+    "maxTitular": 4,
+    "maxSuplentes": 2,
+    "titular": [],
+    "suplentes": [],
+    "equipo2": []
+  },
+  "120363409589697138@g.us|3EB0B086DA2B95B2B3B107": {
+    "chatId": "120363409589697138@g.us",
+    "messageId": "3EB0B086DA2B95B2B3B107",
+    "key": {
+      "remoteJid": "120363409589697138@g.us",
+      "fromMe": true,
+      "id": "3EB0B086DA2B95B2B3B107"
+    },
+    "type": "int2",
+    "title": "2 VS 2 CLK",
+    "time": null,
+    "groupName": "夜 🕸️",
+    "maxTitular": 2,
+    "maxSuplentes": 1,
+    "titular": [],
+    "suplentes": [],
+    "equipo2": []
+  }
+}
