@@ -9,6 +9,10 @@
     "120363409058735006@g.us": {
       "enabled": true,
       "action": "delete"
+    },
+    "120363409589697138@g.us": {
+      "enabled": true,
+      "action": "kick"
     }
   },
   "antibadword": {
@@ -21,7 +25,11 @@
       "action": "delete"
     }
   },
-  "warnings": {},
+  "warnings": {
+    "120363409589697138@g.us": {
+      "21836251324565@lid": 0
+    }
+  },
   "sudo": [],
   "welcome": {
     "120363425747376468@g.us": {
