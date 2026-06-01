@@ -66,7 +66,8 @@ const warningsCommand = require('./commands/warnings');
 const ttsCommand = require('./commands/tts');
 const { tictactoeCommand, handleTicTacToeMove } = require('./commands/tictactoe');
 const { incrementMessageCount, topMembers } = require('./commands/topmembers');
-const { versusCommand, handleVersusReaction } = require('./commands/versus');
+const { versusCommand, handleVersusReaction,  upVersusCommand} = require('./commands/versus');
+const {propuestaCommand,aceptarPropuesta,rechazarPropuesta} = require('./commands/propuesta')
 const ownerCommand = require('./commands/owner');
 const deleteCommand = require('./commands/delete');
 const { handleAntilinkCommand, handleLinkDetection } = require('./commands/antilink');
@@ -540,6 +541,31 @@ const command = rawText.split(' ')[0].toLowerCase()
 
     break;
 
+    case userMessage.startsWith('.propuesta'):
+    await propuestaCommand(
+        sock,
+        chatId,
+        senderId,
+        message
+    )
+    break;
+
+    case userMessage === '.si':
+    if (await aceptarPropuesta(
+        sock,
+        chatId,
+        senderId
+    )) break
+    break;
+
+    case userMessage === '.no':
+    if (await rechazarPropuesta(
+        sock,
+        chatId,
+        senderId
+    )) break
+    break;
+
         case userMessage.startsWith('.unmute'):
     await unmuteCommand(sock, chatId, senderId, message)
     break;
@@ -655,6 +681,9 @@ break;
             case userMessage.startsWith('.2vs2') || userMessage.startsWith('.2v2') || userMessage.startsWith('.4vs4') || userMessage.startsWith('.4v4') || userMessage.startsWith('.6vs6') || userMessage.startsWith('.6v6') || userMessage.startsWith('.int2') || userMessage.startsWith('.int4') || userMessage.startsWith('.int6'):
                 await versusCommand(sock, chatId, senderId, message);
                 break;
+                case userMessage.startsWith('.up'):
+    await upVersusCommand(sock, chatId, message);
+    break;
             case userMessage.startsWith('.top'):
                 await topCommand(sock, chatId, senderId, message);
                 break;

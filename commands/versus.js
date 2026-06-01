@@ -121,6 +121,7 @@ ${esInterna
 💔 │ Salir de la Lista
 
 > 🏴‍☠️ *${match.groupName}*
+> Usa .up para volver a mandar la ultima lista creada
 `.trim()
 }
 
@@ -330,7 +331,64 @@ if (!match.equipo2) {
     }
 }
 
+async function upVersusCommand(sock, chatId, message) {
+    try {
+
+        if (!chatId.endsWith('@g.us')) {
+            return await sock.sendMessage(chatId, {
+                text: '❌ Este comando solo funciona en grupos.'
+            }, { quoted: message })
+        }
+
+        const data = loadVersusData()
+
+        const matches = Object.values(data)
+            .filter(m => m.chatId === chatId)
+
+        if (!matches.length) {
+            return await sock.sendMessage(chatId, {
+                text: '⚠️ No hay ninguna lista activa en este grupo.'
+            }, { quoted: message })
+        }
+
+        const match = matches[matches.length - 1]
+
+        const mentions = [
+            ...new Set([
+                ...match.titular,
+                ...match.suplentes,
+                ...(match.equipo2 || [])
+            ])
+        ]
+
+        const sent = await sock.sendMessage(chatId, {
+            text: buildVersusText(match),
+            mentions
+        }, { quoted: message })
+
+        const oldKey = getMatchKey(
+            match.chatId,
+            match.messageId
+        )
+
+        delete data[oldKey]
+
+        match.messageId = sent.key.id
+        match.key = sent.key
+
+        data[getMatchKey(chatId, sent.key.id)] = match
+
+        saveVersusData(data)
+
+    } catch (error) {
+        console.error('Error en upVersusCommand:', error)
+    }
+}
+
+
 module.exports = {
     versusCommand,
-    handleVersusReaction
+    handleVersusReaction,
+    upVersusCommand
+    
 }
