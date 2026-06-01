@@ -37,6 +37,13 @@ async function helpCommand(sock, chatId, message) {
 
 ╰━━━━━━━━━━━━━━━━⬣
 
+╭━━〔 🤡 DIVERSION 〕━━⬣
+> ✦ Comandos de diversion.
+
+❀ \`.top\` + <texto>
+> Top 5 (categoria).
+╰━━━━━━━━━━━━━━━━⬣
+
 ╭━━〔 🌐 GENERAL 〕━━⬣
 > ✦ Comandos principales e información del bot.
 

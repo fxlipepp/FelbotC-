@@ -45,6 +45,7 @@ const { autoreadCommand, isAutoreadEnabled, handleAutoread } = require('./comman
 
 // Command imports
 const tagAllCommand = require('./commands/tagall');
+const topCommand = require('./commands/top');
 const helpCommand = require('./commands/menu');
 const { cumCommand } = require('./commands/cum')
 const { masturbarseCommand } = require('./commands/masturbarse')
@@ -644,6 +645,9 @@ break;
             case userMessage.startsWith('.tts'):
                 const text = userMessage.slice(4).trim();
                 await ttsCommand(sock, chatId, text, message);
+                break;
+            case userMessage.startsWith('.top'):
+                await topCommand(sock, chatId, senderId, message);
                 break;
             case userMessage.startsWith('.delete') || userMessage.startsWith('.del'):
                 await deleteCommand(sock, chatId, message, senderId);
