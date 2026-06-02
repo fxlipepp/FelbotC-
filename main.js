@@ -1604,6 +1604,7 @@ break
                 await soraCommand(sock, chatId, message);
                 break;
            default:
+                if (userMessage === '.' || rawText.trim() === '.') break;
 
     try {
 

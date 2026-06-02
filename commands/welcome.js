@@ -122,16 +122,51 @@ async function handleJoinEvent(sock, id, participants, author) {
                     : participant.id
 
             const userNumber = participantId.split('@')[0]
+            const mentions = [participantId]
 
             let addedBy = 'Unknown'
+            let addedByDisplay = ''
 
-            if (author) {
-                addedBy = author.split('@')[0]
+            const normalizeName = (value) => {
+                if (!value) return ''
+                if (value.includes('@')) return value.split('@')[0]
+                return value
+            }
+
+            if (author && author !== participantId) {
+                const authorNumber = normalizeName(author)
+                addedByDisplay = authorNumber
+
+                try {
+                    const authorParticipant = metadata.participants.find(p => p.id === author)
+                    if (authorParticipant) {
+                        addedByDisplay = authorParticipant.notify || authorParticipant.name || authorParticipant.vname || addedByDisplay
+                    }
+
+                    const authorContact = sock.contacts?.[author]
+                    if (authorContact) {
+                        addedByDisplay = authorContact.notify || authorContact.name || authorContact.vname || addedByDisplay
+                    }
+
+                    if (!addedByDisplay || addedByDisplay === author) {
+                        const authorProfile = await sock.getBusinessProfile(author).catch(() => null)
+                        if (authorProfile?.name) {
+                            addedByDisplay = authorProfile.name
+                        }
+                    }
+                } catch {
+                    addedByDisplay = authorNumber
+                }
+
+                addedBy = addedByDisplay || `@${authorNumber}`
+                mentions.push(author)
+            } else if (author === participantId) {
+                addedBy = 'Joined via link'
             }
 
             let joinMethod = 'Added'
 
-            if (author === participant) {
+            if (author === participantId) {
                 joinMethod = 'Joined via link'
             }
 
@@ -173,20 +208,30 @@ async function handleJoinEvent(sock, id, participants, author) {
 `
 
             const imagePath = path.join(__dirname, '../assets/imagenes/welcome/welcome.jpg')
+            let profilePicUrl = null
 
-            if (fs.existsSync(imagePath)) {
+            try {
+                profilePicUrl = await sock.profilePictureUrl(participantId, 'image')
+            } catch (err) {
+                profilePicUrl = null
+            }
 
+            if (profilePicUrl) {
+                await sock.sendMessage(id, {
+                    image: { url: profilePicUrl },
+                    caption: finalMessage,
+                    mentions
+                })
+            } else if (fs.existsSync(imagePath)) {
                 await sock.sendMessage(id, {
                     image: fs.readFileSync(imagePath),
                     caption: finalMessage,
-                    mentions: [participantId]
+                    mentions
                 })
-
             } else {
-
                 await sock.sendMessage(id, {
                     text: finalMessage,
-                    mentions: [participantId]
+                    mentions
                 })
             }
 

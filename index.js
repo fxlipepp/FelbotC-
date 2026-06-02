@@ -36,6 +36,38 @@ const { parsePhoneNumber } = require("libphonenumber-js")
 const { PHONENUMBER_MCC } = require('@whiskeysockets/baileys/lib/Utils/generics')
 const { rmSync, existsSync } = require('fs')
 const { join } = require('path')
+const { execSync } = require('child_process')
+
+function isFfmpegAvailable() {
+    try {
+        execSync('ffmpeg -version', { stdio: 'ignore' })
+        return true
+    } catch {
+        return false
+    }
+}
+
+function tryInstallFfmpeg() {
+    try {
+        const installCommand = (process.getuid && process.getuid() === 0)
+            ? 'apt-get update && apt-get install -y ffmpeg'
+            : 'sudo apt-get update && sudo apt-get install -y ffmpeg'
+        execSync(installCommand, { stdio: 'inherit' })
+        return true
+    } catch (err) {
+        return false
+    }
+}
+
+function ensureFfmpeg() {
+    if (isFfmpegAvailable()) return
+    console.log(chalk.yellow('⚠️ ffmpeg no encontrado. Intentando reinstalar...'))
+    if (tryInstallFfmpeg()) {
+        console.log(chalk.green('✅ ffmpeg reinstalado correctamente.'))
+        return
+    }
+    console.log(chalk.red('❌ No se pudo reinstalar ffmpeg automáticamente. Instálalo con: sudo apt-get install -y ffmpeg'))
+}
 
 // Import lightweight store
 const store = require('./lib/lightweight_store')
@@ -107,7 +139,12 @@ function padCenter(text = '', width = getLogWidth()) {
     return ' '.repeat(left) + cleanText + ' '.repeat(right)
 }
 
-function frameLog(lines = [], style = chalk.cyan) {
+function rainbowText(text = '') {
+    const colors = ['#ff5ed6', '#ffb86c', '#8be9fd', '#50fa7b', '#bd93f9', '#ff79c6']
+    return text.split('').map((char, idx) => chalk.hex(colors[idx % colors.length])(char)).join('')
+}
+
+function frameLog(lines = [], style = chalk.hex('#6f6af8')) {
     const width = getLogWidth()
     console.log(style(`╔${'═'.repeat(width)}╗`))
     lines.forEach(line => {
@@ -118,36 +155,37 @@ function frameLog(lines = [], style = chalk.cyan) {
 
 function printStartupBanner() {
     frameLog([
-        chalk.bold.magenta('𝕱𝖊𝖑𝖇𝖔𝖙 夜'),
+        chalk.bold.white(rainbowText('𝕱𝖊𝖑𝖇𝖔𝖙 夜')),
         '',
-        chalk.bold.white(`Mode : ${BOT_MODE.toUpperCase()}`),
-        chalk.bold.white(`Env  : ${process.env.NODE_ENV || 'production'}`),
-        chalk.bold.white(`Owner: ${String(settings.ownerNumber || 'unknown').slice(0, 24)}`),
-        chalk.bold.white(`Ver  : ${settings.version || '1.0.0'}`),
+        chalk.hex('#7c3aed')(`Mode : `) + chalk.hex('#38bdf8')(BOT_MODE.toUpperCase()),
+        chalk.hex('#7c3aed')(`Env  : `) + chalk.hex('#34d399')(process.env.NODE_ENV || 'production'),
+        chalk.hex('#7c3aed')(`Owner: `) + chalk.hex('#fb7185')(String(settings.ownerNumber || 'unknown').slice(0, 24)),
+        chalk.hex('#7c3aed')(`Ver  : `) + chalk.hex('#facc15')(settings.version || '1.0.0'),
         '',
-        chalk.bold.green('🚀 Launching the bot...'),
-    ], chalk.blue)
+        chalk.bold.rgb(6, 182, 212)('🚀 Launching the bot...'),
+    ], chalk.hex('#7c3aed'))
     console.log()
 }
 
 function printConnectedBanner(user) {
     const number = user?.id?.split(':')[0] || 'unknown'
     frameLog([
-        chalk.bold.green('🤖 BOT CONNECTED'),
+        chalk.bold.rgb(16, 185, 129)('🤖 BOT CONNECTED'),
         '',
-        chalk.white(`Bot  : ${global.botname || 'KNIGHT BOT'}`),
-        chalk.white(`User : ${user?.name || user?.id || 'unknown'}`),
-        chalk.white(`Num  : ${number}`),
-        chalk.white(`Time : ${new Date().toLocaleString()}`),
+        chalk.hex('#38bdf8')('Bot  : ') + chalk.bold.rgb(168, 85, 247)(global.botname || '𝕱𝖊𝖑𝖇𝖔𝖙 夜'),
+        chalk.hex('#38bdf8')('User : ') + chalk.white(user?.name || user?.id || 'unknown'),
+        chalk.hex('#38bdf8')('Num  : ') + chalk.white(number),
+        chalk.hex('#38bdf8')('Time : ') + chalk.white(new Date().toLocaleString()),
         '',
-        chalk.bold.yellow('STATUS: ONLINE'),
-    ], chalk.green)
+        chalk.bold.bgHex('#16a34a').black(' STATUS: ONLINE '),
+    ], chalk.hex('#10b981'))
     console.log()
 }
 
 
 async function startXeonBotInc() {
     try {
+        ensureFfmpeg()
         printStartupBanner()
         let { version, isLatest } = await fetchLatestBaileysVersion()
         let state, saveCreds
@@ -167,7 +205,7 @@ if (BOT_MODE === "render") {
     state = local.state
     saveCreds = local.saveCreds
 
-    console.log("🟢 Dev: usando archivos locales")
+    console.log(chalk.rgb(16, 185, 129).bold('🟢 Dev: usando archivos locales'))
 }
         const msgRetryCounterCache = new NodeCache()
 
