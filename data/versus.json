@@ -472,5 +472,26 @@
       "112863855280332@lid"
     ],
     "equipo2": []
+  },
+  "120363424458524918@g.us|3EB0463E32E8E50F1F9B30": {
+    "chatId": "120363424458524918@g.us",
+    "messageId": "3EB0463E32E8E50F1F9B30",
+    "key": {
+      "remoteJid": "120363424458524918@g.us",
+      "fromMe": true,
+      "id": "3EB0463E32E8E50F1F9B30"
+    },
+    "type": "4vs4",
+    "title": "4 VS 4 CLK",
+    "time": "a orita en media hora",
+    "groupName": "𝐄𝐜𝐥𝐢𝐩𝐬𝐞𝐝’7",
+    "maxTitular": 4,
+    "maxSuplentes": 2,
+    "titular": [
+      "203856898195688@lid",
+      "1868512133282@lid"
+    ],
+    "suplentes": [],
+    "equipo2": []
   }
 }

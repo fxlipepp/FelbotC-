@@ -1,50 +1,20 @@
-# 🤖 Knight Bot
-
-This is a WhatsApp bot built using the Baileys library for group management, including features like tagging all members, muting/unmuting, and many more. It's designed to help admins efficiently manage WhatsApp groups.
-
-<div align="center"> 
-  <a href="https://git.io/typing-svg"> 
-    <img src="https://readme-typing-svg.demolab.com?font=Ribeye&size=50&pause=1000&color=33ff00&center=true&width=910&height=100&lines=Knight-Bot;Multi+Device+Whatsapp+Bot;Coded+By+Professor" alt="Typing SVG" />
-  </a> 
-</div> 
-
-<div align="center"> 
-  <a href="https://youtube.com/@mr_unique_hacker"> 
-    <img src="https://github.com/mruniquehacker/Knightbot-MD/blob/main/assets/bot_image.jpg" alt="Knight Bot" height="300"> 
-  </a> 
+<div align="center">
+  <img src="https://readme-typing-svg.demolab.com?font=Bebas+Neue&size=90&pause=1000&color=ff55ff&center=true&width=980&height=140&lines=Fxlbot+%E5%A4%9C;El+Bot+WhatsApp+Que+Manda" alt="Fxlbot 夜" />
 </div>
 
-<div align="center">
-  <img src="https://img.shields.io/github/followers/mruniquehacker?style=for-the-badge&label=Followers" alt="Followers"/>
-  <img src="https://img.shields.io/github/stars/mruniquehacker/Knightbot-MD?style=for-the-badge&label=Stars" alt="Stars"/>
-  <img src="https://img.shields.io/github/forks/mruniquehacker/Knightbot-MD?style=for-the-badge&label=Forks" alt="Forks"/>
-  <img src="https://img.shields.io/github/watchers/mruniquehacker/Knightbot-MD?style=for-the-badge&label=Watchers" alt="Watchers"/>
+<div align="center" style="margin: 20px 0 16px;">
+  <p style="font-size: 1.4rem; color: #d7b6ff; margin: 0;">Fxlbot 夜 destaca con fuerza, elegancia y claridad.</p>
+  <p style="font-size: 1.05rem; color: #b2a2ff; margin: 10px 0 0;">El mejor bot para grupos, etiquetas, stickers y comandos rápidos.</p>
+</div>
+
+<div align="center" style="margin-top: 18px;">
+  <img src="https://img.shields.io/badge/Fxlbot-%E5%A4%9C-8A2BE2?style=for-the-badge&logo=whatsapp&logoColor=white" alt="Fxlbot 夜" />
+  <img src="https://img.shields.io/badge/Version-2.0-blueviolet?style=for-the-badge" alt="Version" />
+  <img src="https://img.shields.io/badge/Node.js-%3E=16-339933?style=for-the-badge&logo=node.js&logoColor=white" alt="Node.js" />
+  <img src="https://img.shields.io/badge/Power-Always%20On-ff79c6?style=for-the-badge" alt="Power Always On" />
 </div>
 
 ---
-<div>
-  <a href="https://www.thordata.com/products/residential-proxies?ls=YouTube&lk=Knightbot" target="_blank">
-    <img src="assets/thor.png" alt="ThorData Proxies" width="100%" />
-  </a>
-</div>
-
-<br>
-
-<div align="left">
-  <b>Thordata: Get Reliable Global Proxies at an Unbeatable Value.</b><br><br>
-  One-click data collection with enterprise-grade stability and compliance.<br>
-  Join thousands of developers using ThorData for high-scale operations.<br><br>
-  🎁 <b>Exclusive Offer:</b> Sign up for a free Residential Proxy trial and 2,000 <b>FREE SERP API calls!</b>
-</div>
-
-<br>
-
-<div align="left">
-  <a href="https://www.thordata.com/products/residential-proxies?ls=YouTube&lk=Knightbot" target="_blank">
-    <img src="https://img.shields.io/badge/Try now-28a745?style=for-the-badge" alt="Try now"/>
-  </a>
-</div>
-
 
 ## 🚀 Steps to Deploy Bot
 
