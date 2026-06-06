@@ -409,6 +409,11 @@ async function songCommand(sock, chatId, message) {
 
       const audioBuffer = Buffer.concat(chunks)
 
+      console.log(
+   'FIRST BYTES:',
+   audioBuffer.slice(0, 32).toString('hex')
+)
+
       chunks = null
 
       if (!audioBuffer || audioBuffer.length < 50000) {
@@ -437,35 +442,30 @@ async function songCommand(sock, chatId, message) {
 
 try {
 
-   const contentType =
-   audioResponse.headers['content-type'] || ''
+   const firstBytes = audioBuffer
+      .slice(0, 64)
+      .toString('hex')
 
-let ext = 'mp3'
+   let inputExt = 'mp3'
 
-if (contentType.includes('webm'))
-   ext = 'webm'
+   if (
+      firstBytes.includes('66747970')
+   ) {
+      inputExt = 'mp4'
+   }
 
-else if (
-   contentType.includes('mp4') ||
-   contentType.includes('m4a')
-)
-   ext = 'mp4'
+   console.log(
+      `🔍 INPUT EXT: ${inputExt}`
+   )
 
-else if (
-   contentType.includes('ogg')
-)
-   ext = 'ogg'
+   finalBuffer = await toAudio(
+      audioBuffer,
+      inputExt
+   )
 
-console.log(
-   `🔍 INPUT FORMAT: ${ext}`
-)
+} catch (err) {
 
-finalBuffer = await toAudio(
-   audioBuffer,
-   ext
-)
-
-} catch {
+   console.log(err)
 
    finalBuffer = audioBuffer
 }
