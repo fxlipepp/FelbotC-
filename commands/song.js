@@ -20,7 +20,7 @@ const httpsAgent = new https.Agent({
 // ===============================
 
 const AXIOS_DEFAULTS = {
-   timeout: 20000,
+   timeout: 8000,
    httpsAgent,
    maxRedirects: 5,
    headers: {
@@ -212,107 +212,45 @@ async function okatsu(url, signal) {
 
 async function downloadAudio(url) {
 
-   const apis = [
-      {
-         name: 'Elite',
-         fn: elite
-      },
-      {
-         name: 'Yupra',
-         fn: yupra
-      },
-      {
-         name: 'Okatsu',
-         fn: okatsu
-      }
-   ]
-
-   let lastError
-
-   for (const api of apis) {
-
-      try {
-
-         console.log(`
+   console.log(`
 ╭──────────────────────⬣
-│ 🚀 PROBANDO API
-├──────────────────────⬣
-│ 🌐 API: ${api.name}
+│ 🚀 USANDO ELITE
 ╰──────────────────────⬣
 `)
 
-         const start = Date.now()
+   const start = Date.now()
 
-         const data = await api.fn(url)
+   const data = await elite(url)
 
-         if (!data?.download) {
-            throw new Error('No download URL')
-         }
+   if (!data?.download) {
+      throw new Error('Elite sin URL')
+   }
 
-         console.log(`
+   const response = await axios({
+      url: data.download,
+      method: 'GET',
+      responseType: 'stream',
+      timeout: 15000,
+      httpsAgent,
+      validateStatus: s => s >= 200 && s < 400,
+      headers: {
+         'User-Agent': 'Mozilla/5.0'
+      }
+   })
+
+   console.log(`
 ╭──────────────────────⬣
-│ ✅ API RESPONDIÓ
+│ ✅ ELITE RESPONDIÓ
 ├──────────────────────⬣
-│ 🌐 API: ${api.name}
 │ ⚡ Tiempo: ${Date.now() - start}ms
 ╰──────────────────────⬣
 `)
 
-         const response = await axios({
-            url: data.download,
-            method: 'GET',
-            responseType: 'stream',
-            timeout: 40000,
-            httpsAgent,
-            validateStatus: status =>
-               status >= 200 && status < 400,
-            headers: {
-               'User-Agent': 'Mozilla/5.0',
-               'Accept': '*/*',
-               'Connection': 'keep-alive',
-               'Referer': 'https://youtube.com/'
-            }
-         })
-
-         console.log(`
-╭──────────────────────⬣
-│ ✅ DESCARGA INICIADA
-├──────────────────────⬣
-│ 🌐 API: ${api.name}
-│ 📥 Status: ${response.status}
-╰──────────────────────⬣
-`)
-
-         return {
-            response,
-            data
-         }
-
-      } catch (err) {
-
-         console.log(`
-╭──────────────────────⬣
-│ ❌ API FAILED
-├──────────────────────⬣
-│ 🌐 API: ${api.name}
-│ 📄 Status: ${err?.response?.status || 'UNKNOWN'}
-│ 💀 Error: ${err.message}
-╰──────────────────────⬣
-`)
-
-         lastError = err
-      }
+   return {
+      response,
+      data
    }
-
-   console.log(`
-╭──────────────────────⬣
-│ 💀 TODAS LAS APIs FALLARON
-╰──────────────────────⬣
-`)
-
-   throw lastError
 }
-
 // ===============================
 // COMMAND
 // ===============================
@@ -459,30 +397,7 @@ async function songCommand(sock, chatId, message) {
             (downloaded / total) * 100
          )
 
-         if (percent >= lastPercent + 15) {
-
-            lastPercent = percent
-
-            try {
-
-               await sock.sendMessage(chatId, {
-                  edit: loading.key,
-                  image: {
-                     url: video.thumbnail
-                  },
-                  caption:
-`📥 *DESCARGANDO AUDIO*
-
-> ❀ Título: ${video.title}
-> ❀ Autor: ${video.author?.name || 'Unknown'}
-> ❀ Peso: ${formatBytes(total)}
-
-> ⚡ Descargando...
-> ${createBar(percent)} ${percent}%`
-               })
-
-            } catch {}
-         }
+         
       })
 
       await new Promise((resolve, reject) => {
@@ -518,25 +433,19 @@ async function songCommand(sock, chatId, message) {
 > ${createBar(90)} 90%`
       })
 
-      let finalBuffer
+     let finalBuffer
 
-      if (isRealMp3(audioBuffer)) {
+try {
 
-         finalBuffer = audioBuffer
+   finalBuffer = await toAudio(
+      audioBuffer,
+      'mp3'
+   )
 
-      } else {
+} catch {
 
-         try {
-            // Try mp3 first to avoid extra transcodes on render-like environments
-            finalBuffer = await toAudio(audioBuffer, 'mp3')
-         } catch {
-            try {
-               finalBuffer = await toAudio(audioBuffer, 'mp4')
-            } catch {
-               finalBuffer = await toAudio(audioBuffer, 'webm')
-            }
-         }
-      }
+   finalBuffer = audioBuffer
+}
 
       if (!finalBuffer || finalBuffer.length < 50000) {
          throw new Error('Conversion failed')
