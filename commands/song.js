@@ -12,7 +12,7 @@ const httpsAgent = new https.Agent({
    keepAliveMsecs: 10000,
    maxSockets: 50,
    maxFreeSockets: 20,
-   timeout: 60000
+   timeout: 8000
 })
 
 // ===============================
@@ -230,7 +230,7 @@ async function downloadAudio(url) {
       url: data.download,
       method: 'GET',
       responseType: 'stream',
-      timeout: 15000,
+      timeout: 8000,
       httpsAgent,
       validateStatus: s => s >= 200 && s < 400,
       headers: {
@@ -437,10 +437,33 @@ async function songCommand(sock, chatId, message) {
 
 try {
 
-   finalBuffer = await toAudio(
-      audioBuffer,
-      'mp3'
-   )
+   const contentType =
+   audioResponse.headers['content-type'] || ''
+
+let ext = 'mp3'
+
+if (contentType.includes('webm'))
+   ext = 'webm'
+
+else if (
+   contentType.includes('mp4') ||
+   contentType.includes('m4a')
+)
+   ext = 'mp4'
+
+else if (
+   contentType.includes('ogg')
+)
+   ext = 'ogg'
+
+console.log(
+   `🔍 INPUT FORMAT: ${ext}`
+)
+
+finalBuffer = await toAudio(
+   audioBuffer,
+   ext
+)
 
 } catch {
 
