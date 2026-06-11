@@ -124,8 +124,8 @@ async function deleteCommand(sock, chatId, message, senderId) {
 
         if (toDelete.length === 0) {
             const errorMsg = deleteGroupMessages 
-                ? 'No recent messages found in the group to delete.' 
-                : 'No recent messages found for the target user.';
+                ? 'Mensaje Borrado.' 
+                : 'Mensaje Borrado.';
             await sock.sendMessage(chatId, { text: errorMsg }, { quoted: message });
             return;
         }
