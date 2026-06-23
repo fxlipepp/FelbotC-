@@ -493,5 +493,23 @@
     ],
     "suplentes": [],
     "equipo2": []
+  },
+  "120363428749786655@g.us|3EB0FDE6DF2D2F829CBF9C": {
+    "chatId": "120363428749786655@g.us",
+    "messageId": "3EB0FDE6DF2D2F829CBF9C",
+    "key": {
+      "remoteJid": "120363428749786655@g.us",
+      "fromMe": true,
+      "id": "3EB0FDE6DF2D2F829CBF9C"
+    },
+    "type": "4vs4",
+    "title": "4 VS 4 CLK",
+    "time": "5pm",
+    "groupName": "2PAϾ",
+    "maxTitular": 4,
+    "maxSuplentes": 2,
+    "titular": [],
+    "suplentes": [],
+    "equipo2": []
   }
 }
