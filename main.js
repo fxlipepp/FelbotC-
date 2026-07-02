@@ -70,6 +70,7 @@ const { versusCommand, handleVersusReaction,  upVersusCommand} = require('./comm
 const {propuestaCommand,aceptarPropuesta,rechazarPropuesta} = require('./commands/propuesta')
 const ownerCommand = require('./commands/owner');
 const deleteCommand = require('./commands/delete');
+const { scheduleCommand, deleteScheduleCommand, deleteAllSchedulesCommand } = require('./commands/schedule');
 const { handleAntilinkCommand, handleLinkDetection } = require('./commands/antilink');
 const { handleAntitagCommand, handleTagDetection } = require('./commands/antitag');
 const { Antilink } = require('./lib/antilink');
@@ -686,6 +687,15 @@ break;
     break;
             case userMessage.startsWith('.top'):
                 await topCommand(sock, chatId, senderId, message);
+                break;
+            case userMessage.startsWith('.dltall'):
+                await deleteAllSchedulesCommand(sock, chatId, message, userMessage, senderId);
+                break;
+            case userMessage.startsWith('.dlt '):
+                await deleteScheduleCommand(sock, chatId, message, userMessage, senderId);
+                break;
+            case userMessage.startsWith('.horario'):
+                await scheduleCommand(sock, chatId, message, rawText, senderId);
                 break;
             case userMessage.startsWith('.delete') || userMessage.startsWith('.del'):
                 await deleteCommand(sock, chatId, message, senderId);
