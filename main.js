@@ -66,7 +66,7 @@ const warningsCommand = require('./commands/warnings');
 const ttsCommand = require('./commands/tts');
 const { tictactoeCommand, handleTicTacToeMove } = require('./commands/tictactoe');
 const { incrementMessageCount, topMembers } = require('./commands/topmembers');
-const { versusCommand, handleVersusReaction,  upVersusCommand} = require('./commands/versus');
+const { versusCommand, handleVersusReaction, handleVersusButton, upVersusCommand} = require('./commands/versus');
 const {propuestaCommand,aceptarPropuesta,rechazarPropuesta} = require('./commands/propuesta')
 const ownerCommand = require('./commands/owner');
 const deleteCommand = require('./commands/delete');
@@ -147,6 +147,7 @@ const { anticallCommand, readState: readAnticallState } = require('./commands/an
 const { pmblockerCommand, readState: readPmBlockerState } = require('./commands/pmblocker');
 const settingsCommand = require('./commands/settings');
 const soraCommand = require('./commands/sora');
+const { AIRich, Button, ButtonV2, Carousel, Toolkit } = require('./lib/airich');
 
 // Global settings
 global.packname = settings.packname;
@@ -240,6 +241,33 @@ if (userData?.banned) {
             } else if (buttonId === 'owner') {
                 const ownerCommand = require('./commands/owner');
                 await ownerCommand(sock, chatId);
+                return;
+            } else if (buttonId === 'request_command') {
+                const ownerNumber = settings.ownerNumber.replace(/[^0-9]/g, '')
+                const requestMessage = 'Buenas tengo una solicitud de comando, puedes ayudarme?'
+                const requestUrl = `https://wa.me/${ownerNumber}?text=${encodeURIComponent(requestMessage)}`
+                await sock.sendMessage(chatId, {
+                    text: `📩 Para solicitar un comando, abre este enlace:\n${requestUrl}`
+                }, { quoted: message });
+                return;
+            } else if (buttonId === 'buy_bot') {
+                const ownerNumber = settings.ownerNumber.replace(/[^0-9]/g, '')
+                const buyMessage = 'Buenas deseo adquirir el bot, me puedes asesorar?'
+                const buyUrl = `https://wa.me/${ownerNumber}?text=${encodeURIComponent(buyMessage)}`
+                await sock.sendMessage(chatId, {
+                    text: `📩 Para adquirir el bot, abre este enlace:\n${buyUrl}`
+                }, { quoted: message });
+                return;
+            } else if (buttonId === 'report_error') {
+                const ownerNumber = settings.ownerNumber.replace(/[^0-9]/g, '')
+                const errorMessage = 'Buenas, deseo reportar un error en el bot ❗'
+                const errorUrl = `https://wa.me/${ownerNumber}?text=${encodeURIComponent(errorMessage)}`
+                await sock.sendMessage(chatId, {
+                    text: `🐞 Para reportar un error, abre este enlace:\n${errorUrl}`
+                }, { quoted: message });
+                return;
+            } else if (buttonId.startsWith('versus::')) {
+                await handleVersusButton(sock, senderId, buttonId, message);
                 return;
             } else if (buttonId === 'support') {
                 await sock.sendMessage(chatId, {
@@ -703,6 +731,51 @@ break;
             case userMessage.startsWith('.attp'):
                 await attpCommand(sock, chatId, message);
                 break;
+
+            case userMessage === '.prueba': {
+                const imagePath = path.join(__dirname, 'assets', 'imagenes', 'admin', 'admin.png');
+                const thumbnail = fs.existsSync(imagePath) ? fs.readFileSync(imagePath) : null;
+
+                await sock.sendMessage(chatId, { text: '🔧 Método usado: ButtonV2 (botones interactivos)' }, { quoted: message });
+
+                const pruebaButtons = new ButtonV2(sock)
+                    .setThumbnail(thumbnail)
+                    .setBody('🎉 Prueba de botones activos')
+                    .setFooter('FelbotC - comando .prueba | Builder: ButtonV2')
+                    .addButton('Opción 1', 'prueba_1')
+                    .addButton('Opción 2', 'prueba_2')
+                    .addButton('Ayuda', 'prueba_help');
+
+                await pruebaButtons.send(chatId, { quoted: message });
+
+                await sock.sendMessage(chatId, { text: '🔧 Método usado: Carousel (tarjeta de carrusel)' }, { quoted: message });
+
+                const pruebaCarousel = new Carousel(sock).addCard({
+                    header: { hasMediaAttachment: true },
+                    body: { text: 'Builder: Carousel' },
+                    footer: { text: 'Carousel / card test' },
+                    title: 'Card 1',
+                    description: 'Usando Carousel para mostrar tarjetas',
+                    media: {
+                        image: { url: 'https://i.imgur.com/MZ4Ca1o.jpeg' },
+                    },
+                });
+                await pruebaCarousel.send(chatId, { quoted: message });
+
+                await sock.sendMessage(chatId, { text: '🔧 Método usado: AIRich (mensaje enriquecido AI)' }, { quoted: message });
+
+                const richMessage = new AIRich(sock)
+                    .setTitle('Prueba Completa')
+                    .setBody('Esto prueba botones, carrusel y mensaje enriquecido')
+                    .addText('Hola! Esto es un mensaje enriquecido con enlace [Felbot](https://github.com) y latex [x^2](<https://latex.codecogs.com/png.latex?x%5E2>)')
+                    .addSuggest(['Prueba 1', 'Prueba 2', 'Ayuda'])
+                    .addSource([['https://i.imgur.com/MZ4Ca1o.jpeg', 'https://github.com', 'Felbot en GitHub']]);
+
+                await sock.sendMessage(chatId, await richMessage.build({ quoted: message }));
+
+                commandExecuted = true;
+                break;
+            }
 
             case userMessage === '.settings':
                 await settingsCommand(sock, chatId, message);
@@ -1612,6 +1685,56 @@ break
                 break;
             case userMessage.startsWith('.sora'):
                 await soraCommand(sock, chatId, message);
+                break;
+            case userMessage === '.prueba':
+                {
+                    try {
+                        const prueba = new AIRich(sock);
+                        prueba.setTitle('Prueba AIRich');
+                        prueba.setBody('Mensaje de prueba desde el bot');
+                        prueba.setFooter('Footer de prueba');
+                        prueba.addText('Texto simple con soporte para [hipervínculo](https://example.com) y latex [x](https://latex.codecogs.com/svg.latex?x^2)');
+                        prueba.addCode('javascript', 'console.log("hola")');
+                        prueba.addTip('Esto es un tip');
+                        prueba.addSuggest(['Sugerencia 1', 'Sugerencia 2']);
+                        await prueba.send(chatId, { forwarded: true, notification: false });
+
+                        const boton = new Button(sock);
+                        boton.setTitle('Prueba Button');
+                        boton.setBody('Botón de prueba');
+                        boton.setFooter('Footer de prueba');
+                        boton.addReply('Responder', 'reply-id');
+                        boton.addUrl('Abrir', 'https://example.com');
+                        await boton.send(chatId);
+
+                        const boton2 = new ButtonV2(sock);
+                        boton2.setTitle('Prueba ButtonV2');
+                        boton2.setBody('Botón V2 de prueba');
+                        boton2.setFooter('Footer de prueba');
+                        boton2.addButton('Aceptar');
+                        await boton2.send(chatId);
+
+                        const carrusel = new Carousel(sock);
+                        carrusel.setBody('Prueba de carrusel');
+                        carrusel.setFooter('Footer');
+                        carrusel.addCard({
+                            header: { hasMediaAttachment: true, image: { url: 'https://i.imgur.com/0Z0Z0Z0.png' } },
+                            body: { text: 'Card 1' },
+                            footer: { text: 'Footer 1' }
+                        });
+                        await carrusel.send(chatId);
+
+                        await sock.sendMessage(chatId, {
+                            text: '✅ Prueba completada. Se enviaron los ejemplos de AIRich, Button, ButtonV2 y Carousel.'
+                        }, { quoted: message });
+                    } catch (e) {
+                        console.error(e);
+                        await sock.sendMessage(chatId, {
+                            text: '❌ No se pudo enviar la prueba.'
+                        }, { quoted: message });
+                    }
+                }
+                commandExecuted = true;
                 break;
            default:
                 if (userMessage === '.' || rawText.trim() === '.') break;

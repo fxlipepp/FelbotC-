@@ -531,5 +531,109 @@
     ],
     "suplentes": [],
     "equipo2": []
+  },
+  "120363428378214810@g.us|3EB0701261CEEC2D02D698": {
+    "matchId": "3b04cf54-519b-44f5-ad9b-f2039126d5ab",
+    "chatId": "120363428378214810@g.us",
+    "messageId": "3EB0701261CEEC2D02D698",
+    "key": {
+      "remoteJid": "120363428378214810@g.us",
+      "fromMe": true,
+      "id": "3EB0701261CEEC2D02D698"
+    },
+    "type": "2vs2",
+    "title": "2 VS 2 CLK",
+    "time": null,
+    "groupName": "..",
+    "maxTitular": 2,
+    "maxSuplentes": 1,
+    "titular": [],
+    "suplentes": [],
+    "equipo2": []
+  },
+  "120363428378214810@g.us|3EB0765C7EC4EC242D1F12": {
+    "matchId": "bdcc594c-bab5-4b3f-a952-69100a839dab",
+    "chatId": "120363428378214810@g.us",
+    "messageId": "3EB0765C7EC4EC242D1F12",
+    "key": {
+      "remoteJid": "120363428378214810@g.us",
+      "fromMe": true,
+      "id": "3EB07ED218BCA68D5EE667"
+    },
+    "type": "4vs4",
+    "title": "4 VS 4 CLK",
+    "time": null,
+    "groupName": "..",
+    "maxTitular": 4,
+    "maxSuplentes": 2,
+    "titular": [],
+    "suplentes": [
+      "274517599482100@lid"
+    ],
+    "equipo2": []
+  },
+  "120363428378214810@g.us|3EB04A0362D7DFC1A3D1DB": {
+    "matchId": "1e8c4e44-37e5-4549-ac82-e0c2ec8aeeaf",
+    "chatId": "120363428378214810@g.us",
+    "messageId": "3EB04A0362D7DFC1A3D1DB",
+    "key": {
+      "remoteJid": "120363428378214810@g.us",
+      "fromMe": true,
+      "id": "3EB0F1D9E781B3844F9993"
+    },
+    "type": "4vs4",
+    "title": "4 VS 4 CLK",
+    "time": null,
+    "groupName": "..",
+    "maxTitular": 4,
+    "maxSuplentes": 2,
+    "titular": [],
+    "suplentes": [
+      "274517599482100@lid",
+      "28772589916348@lid"
+    ],
+    "equipo2": []
+  },
+  "120363428378214810@g.us|3EB073A46C221119F617D6": {
+    "matchId": "29b8f172-a6fa-4f8e-82c7-c7e239ee6821",
+    "chatId": "120363428378214810@g.us",
+    "messageId": "3EB073A46C221119F617D6",
+    "key": {
+      "remoteJid": "120363428378214810@g.us",
+      "fromMe": true,
+      "id": "3EB0C89BC9346A5A3370F3"
+    },
+    "type": "2vs2",
+    "title": "2 VS 2 CLK",
+    "time": null,
+    "groupName": "..",
+    "maxTitular": 2,
+    "maxSuplentes": 1,
+    "titular": [],
+    "suplentes": [
+      "274517599482100@lid"
+    ],
+    "equipo2": []
+  },
+  "120363428378214810@g.us|3EB0D9D65EB9AF06E76938": {
+    "matchId": "879ceac0-481e-4309-978b-4749789a95c0",
+    "chatId": "120363428378214810@g.us",
+    "messageId": "3EB0D9D65EB9AF06E76938",
+    "key": {
+      "remoteJid": "120363428378214810@g.us",
+      "fromMe": true,
+      "id": "3EB093E04D8AC605B66706"
+    },
+    "type": "4vs4",
+    "title": "4 VS 4 CLK",
+    "time": null,
+    "groupName": "..",
+    "maxTitular": 4,
+    "maxSuplentes": 2,
+    "titular": [],
+    "suplentes": [
+      "274517599482100@lid"
+    ],
+    "equipo2": []
   }
 }
