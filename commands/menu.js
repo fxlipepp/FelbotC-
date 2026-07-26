@@ -1,5 +1,6 @@
 const fs = require('fs')
 const path = require('path')
+const { ButtonV2 } = require('../lib/airich')
 
 function formatUptime(seconds) {
 
@@ -381,52 +382,20 @@ async function helpCommand(sock, chatId, message) {
 `
 
     try {
+        const buttonMenu = new ButtonV2(sock)
+            .setBody(helpMessage)
+            .setFooter('FelbotC - Menú interactivo')
+            .addButton('CONTACTAME 夜', 'owner')
+            .addButton('REPORTAR ERROR ❗', 'report_error')
+            .addButton('Solicitud de comando 🕸️', 'request_command')
+            .addButton('ADQUIRIR BOT 💵', 'buy_bot')
+            
 
-        if (fs.existsSync(videoPath)) {
-
-            const videoBuffer = fs.readFileSync(videoPath)
-
-            await sock.sendMessage(chatId, {
-                video: videoBuffer,
-                gifPlayback: true,
-                caption: helpMessage,
-
-                contextInfo: {
-                    forwardingScore: 999,
-                    isForwarded: true,
-
-                    forwardedNewsletterMessageInfo: {
-                        newsletterJid: '120363409628624676@newsletter',
-                        newsletterName: '✧ 𝕱𝖊𝖑𝖇𝖔𝖙 夜 | 𝕺𝖋𝖎𝖈𝖎𝖆𝖑 𝕮𝖍𝖆𝖓𝖓𝖊𝖑 ✧'
-                    }
-                }
-
-            }, { quoted: message })
-
-        } else {
-
-            await sock.sendMessage(chatId, {
-                text: helpMessage,
-
-                contextInfo: {
-                    forwardingScore: 999,
-                    isForwarded: true,
-
-                    forwardedNewsletterMessageInfo: {
-                        newsletterJid: '120363409628624676@newsletter',
-                        newsletterName: '✧ 𝕱𝖊𝖑𝖇𝖔𝖙 夜 | 𝕺𝖋𝖎𝖈𝖎𝖆𝖑 𝕮𝖍𝖆𝖓𝖓𝖊𝖑 ✧'
-                    }
-                }
-
-            }, { quoted: message })
-        }
-
+        await buttonMenu.send(chatId, { quoted: message })
     } catch (error) {
-
         console.error(error)
-
         await sock.sendMessage(chatId, {
-            text: helpMessage
+            text: helpMessage,
         }, { quoted: message })
     }
 }
