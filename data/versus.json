@@ -635,5 +635,203 @@
       "274517599482100@lid"
     ],
     "equipo2": []
+  },
+  "120363428378214810@g.us|3EB0723F640CFF1985936A": {
+    "matchId": "a8145a76-9f60-495f-934a-67eb6482c734",
+    "chatId": "120363428378214810@g.us",
+    "messageId": "3EB0723F640CFF1985936A",
+    "key": {
+      "remoteJid": "120363428378214810@g.us",
+      "fromMe": true,
+      "id": "3EB01AD2FBA55BE14D578A"
+    },
+    "type": "4vs4",
+    "title": "4 VS 4 CLK",
+    "time": null,
+    "groupName": "..",
+    "maxTitular": 4,
+    "maxSuplentes": 2,
+    "titular": [
+      "274517599482100@lid"
+    ],
+    "suplentes": [],
+    "equipo2": []
+  },
+  "120363428378214810@g.us|3EB06472BE7654D1D51621": {
+    "matchId": "5c2547ad-3289-41d4-8167-0d1bf25b1d04",
+    "chatId": "120363428378214810@g.us",
+    "messageId": "3EB06472BE7654D1D51621",
+    "key": {
+      "remoteJid": "120363428378214810@g.us",
+      "fromMe": true,
+      "id": "3EB08A7BE12F86164038D5"
+    },
+    "type": "4vs4",
+    "title": "4 VS 4 CLK",
+    "time": null,
+    "groupName": "..",
+    "maxTitular": 4,
+    "maxSuplentes": 2,
+    "titular": [
+      "274517599482100@lid"
+    ],
+    "suplentes": [],
+    "equipo2": []
+  },
+  "120363428378214810@g.us|3EB0DC6AA2F4F9E73210AA": {
+    "matchId": "abb66324-0316-4a1a-8481-e68084727ace",
+    "chatId": "120363428378214810@g.us",
+    "messageId": "3EB0DC6AA2F4F9E73210AA",
+    "key": {
+      "remoteJid": "120363428378214810@g.us",
+      "fromMe": true,
+      "id": "3EB0DC6AA2F4F9E73210AA"
+    },
+    "type": "4vs4",
+    "title": "4 VS 4 CLK",
+    "time": null,
+    "groupName": "..",
+    "maxTitular": 4,
+    "maxSuplentes": 2,
+    "titular": [],
+    "suplentes": [],
+    "equipo2": []
+  },
+  "120363428378214810@g.us|3EB0C51CAEE058D46400FC": {
+    "matchId": "befa73b2-51ae-4708-a0f3-c8ab084ed464",
+    "chatId": "120363428378214810@g.us",
+    "messageId": "3EB0C51CAEE058D46400FC",
+    "key": {
+      "remoteJid": "120363428378214810@g.us",
+      "fromMe": true,
+      "id": "3EB0C51CAEE058D46400FC"
+    },
+    "type": "4vs4",
+    "title": "4 VS 4 CLK",
+    "time": null,
+    "groupName": "..",
+    "maxTitular": 4,
+    "maxSuplentes": 2,
+    "titular": [],
+    "suplentes": [],
+    "equipo2": []
+  },
+  "120363428378214810@g.us|3EB0424025FDC54A99F879": {
+    "matchId": "7d8847eb-41dd-4330-a03a-7534fa13b4cc",
+    "chatId": "120363428378214810@g.us",
+    "messageId": "3EB0424025FDC54A99F879",
+    "key": {
+      "remoteJid": "120363428378214810@g.us",
+      "fromMe": true,
+      "id": "3EB0424025FDC54A99F879"
+    },
+    "type": "4vs4",
+    "title": "4 VS 4 CLK",
+    "time": null,
+    "groupName": "..",
+    "maxTitular": 4,
+    "maxSuplentes": 2,
+    "titular": [],
+    "suplentes": [],
+    "equipo2": []
+  },
+  "120363428378214810@g.us|3EB053C064975567458E4F": {
+    "matchId": "c96e06f2-6d96-48b5-ae66-f61088b70f1c",
+    "chatId": "120363428378214810@g.us",
+    "messageId": "3EB053C064975567458E4F",
+    "key": {
+      "remoteJid": "120363428378214810@g.us",
+      "fromMe": true,
+      "id": "3EB053C064975567458E4F"
+    },
+    "type": "4vs4",
+    "title": "4 VS 4 CLK",
+    "time": null,
+    "groupName": "..",
+    "maxTitular": 4,
+    "maxSuplentes": 2,
+    "titular": [],
+    "suplentes": [],
+    "equipo2": []
+  },
+  "120363428378214810@g.us|3EB0678FE88BBE8B21D8F3": {
+    "matchId": "e27ce685-8566-401b-b6e5-5df4b43de6fa",
+    "chatId": "120363428378214810@g.us",
+    "messageId": "3EB0678FE88BBE8B21D8F3",
+    "key": {
+      "remoteJid": "120363428378214810@g.us",
+      "fromMe": true,
+      "id": "3EB0678FE88BBE8B21D8F3"
+    },
+    "type": "4vs4",
+    "title": "4 VS 4 CLK",
+    "time": null,
+    "groupName": "..",
+    "maxTitular": 4,
+    "maxSuplentes": 2,
+    "titular": [],
+    "suplentes": [],
+    "equipo2": []
+  },
+  "120363428378214810@g.us|3EB02EA7BE62D4C0C97FE6": {
+    "matchId": "3b3bddc2-5023-4456-bf91-2387f49cec3d",
+    "chatId": "120363428378214810@g.us",
+    "messageId": "3EB02EA7BE62D4C0C97FE6",
+    "key": {
+      "remoteJid": "120363428378214810@g.us",
+      "fromMe": true,
+      "id": "3EB02EA7BE62D4C0C97FE6"
+    },
+    "type": "4vs4",
+    "title": "4 VS 4 CLK",
+    "time": null,
+    "groupName": "..",
+    "maxTitular": 4,
+    "maxSuplentes": 2,
+    "titular": [],
+    "suplentes": [],
+    "equipo2": []
+  },
+  "120363428378214810@g.us|3EB0D874A6228CEB1DEC67": {
+    "matchId": "4dc63087-e86b-4a92-914d-023c11938ab8",
+    "chatId": "120363428378214810@g.us",
+    "messageId": "3EB0D874A6228CEB1DEC67",
+    "key": {
+      "remoteJid": "120363428378214810@g.us",
+      "fromMe": true,
+      "id": "3EB02A29C92C55F375EE51"
+    },
+    "type": "4vs4",
+    "title": "4 VS 4 CLK",
+    "time": null,
+    "groupName": "..",
+    "maxTitular": 4,
+    "maxSuplentes": 2,
+    "titular": [
+      "28772589916348@lid"
+    ],
+    "suplentes": [],
+    "equipo2": []
+  },
+  "120363428378214810@g.us|3EB0445F3C0DEC77EF7C45": {
+    "matchId": "6fc39089-0cf8-4de1-be39-6c3b8f9a3ba2",
+    "chatId": "120363428378214810@g.us",
+    "messageId": "3EB0445F3C0DEC77EF7C45",
+    "key": {
+      "remoteJid": "120363428378214810@g.us",
+      "fromMe": true,
+      "id": "3EB0999D6D9343F2CE18BD"
+    },
+    "type": "4vs4",
+    "title": "4 VS 4 CLK",
+    "time": null,
+    "groupName": "..",
+    "maxTitular": 4,
+    "maxSuplentes": 2,
+    "titular": [
+      "274517599482100@lid"
+    ],
+    "suplentes": [],
+    "equipo2": []
   }
 }
