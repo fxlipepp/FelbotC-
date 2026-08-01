@@ -11,22 +11,21 @@ function formatUptime(seconds) {
     return `${h}h ${m}m ${s}s`
 }
 
-async function helpCommand(sock, chatId, message) {
-
-    const uptime = formatUptime(process.uptime())
-    const version = '2.0.0'
-
-    const videoPath = path.join('assets', 'gifs', 'menu', 'menu.mp4')
-
-    const helpMessage = `
-╭━━━〔 𝕱𝖊𝖑𝖇𝖔𝖙 夜 〕━━━⬣
+function buildIntroHeader(uptimeSeconds, version = '2.0.0') {
+    const uptime = formatUptime(uptimeSeconds)
+    return `╭━━━〔 𝕱𝖊𝖑𝖇𝖔𝖙 夜 〕━━━⬣
 ┃ 👑 Creador: Fxlipe 夜
 ┃ ⚙️ Versión: v${version}
+┃ 📚 Comandos: 120
 ┃ ⏳ Uptime: ${uptime}
 ┃ 📢 Canal Oficial:
 ┃ ✧ FELBOT 夜 | Oficial ✧
-╰━━━━━━━━━━━━━━━━⬣
+╰━━━━━━━━━━━━━━━━⬣`
+}
 
+function buildMenuText(uptimeSeconds, version = '2.0.0') {
+    const introHeader = buildIntroHeader(uptimeSeconds, version)
+    const helpMessage = `
 ╭━━〔 👑 OWNER 〕━━⬣
 > ✦ Comandos de administracion.
 
@@ -378,26 +377,51 @@ async function helpCommand(sock, chatId, message) {
 
 ╭━〔  𝕱𝖊𝖑𝖇𝖔𝖙 夜  〕━⬣
 > *🚀 Powered By Fxlipe 夜*
-╰━━━━━━━━━━━━⬣
-`
+╰━━━━━━━━━━━━⬣`
+
+    return `${helpMessage.trim()}`
+}
+
+async function helpCommand(sock, chatId, message) {
+
+    const fullMenu = buildMenuText(process.uptime(), '2.0.0')
+    const introCaption = `${buildIntroHeader(process.uptime(), '2.0.0')}
+
+Bienvenido a Felbot 夜.
+Aquí encontrarás herramientas, administración, entretenimiento y mucho más.
+
+👇 Elige una opción para continuar.`
 
     try {
+        const imagePath = path.join(__dirname, '..', 'assets', 'imagenes', 'admin', 'admin.png')
+        const imageBuffer = fs.existsSync(imagePath) ? fs.readFileSync(imagePath) : null
+
+        if (imageBuffer) {
+            await sock.sendMessage(chatId, {
+                image: imageBuffer,
+                mimetype: 'image/png',
+                caption: introCaption
+            }, { quoted: message })
+        }
+
         const buttonMenu = new ButtonV2(sock)
-            .setBody(helpMessage)
+            .setBody('Selecciona una opción para continuar.')
             .setFooter('FelbotC - Menú interactivo')
+            .addButton('VER MENU COMPLETO', 'view_full_menu')
             .addButton('CONTACTAME 夜', 'owner')
             .addButton('REPORTAR ERROR ❗', 'report_error')
-            .addButton('Solicitud de comando 🕸️', 'request_command')
+            .addButton('SOLICITUD DE COMANDO 🕸️', 'request_command')
             .addButton('ADQUIRIR BOT 💵', 'buy_bot')
-            
 
         await buttonMenu.send(chatId, { quoted: message })
     } catch (error) {
         console.error(error)
         await sock.sendMessage(chatId, {
-            text: helpMessage,
+            text: fullMenu,
         }, { quoted: message })
     }
 }
 
+helpCommand.buildMenuText = buildMenuText
 module.exports = helpCommand
+module.exports.buildMenuText = buildMenuText
