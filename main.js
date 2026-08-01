@@ -266,6 +266,9 @@ if (userData?.banned) {
                     text: `🐞 Para reportar un error, abre este enlace:\n${errorUrl}`
                 }, { quoted: message });
                 return;
+            } else if (buttonId === 'view_full_menu') {
+                await helpCommand.handleMenuButton(sock, chatId, buttonId, message);
+                return;
             } else if (buttonId.startsWith('versus::')) {
                 await handleVersusButton(sock, senderId, buttonId, message);
                 return;
