@@ -382,6 +382,28 @@ function buildMenuText(uptimeSeconds, version = '2.0.0') {
     return `${helpMessage.trim()}`
 }
 
+function getMenuButtonAction(buttonId) {
+    switch (buttonId) {
+        case 'view_full_menu':
+            return { type: 'send_full_menu' }
+        default:
+            return null
+    }
+}
+
+async function handleMenuButton(sock, chatId, buttonId, message) {
+    const action = getMenuButtonAction(buttonId)
+    if (!action) return false
+
+    if (action.type === 'send_full_menu') {
+        const fullMenu = buildMenuText(process.uptime(), '2.0.0')
+        await sock.sendMessage(chatId, { text: fullMenu }, { quoted: message })
+        return true
+    }
+
+    return false
+}
+
 async function helpCommand(sock, chatId, message) {
 
     const fullMenu = buildMenuText(process.uptime(), '2.0.0')
@@ -423,5 +445,9 @@ Aquí encontrarás herramientas, administración, entretenimiento y mucho más.
 }
 
 helpCommand.buildMenuText = buildMenuText
+helpCommand.getMenuButtonAction = getMenuButtonAction
+helpCommand.handleMenuButton = handleMenuButton
 module.exports = helpCommand
 module.exports.buildMenuText = buildMenuText
+module.exports.getMenuButtonAction = getMenuButtonAction
+module.exports.handleMenuButton = handleMenuButton
