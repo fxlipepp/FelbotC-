@@ -1,12 +1,10 @@
 const yts = require('yt-search')
 const axios = require('axios')
 
-// Cache simple para evitar búsquedas repetidas
 const searchCache = new Map()
 
 async function playCommand(sock, chatId, message) {
    try {
-
       const text =
          message.message?.conversation ||
          message.message?.extendedTextMessage?.text ||
@@ -15,39 +13,23 @@ async function playCommand(sock, chatId, message) {
       const searchQuery = text.split(' ').slice(1).join(' ').trim()
 
       if (!searchQuery) {
-         return await sock.sendMessage(chatId, {
+         return sock.sendMessage(chatId, {
             text: '🎵 Escribe el nombre de una canción.\n\nEjemplo:\n.play Canserbero - Es épico'
          }, { quoted: message })
       }
 
-      // MENSAJE DE CARGA
-      const loadingMsg = await sock.sendMessage(chatId, {
-         text:
-`╭━━━〔 🎶 PLAY MUSIC 〕━━━⬣
-┃
-┃ 🔎 Buscando canción...
-┃
-┃ ▱▱▱▱▱▱▱▱▱▱ 0%
-┃
-╰━━━━━━━━━━━━━━━━⬣`
-      }, { quoted: message })
+      // 🔎 BUSCAR
+      let video = searchCache.get(searchQuery)
 
-      // CACHE
-      let video
-
-      if (searchCache.has(searchQuery)) {
-         video = searchCache.get(searchQuery)
-      } else {
-
+      if (!video) {
          const search = await yts(searchQuery)
 
-         if (!search.videos.length) {
-            return await sock.sendMessage(chatId, {
+         if (!search.videos?.length) {
+            return sock.sendMessage(chatId, {
                text: '❌ No encontré esa canción.'
             }, { quoted: message })
          }
 
-         // Mejor filtro
          video =
             search.videos.find(v =>
                v.seconds > 30 &&
@@ -58,67 +40,32 @@ async function playCommand(sock, chatId, message) {
 
          searchCache.set(searchQuery, video)
 
-         // Limpiar cache
          setTimeout(() => {
             searchCache.delete(searchQuery)
-         }, 1000 * 60 * 10)
+         }, 10 * 60 * 1000)
       }
 
-      // UPDATE 30%
-      await sock.sendMessage(chatId, {
-         edit: loadingMsg.key,
-         text:
-`╭━━━〔 🎶 PLAY MUSIC 〕━━━⬣
-┃
-┃ ✅ Canción encontrada
-┃ 🎵 ${video.title}
-┃
-┃ ▰▰▰▱▱▱▱▱▱▱ 30%
-┃
-╰━━━━━━━━━━━━━━━━⬣`
-      })
-
-      const urlYt = video.url
-
-      // API MÁS RÁPIDA
+      // 📥 DESCARGAR DIRECTAMENTE
       const { data } = await axios.get(
          'https://apis-keith.vercel.app/download/dlmp3',
          {
             params: {
-               url: urlYt
+               url: video.url
             },
-            timeout: 45000,
+            timeout: 30000,
             headers: {
                'User-Agent': 'Mozilla/5.0'
             }
          }
       )
 
-      if (
-         !data ||
-         !data.status ||
-         !data.result ||
-         !data.result.downloadUrl
-      ) {
-         throw new Error('API ERROR')
+      const audioUrl = data?.result?.downloadUrl
+
+      if (!data?.status || !audioUrl) {
+         throw new Error('No se obtuvo el audio')
       }
 
-      // UPDATE 70%
-      await sock.sendMessage(chatId, {
-         edit: loadingMsg.key,
-         text:
-`╭━━━〔 🎶 PLAY MUSIC 〕━━━⬣
-┃
-┃ 📥 Descargando audio...
-┃
-┃ ▰▰▰▰▰▰▰▱▱▱ 70%
-┃
-╰━━━━━━━━━━━━━━━━⬣`
-      })
-
-      const audioUrl = data.result.downloadUrl
-
-      // ENVIAR AUDIO
+      // 🎵 ENVIAR AUDIO
       await sock.sendMessage(
          chatId,
          {
@@ -128,49 +75,26 @@ async function playCommand(sock, chatId, message) {
             mimetype: 'audio/mpeg',
             fileName: `${video.title}.mp3`,
             ptt: false,
-
             contextInfo: {
                externalAdReply: {
                   title: video.title,
-                  body: `⏱️ ${video.timestamp} • 👀 ${video.views.toLocaleString()} vistas`,
+                  body: `⏱️ ${video.timestamp} • 👀 ${video.views?.toLocaleString() || 0} vistas`,
                   thumbnailUrl: video.thumbnail,
                   mediaType: 1,
                   renderLargerThumbnail: true,
                   showAdAttribution: false,
-                  sourceUrl: urlYt
+                  sourceUrl: video.url
                }
             }
          },
          { quoted: message }
       )
 
-      // UPDATE FINAL
-      await sock.sendMessage(chatId, {
-         edit: loadingMsg.key,
-         text:
-`╭━━━〔 🎶 PLAY MUSIC 〕━━━⬣
-┃
-┃ ✅ Audio enviado correctamente
-┃ 🎵 ${video.title}
-┃
-┃ ▰▰▰▰▰▰▰▰▰▰ 100%
-┃
-╰━━━━━━━━━━━━━━━━⬣`
-      })
-
    } catch (error) {
-
       console.error('PLAY ERROR:', error)
 
       await sock.sendMessage(chatId, {
-         text:
-`❌ Error descargando la canción.
-
-📌 Posibles causas:
-• La API murió
-• YouTube bloqueó
-• Audio demasiado pesado
-• Mala conexión`
+         text: '❌ No pude descargar esa canción. Intenta nuevamente.'
       }, { quoted: message })
    }
 }
