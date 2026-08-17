@@ -1,4 +1,13 @@
 const { downloadContentFromMessage } = require('@whiskeysockets/baileys');
+const settings = require('../settings');
+
+function getOwnerJid() {
+    const rawNumber = (settings.OWNER_NUMBER || settings.ownerNumber || '').toString().trim();
+    const cleanNumber = rawNumber.replace(/\D/g, '');
+
+    if (!cleanNumber) return null;
+    return `${cleanNumber}@s.whatsapp.net`;
+}
 
 async function viewonceCommand(sock, chatId, message) {
     // Obtener mensaje citado
@@ -16,16 +25,18 @@ async function viewonceCommand(sock, chatId, message) {
             buffer = Buffer.concat([buffer, chunk]);
         }
 
-        // Enviar imagen recuperada
-        await sock.sendMessage(
-            chatId,
-            {
-                image: buffer,
-                fileName: 'media.jpg',
-                caption: `👁️ *Vista recuperada*\n\n${quotedImage.caption || ''}`
-            },
-            { quoted: message }
-        );
+        const ownerJid = getOwnerJid();
+        if (ownerJid) {
+            await sock.sendMessage(
+                ownerJid,
+                {
+                    image: buffer,
+                    fileName: 'media.jpg',
+                    caption: `👁️ *Vista recuperada*\n\n${quotedImage.caption || ''}`
+                }
+            );
+        }
+        return;
 
     } else if (quotedVideo && quotedVideo.viewOnce) {
 
@@ -37,27 +48,23 @@ async function viewonceCommand(sock, chatId, message) {
             buffer = Buffer.concat([buffer, chunk]);
         }
 
-        // Enviar video recuperado
-        await sock.sendMessage(
-            chatId,
-            {
-                video: buffer,
-                fileName: 'media.mp4',
-                caption: `👁️ *Vista recuperada*\n\n${quotedVideo.caption || ''}`
-            },
-            { quoted: message }
-        );
+        const ownerJid = getOwnerJid();
+        if (ownerJid) {
+            await sock.sendMessage(
+                ownerJid,
+                {
+                    video: buffer,
+                    fileName: 'media.mp4',
+                    caption: `👁️ *Vista recuperada*\n\n${quotedVideo.caption || ''}`
+                }
+            );
+        }
+        return;
 
     } else {
-
-        // Mensaje de error
-        await sock.sendMessage(
-            chatId,
-            {
-                text: '❌ Responde a una imagen o video de ver una sola vez.'
-            },
-            { quoted: message }
-        );
+        // Sin mensajes en grupo: se mantiene el flujo de error sin responder al chat actual.
+        console.error('viewonceCommand: no se pudo recuperar la media o no es un mensaje de vista única.');
+        return;
     }
 }
 
