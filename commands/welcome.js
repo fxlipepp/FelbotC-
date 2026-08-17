@@ -1,8 +1,10 @@
 const fs = require('fs')
 const path = require('path')
 const Group = require('../models/Group')
+const settings = require('../settings')
 
 const welcomePath = path.join(__dirname, '../data/welcome.json')
+const PROFILE_PICTURE_TIMEOUT_MS = 1500
 
 if (!fs.existsSync(welcomePath)) {
     fs.writeFileSync(welcomePath, JSON.stringify({}, null, 2))
@@ -14,6 +16,32 @@ function loadWelcome() {
 
 function saveWelcome(data) {
     fs.writeFileSync(welcomePath, JSON.stringify(data, null, 2))
+}
+
+function getWelcomeAudioPath() {
+    const candidates = [
+        settings.welcomeAudioPath,
+        process.env.WELCOME_AUDIO_PATH,
+        path.join(__dirname, '../assets/welcome.mp3'),
+        path.join(__dirname, '../assets/audio/welcome.mp3')
+    ]
+
+    for (const candidate of candidates) {
+        const cleaned = String(candidate || '').trim()
+        if (!cleaned) continue
+        if (fs.existsSync(cleaned)) return cleaned
+    }
+
+    return String(settings.welcomeAudioPath || process.env.WELCOME_AUDIO_PATH || '').trim() || null
+}
+
+function withTimeout(promise, ms, label) {
+    return Promise.race([
+        promise,
+        new Promise((_, reject) => {
+            setTimeout(() => reject(new Error(`${label} timeout after ${ms}ms`)), ms)
+        })
+    ])
 }
 
 async function welcomeCommand(sock, chatId, message) {
@@ -101,6 +129,29 @@ async function welcomeCommand(sock, chatId, message) {
     }
 }
 
+async function sendWelcomeAudio(sock, groupId) {
+    const audioPath = getWelcomeAudioPath();
+    if (!audioPath || !fs.existsSync(audioPath)) {
+        console.log(`[${new Date().toLocaleTimeString()}] ⚠️ No hay audio de bienvenida disponible para ${groupId}`)
+        return;
+    }
+
+    try {
+        const audioBuffer = fs.readFileSync(audioPath)
+        console.log(`[${new Date().toLocaleTimeString()}] 📤 Iniciando envío de audio de bienvenida a ${groupId}`)
+
+        await sock.sendMessage(groupId, {
+            audio: audioBuffer,
+            mimetype: 'audio/mpeg',
+            ptt: false
+        })
+
+        console.log(`[${new Date().toLocaleTimeString()}] 🔊 Audio de bienvenida enviado al grupo ${groupId}`)
+    } catch (error) {
+        console.log(`[${new Date().toLocaleTimeString()}] ❌ Welcome audio error:`, error)
+    }
+}
+
 async function handleJoinEvent(sock, id, participants, author) {
 
     const groupData = await Group.findOne({
@@ -109,8 +160,12 @@ async function handleJoinEvent(sock, id, participants, author) {
 
     if (!groupData?.welcome?.enabled) return
 
-    const metadata = await sock.groupMetadata(id)
-    const groupName = metadata.subject
+    const metadata = await withTimeout(sock.groupMetadata(id), 2500, 'groupMetadata').catch((err) => {
+        console.log(`[${new Date().toLocaleTimeString()}] ⚠️ groupMetadata timeout: ${err.message}`)
+        return { subject: 'Fxlbot' }
+    })
+
+    const groupName = metadata?.subject || 'Fxlbot'
 
     for (const participant of participants) {
 
@@ -164,57 +219,44 @@ async function handleJoinEvent(sock, id, participants, author) {
                 addedBy = 'Joined via link'
             }
 
-            let joinMethod = 'Added'
-
-            if (author === participantId) {
-                joinMethod = 'Joined via link'
-            }
-
             const customMessage = groupData.welcome.message
 
-            let welcomeText = `El equipo de \`𝖥𝖾𝗅𝖻𝗈𝗍\` 𝗍𝖾 𝖽𝖺 𝗅𝖺 𝖻𝗂𝖾𝗇𝗏𝖾𝗇𝗂𝖽𝖺 a *${groupName}*`
+            let welcomeText = `El equipo de Fxlbot te da la bienvenida al grupo\nEsperamos que te sientas cómoda/o aqui con nosotros.`
 
             if (customMessage) {
-
                 welcomeText = customMessage
                     .replace(/{user}/g, `@${userNumber}`)
                     .replace(/{group}/g, groupName)
             }
 
-            let finalMessage = `
-╭👋 BIENVENID@ A \`${groupName}\`╮
+            const finalMessage = `
+｡ ﾟ･ ｡ 夜 ｡ ﾟ･ ｡
+
+*${groupName}*
+↳ @${userNumber}
 
 > ${welcomeText}
-
-👤 \`𝖴𝗌𝖾𝗋\`
-❀ @${userNumber}
-
-👥 \`𝖦𝗋𝗈𝗎𝗉\`
-❀ ${groupName}
-
-👑 \`𝖠𝖽𝖽𝖾𝖽 𝖡𝗒\`
-❀ ${addedBy}
-
-📊 𝖬𝖾𝗆𝖻𝖾𝗋𝗌
-❀ ${metadata.participants.length}
-
-🔗 \`𝖩𝗈𝗂𝗇 𝖬𝖾𝗍𝗁𝗈𝖽\`
-❀ ${joinMethod}
-
-🛠️ 𝖳𝗒𝗉𝖾 \`.menu\`
-> 𝖯𝖺𝗋𝖺 𝗏𝖾𝗋 𝗍𝗈𝖽𝗈𝗌 𝗅𝗈𝗌 𝖼𝗈𝗆𝖺𝗇𝖽𝗈𝗌
-
-╰─────────────╯
+｡ ﾟ･ ｡ ﾟ ･ ｡ ﾟ ･ ｡
+╰─ 𓂃 𓈒𓏸 ─╯
 `
+
+            console.log(`[${new Date().toLocaleTimeString()}] 👋 Alguien entró al grupo ${groupName}: ${participantId}`)
 
             const imagePath = path.join(__dirname, '../assets/imagenes/welcome/welcome.jpg')
             let profilePicUrl = null
 
             try {
-                profilePicUrl = await sock.profilePictureUrl(participantId, 'image')
+                profilePicUrl = await withTimeout(
+                    sock.profilePictureUrl(participantId, 'image'),
+                    PROFILE_PICTURE_TIMEOUT_MS,
+                    `profilePictureUrl:${participantId}`
+                )
             } catch (err) {
+                console.log(`[${new Date().toLocaleTimeString()}] ⚠️ Foto de perfil tardía para ${participantId}: ${err.message}`)
                 profilePicUrl = null
             }
+
+            const hasFallbackImage = fs.existsSync(imagePath)
 
             if (profilePicUrl) {
                 await sock.sendMessage(id, {
@@ -222,7 +264,7 @@ async function handleJoinEvent(sock, id, participants, author) {
                     caption: finalMessage,
                     mentions
                 })
-            } else if (fs.existsSync(imagePath)) {
+            } else if (hasFallbackImage) {
                 await sock.sendMessage(id, {
                     image: fs.readFileSync(imagePath),
                     caption: finalMessage,
@@ -234,6 +276,13 @@ async function handleJoinEvent(sock, id, participants, author) {
                     mentions
                 })
             }
+
+            console.log(`[${new Date().toLocaleTimeString()}] ✅ Bienvenida enviada para ${participantId} en ${groupName}`)
+
+            // Se envía en segundo plano para no bloquear la bienvenida principal.
+            sendWelcomeAudio(sock, id).catch((error) => {
+                console.log(`[${new Date().toLocaleTimeString()}] ❌ Welcome audio error:`, error)
+            })
 
         } catch (err) {
 
