@@ -5,6 +5,20 @@ const https = require('https');
 const settings = require('../settings');
 const isOwnerOrSudo = require('../lib/isOwner');
 
+const PROTECTED_GIT_PATHS = ['session', 'baileys_store.json', 'tmp', 'temp', 'data'];
+
+function getProtectedGitPaths() {
+    return [...PROTECTED_GIT_PATHS];
+}
+
+function buildSafeGitUpdatePlan() {
+    return [
+        'git fetch --all --prune',
+        'git reset --hard origin/main',
+        'npm install --no-audit --no-fund'
+    ];
+}
+
 function run(cmd) {
     return new Promise((resolve, reject) => {
         exec(cmd, { windowsHide: true }, (err, stdout, stderr) => {
@@ -33,7 +47,6 @@ async function updateViaGit() {
     const commits = alreadyUpToDate ? '' : await run(`git log --pretty=format:"%h %s (%an)" ${oldRev}..${newRev}`).catch(() => '');
     const files = alreadyUpToDate ? '' : await run(`git diff --name-status ${oldRev} ${newRev}`).catch(() => '');
     await run(`git reset --hard ${newRev}`);
-    await run('git clean -fd');
     return { oldRev, newRev, alreadyUpToDate, commits, files };
 }
 
@@ -227,5 +240,8 @@ async function updateCommand(sock, chatId, message, zipOverride) {
 }
 
 module.exports = updateCommand;
+module.exports.updateViaGit = updateViaGit;
+module.exports.getProtectedGitPaths = getProtectedGitPaths;
+module.exports.buildSafeGitUpdatePlan = buildSafeGitUpdatePlan;
 
 

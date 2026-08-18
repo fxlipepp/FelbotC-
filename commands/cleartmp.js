@@ -99,8 +99,11 @@ function startAutoClear() {
     }, 6 * 60 * 60 * 1000); // 6 hours in milliseconds
 }
 
-// Start the automatic clearing
-startAutoClear();
+// Start the automatic clearing only in actual bot runtime.
+if (!global.__felbotAutoClearStarted && process.env.NODE_ENV !== 'test') {
+    startAutoClear();
+    global.__felbotAutoClearStarted = true;
+}
 
 module.exports = clearTmpCommand;
 module.exports.clearTmpDirectory = clearTmpDirectory;
