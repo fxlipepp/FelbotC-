@@ -2,6 +2,8 @@ async function infoCommand(sock, chatId, message) {
     const infoText = `                 夜
     ── 𝐅𝐄𝐋𝐁𝐎𝐓 ──
 
+      ✦ 𝐅𝐄𝐋𝐁𝐎𝐓 𝐅𝐎𝐔𝐍𝐃𝐀𝐓𝐎𝐑𝐒 ✦
+
               𝟎𝟎𝟏
         𝐅𝐱𝐥𝐢𝐩𝐞 夜
           𝑪𝒓𝒆𝒂𝒅𝒐𝒓
