@@ -1119,7 +1119,7 @@ break
                 await demoteCommand(sock, chatId, mentionedJidListDemote, message);
                 break;
             case userMessage === '.hola':
-                await sock.sendMessage(chatId, { text: 'hpla mi amor' }, { quoted: message });
+                await sock.sendMessage(chatId, { text: 'jajajaj hola' }, { quoted: message });
                 break;
             case userMessage === '.ping':
                 await pingCommand(sock, chatId, message);
