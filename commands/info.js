@@ -7,7 +7,7 @@ async function infoCommand(sock, chatId, message) {
           𝑪𝒓𝒆𝒂𝒅𝒐𝒓
 
               𝟎𝟎𝟐
-       Yamileth 🪷
+       *Yamileth* 🪷
         𝑪𝒐-𝑪𝒓𝒆𝒂𝒅𝒐𝒓𝒂
 
 
