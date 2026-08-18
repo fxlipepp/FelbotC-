@@ -83,6 +83,7 @@ const hideTagCommand = require('./commands/hidetag');
 const kickCommand = require('./commands/kick');
 const simageCommand = require('./commands/simage');
 const { welcomeCommand, handleJoinEvent } = require('./commands/welcome')
+const { goodbyeCommand, handleLeaveEvent } = require('./commands/goodbye');
 const attpCommand = require('./commands/attp');
 const { startHangman, guessLetter } = require('./commands/hangman');
 const { startTrivia, answerTrivia } = require('./commands/trivia');
@@ -1118,7 +1119,7 @@ break
                 await demoteCommand(sock, chatId, mentionedJidListDemote, message);
                 break;
             case userMessage === '.hola':
-                await sock.sendMessage(chatId, { text: 'hola como estas' }, { quoted: message });
+                await sock.sendMessage(chatId, { text: 'hpla mi amor' }, { quoted: message });
                 break;
             case userMessage === '.ping':
                 await pingCommand(sock, chatId, message);
