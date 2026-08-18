@@ -1,4 +1,4 @@
-const { exec } = require('child_process');
+const { exec, execSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const https = require('https');
@@ -6,6 +6,22 @@ const settings = require('../settings');
 const isOwnerOrSudo = require('../lib/isOwner');
 
 const PROTECTED_GIT_PATHS = ['session', 'baileys_store.json', 'tmp', 'temp', 'data'];
+
+function hasCommand(command) {
+    try {
+        execSync(`command -v ${command}`, { stdio: 'ignore' });
+        return true;
+    } catch {
+        return false;
+    }
+}
+
+function getRestartStrategy() {
+    if (process.env.BOT_RESTART_MODE === 'pm2') return 'pm2';
+    if (process.env.PM2_HOME || process.env.PM2_JSON_PROCESSING || process.env.NODE_APP_INSTANCE !== undefined) return 'pm2';
+    if (hasCommand('pm2')) return 'pm2';
+    return 'process_exit';
+}
 
 function getProtectedGitPaths() {
     return [...PROTECTED_GIT_PATHS];
@@ -41,13 +57,24 @@ async function hasGitRepo() {
 
 async function updateViaGit() {
     const oldRev = (await run('git rev-parse HEAD').catch(() => 'unknown')).trim();
+    const beforePull = (await run('git status --short').catch(() => '')).trim();
     await run('git fetch --all --prune');
-    const newRev = (await run('git rev-parse origin/main')).trim();
-    const alreadyUpToDate = oldRev === newRev;
+    const remoteMain = (await run('git rev-parse origin/main').catch(() => '')).trim();
+    if (!remoteMain) {
+        throw new Error('No se encontró la rama origin/main en este repositorio Git.');
+    }
+
+    const alreadyUpToDate = oldRev === remoteMain;
+    if (!alreadyUpToDate) {
+        await run('git pull --ff-only origin main');
+    }
+
+    const newRev = (await run('git rev-parse HEAD').catch(() => remoteMain)).trim();
     const commits = alreadyUpToDate ? '' : await run(`git log --pretty=format:"%h %s (%an)" ${oldRev}..${newRev}`).catch(() => '');
     const files = alreadyUpToDate ? '' : await run(`git diff --name-status ${oldRev} ${newRev}`).catch(() => '');
-    await run(`git reset --hard ${newRev}`);
-    return { oldRev, newRev, alreadyUpToDate, commits, files };
+    const needsNpmInstall = /(^|\/)(package\.json|package-lock\.json)$/.test((await run('git diff --name-only HEAD@{1} HEAD 2>/dev/null || git diff --name-only HEAD~1 HEAD 2>/dev/null || git diff --name-only HEAD').catch(() => '')).trim());
+
+    return { oldRev, newRev, alreadyUpToDate, commits, files, needsNpmInstall, beforePull };
 }
 
 function downloadFile(url, dest, visited = new Set()) {
@@ -189,53 +216,61 @@ async function updateViaZip(sock, chatId, message, zipOverride) {
 
 async function restartProcess(sock, chatId, message) {
     try {
-        await sock.sendMessage(chatId, { text: '✅ Update complete! Restarting…' }, { quoted: message });
+        await sock.sendMessage(chatId, { text: '♻️ Felbot se está reiniciando para aplicar los cambios...' }, { quoted: message });
     } catch {}
-    try {
-        // Preferred: PM2
-        await run('pm2 restart all');
-        return;
-    } catch {}
-    // Panels usually auto-restart when the process exits.
-    // Exit after a short delay to allow the above message to flush.
+
+    const strategy = getRestartStrategy();
+    if (strategy === 'pm2') {
+        try {
+            await run('pm2 restart all');
+            return;
+        } catch {}
+    }
+
     setTimeout(() => {
         process.exit(0);
-    }, 500);
+    }, 700);
 }
 
 async function updateCommand(sock, chatId, message, zipOverride) {
     const senderId = message.key.participant || message.key.remoteJid;
     const isOwner = await isOwnerOrSudo(senderId, sock, chatId);
-    
+
     if (!message.key.fromMe && !isOwner) {
         await sock.sendMessage(chatId, { text: 'Only bot owner or sudo can use .update' }, { quoted: message });
         return;
     }
+
     try {
-        // Minimal UX
-        await sock.sendMessage(chatId, { text: '🔄 Updating the bot, please wait…' }, { quoted: message });
+        await sock.sendMessage(chatId, { text: '🔍 Revisando actualizaciones de GitHub...' }, { quoted: message });
+
         if (await hasGitRepo()) {
-            // silent
-            const { oldRev, newRev, alreadyUpToDate, commits, files } = await updateViaGit();
-            // Short message only: version info
-            const summary = alreadyUpToDate ? `✅ Already up to date: ${newRev}` : `✅ Updated to ${newRev}`;
-            console.log('[update] summary generated');
-            // silent
-            await run('npm install --no-audit --no-fund');
+            const { oldRev, newRev, alreadyUpToDate, commits, files, needsNpmInstall } = await updateViaGit();
+
+            if (alreadyUpToDate) {
+                await sock.sendMessage(chatId, { text: `✅ Felbot ya está actualizado. Último commit: ${newRev.slice(0, 7)}` }, { quoted: message });
+                return;
+            }
+
+            await sock.sendMessage(chatId, { text: `✅ Se encontraron cambios nuevos. Actualizando desde ${oldRev.slice(0, 7)} a ${newRev.slice(0, 7)}...` }, { quoted: message });
+
+            if (needsNpmInstall) {
+                await sock.sendMessage(chatId, { text: '📦 Se detectó un cambio en dependencias. Instalando paquetes...' }, { quoted: message });
+                await run('npm install --no-audit --no-fund');
+                await sock.sendMessage(chatId, { text: '✅ Dependencias instaladas correctamente.' }, { quoted: message });
+            }
+
+            await sock.sendMessage(chatId, { text: '✅ Actualización aplicada correctamente.' }, { quoted: message });
         } else {
+            await sock.sendMessage(chatId, { text: '⚠️ No se encontró un repositorio Git activo. Usando modo ZIP alternativo.' }, { quoted: message });
             const { copiedFiles } = await updateViaZip(sock, chatId, message, zipOverride);
-            // silent
+            await sock.sendMessage(chatId, { text: `✅ Descarga y aplicación completada (${copiedFiles?.length || 0} archivos).` }, { quoted: message });
         }
-        try {
-            const v = require('../settings').version || '';
-            await sock.sendMessage(chatId, { text: `✅ Update done. Restarting…` }, { quoted: message });
-        } catch {
-            await sock.sendMessage(chatId, { text: '✅ Restared Successfully\n Type .ping to check latest version.' }, { quoted: message });
-        }
+
         await restartProcess(sock, chatId, message);
     } catch (err) {
         console.error('Update failed:', err);
-        await sock.sendMessage(chatId, { text: `❌ Update failed:\n${String(err.message || err)}` }, { quoted: message });
+        await sock.sendMessage(chatId, { text: `❌ Falló la actualización:\n${String(err.message || err)}` }, { quoted: message });
     }
 }
 
@@ -243,5 +278,6 @@ module.exports = updateCommand;
 module.exports.updateViaGit = updateViaGit;
 module.exports.getProtectedGitPaths = getProtectedGitPaths;
 module.exports.buildSafeGitUpdatePlan = buildSafeGitUpdatePlan;
-
+module.exports.restartProcess = restartProcess;
+module.exports.getRestartStrategy = getRestartStrategy;
 
