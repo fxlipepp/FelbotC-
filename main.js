@@ -1117,6 +1117,9 @@ break
                 const mentionedJidListDemote = message.message.extendedTextMessage?.contextInfo?.mentionedJid || [];
                 await demoteCommand(sock, chatId, mentionedJidListDemote, message);
                 break;
+            case userMessage === '.hola':
+                await sock.sendMessage(chatId, { text: 'hola como estas' }, { quoted: message });
+                break;
             case userMessage === '.ping':
                 await pingCommand(sock, chatId, message);
                 break;
