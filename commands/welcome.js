@@ -4,7 +4,7 @@ const Group = require('../models/Group')
 const settings = require('../settings')
 
 const welcomePath = path.join(__dirname, '../data/welcome.json')
-const PROFILE_PICTURE_TIMEOUT_MS = 1500
+const PROFILE_PICTURE_TIMEOUT_MS = 0
 
 if (!fs.existsSync(welcomePath)) {
     fs.writeFileSync(welcomePath, JSON.stringify({}, null, 2))
@@ -246,14 +246,14 @@ async function handleJoinEvent(sock, id, participants, author) {
             let profilePicUrl = null
 
             try {
-                profilePicUrl = await withTimeout(
-                    sock.profilePictureUrl(participantId, 'image'),
-                    PROFILE_PICTURE_TIMEOUT_MS,
-                    `profilePictureUrl:${participantId}`
-                )
+                const profilePromise = sock.profilePictureUrl(participantId, 'image');
+                if (PROFILE_PICTURE_TIMEOUT_MS > 0) {
+                    profilePicUrl = await withTimeout(profilePromise, PROFILE_PICTURE_TIMEOUT_MS, `profilePictureUrl:${participantId}`);
+                } else {
+                    profilePicUrl = await profilePromise;
+                }
             } catch (err) {
-                console.log(`[${new Date().toLocaleTimeString()}] ⚠️ Foto de perfil tardía para ${participantId}: ${err.message}`)
-                profilePicUrl = null
+                profilePicUrl = null;
             }
 
             const hasFallbackImage = fs.existsSync(imagePath)
