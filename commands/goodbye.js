@@ -149,6 +149,20 @@ async function handleLeaveEvent(sock, id, participants) {
 ╰─ 𓂃 𓈒𓏸 ─╯
 `;
 
+            const goodbyeImagePath = getGoodbyeImagePath(groupData);
+            if (goodbyeImagePath) {
+                await sock.sendMessage(id, {
+                    image: fs.readFileSync(goodbyeImagePath),
+                    caption: finalMessage,
+                    mentions: [participantString]
+                });
+            } else {
+                await sock.sendMessage(id, {
+                    text: finalMessage,
+                    mentions: [participantString]
+                });
+            }
+
             const goodbyeAudioPath = getGoodbyeAudioPath(groupData);
             if (goodbyeAudioPath) {
                 try {
@@ -161,21 +175,6 @@ async function handleLeaveEvent(sock, id, participants) {
                     console.log(`[${new Date().toLocaleTimeString()}] ⚠️ Audio de despedida no disponible: ${error.message}`);
                 }
             }
-
-            const goodbyeImagePath = getGoodbyeImagePath(groupData);
-            if (goodbyeImagePath) {
-                await sock.sendMessage(id, {
-                    image: fs.readFileSync(goodbyeImagePath),
-                    caption: finalMessage,
-                    mentions: [participantString]
-                });
-                continue;
-            }
-
-            await sock.sendMessage(id, {
-                text: finalMessage,
-                mentions: [participantString]
-            });
         } catch (error) {
             console.error('Error sending goodbye message:', error);
         }
