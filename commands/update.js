@@ -257,17 +257,16 @@ async function updateCommand(sock, chatId, message, zipOverride) {
             if (needsNpmInstall) {
                 await sock.sendMessage(chatId, { text: '📦 Se detectó un cambio en dependencias. Instalando paquetes...' }, { quoted: message });
                 await run('npm install --no-audit --no-fund');
-                await sock.sendMessage(chatId, { text: '✅ Dependencias instaladas correctamente.' }, { quoted: message });
             }
 
+            await restartProcess(sock, chatId, message);
             await sock.sendMessage(chatId, { text: '✅ Actualización aplicada correctamente.' }, { quoted: message });
         } else {
             await sock.sendMessage(chatId, { text: '⚠️ No se encontró un repositorio Git activo. Usando modo ZIP alternativo.' }, { quoted: message });
             const { copiedFiles } = await updateViaZip(sock, chatId, message, zipOverride);
             await sock.sendMessage(chatId, { text: `✅ Descarga y aplicación completada (${copiedFiles?.length || 0} archivos).` }, { quoted: message });
+            await restartProcess(sock, chatId, message);
         }
-
-        await restartProcess(sock, chatId, message);
     } catch (err) {
         console.error('Update failed:', err);
         await sock.sendMessage(chatId, { text: `❌ Falló la actualización:\n${String(err.message || err)}` }, { quoted: message });
