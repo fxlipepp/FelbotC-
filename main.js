@@ -1168,9 +1168,8 @@ break
 
     break
            
-            case userMessage.startsWith('.goodbye'):
+            case userMessage.startsWith('.goodbye') || userMessage.startsWith('.despedida'):
                 if (isGroup) {
-                    // Check admin status if not already checked
                     if (!isSenderAdmin) {
                         const adminStatus = await isAdmin(sock, chatId, senderId);
                         isSenderAdmin = adminStatus.isSenderAdmin;

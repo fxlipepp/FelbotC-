@@ -39,6 +39,25 @@ const groupSchema = new mongoose.Schema({
       }
    },
 
+   goodbye: {
+      enabled: {
+         type: Boolean,
+         default: false
+      },
+      message: {
+         type: String,
+         default: 'Una mierda menos, no te extrañaremos.'
+      },
+      imagePath: {
+         type: String,
+         default: null
+      },
+      audioPath: {
+         type: String,
+         default: null
+      }
+   },
+
    // 🔥 AQUI AGREGAMOS FELBOT
    felbot: {
       enabled: {

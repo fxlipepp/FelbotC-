@@ -13,6 +13,8 @@ const settings = {
   // El archivo actual del bot está en: /workspaces/FelbotC-/assets/welcome.mp3
   // También busca una copia en /assets/audio/welcome.mp3 si la mueves después.
   welcomeAudioPath: process.env.WELCOME_AUDIO_PATH || path.join(__dirname, 'assets', 'welcome.mp3'),
+  goodbyeAudioPath: process.env.GOODBYE_AUDIO_PATH || path.join(__dirname, 'assets', 'goodbye.mp3'),
+  goodbyeImagePath: process.env.GOODBYE_IMAGE_PATH || path.join(__dirname, 'assets', 'imagenes', 'welcome', 'welcome.jpg'),
 
   giphyApiKey: 'qnl7ssQChTdPjsKta2Ax2LMaGXz303tq',
   commandMode: "public",
