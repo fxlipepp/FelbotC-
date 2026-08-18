@@ -94,6 +94,7 @@ const { dareCommand } = require('./commands/dare');
 const { truthCommand } = require('./commands/truth');
 const pingCommand = require('./commands/ping');
 const aliveCommand = require('./commands/alive');
+const infoCommand = require('./commands/info');
 const blurCommand = require('./commands/img-blur');
 const piropoCommand = require('./commands/piropo');
 const githubCommand = require('./commands/github');
@@ -1126,6 +1127,9 @@ break
                 break;
             case userMessage === '.alive':
                 await aliveCommand(sock, chatId, message);
+                break;
+            case userMessage === '.info':
+                await infoCommand(sock, chatId, message);
                 break;
             case userMessage.startsWith('.mention '):
                 {

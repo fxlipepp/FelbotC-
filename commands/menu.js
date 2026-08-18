@@ -49,6 +49,9 @@ function buildMenuText(uptimeSeconds, version = '2.0.0') {
 ❀ \`.alive\`
 > Comprobar si el bot está activo.
 
+❀ \.info\`
+> Ver la información de los creadores.
+
 ❀ \`.owner\`
 > Ver el contacto del creador del bot.
 
