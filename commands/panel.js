@@ -3,6 +3,16 @@ const { ButtonV2 } = require('../lib/airich');
 const { clearTmpDirectory } = require('./cleartmp');
 const updateCommand = require('./update');
 
+function getRestartMessage() {
+    const { execSync } = require('child_process');
+    try {
+        execSync('command -v pm2', { stdio: 'ignore' });
+        return '🔄 Reiniciando Felbot con el gestor del host...';
+    } catch {
+        return '🔄 Felbot se está reiniciando para aplicar los cambios...';
+    }
+}
+
 function normalize(id = '') {
     return id.toString().split(':')[0].split('@')[0].trim();
 }
@@ -80,21 +90,18 @@ async function handlePanelButton(sock, senderId, buttonId, message) {
         case 'restart': {
             try {
                 await sock.sendMessage(chatId, {
-                    text: '🔄 Reiniciando Felbot...'
+                    text: getRestartMessage()
                 }, { quoted: message });
             } catch {}
 
             try {
-                const { exec } = require('child_process');
-                exec('pm2 restart all', { windowsHide: true }, (err) => {
-                    if (err) {
-                        setTimeout(() => process.exit(0), 500);
-                    }
-                });
-                return;
+                if (typeof updateCommand.restartProcess === 'function') {
+                    await updateCommand.restartProcess(sock, chatId, message);
+                    return;
+                }
             } catch {}
 
-            setTimeout(() => process.exit(0), 500);
+            setTimeout(() => process.exit(0), 700);
             return;
         }
         case 'update': {
