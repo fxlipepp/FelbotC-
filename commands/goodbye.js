@@ -149,8 +149,21 @@ async function handleLeaveEvent(sock, id, participants) {
 ╰─ 𓂃 𓈒𓏸 ─╯
 `;
 
+            let profilePicUrl = null;
+            try {
+                profilePicUrl = await sock.profilePictureUrl(participantString, 'image').catch(() => null);
+            } catch {
+                profilePicUrl = null;
+            }
+
             const goodbyeImagePath = getGoodbyeImagePath(groupData);
-            if (goodbyeImagePath) {
+            if (profilePicUrl) {
+                await sock.sendMessage(id, {
+                    image: { url: profilePicUrl },
+                    caption: finalMessage,
+                    mentions: [participantString]
+                });
+            } else if (goodbyeImagePath) {
                 await sock.sendMessage(id, {
                     image: fs.readFileSync(goodbyeImagePath),
                     caption: finalMessage,
