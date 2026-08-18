@@ -151,7 +151,10 @@ async function handleLeaveEvent(sock, id, participants) {
 
             let profilePicUrl = null;
             try {
-                profilePicUrl = await sock.profilePictureUrl(participantString, 'image').catch(() => null);
+                profilePicUrl = await Promise.race([
+                    sock.profilePictureUrl(participantString, 'image'),
+                    new Promise((_, reject) => setTimeout(() => reject(new Error('Foto de perfil tardía')), 1500))
+                ]).catch(() => null);
             } catch {
                 profilePicUrl = null;
             }
