@@ -102,4 +102,6 @@ function startAutoClear() {
 // Start the automatic clearing
 startAutoClear();
 
-module.exports = clearTmpCommand; 
+module.exports = clearTmpCommand;
+module.exports.clearTmpDirectory = clearTmpDirectory;
+module.exports.clearDirectory = clearDirectory;

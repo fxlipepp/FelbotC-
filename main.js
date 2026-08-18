@@ -118,6 +118,7 @@ const stickerTelegramCommand = require('./commands/stickertelegram');
 const textmakerCommand = require('./commands/textmaker');
 const { handleAntideleteCommand, handleMessageRevocation, storeMessage } = require('./commands/antidelete');
 const clearTmpCommand = require('./commands/cleartmp');
+const { panelCommand, handlePanelButton } = require('./commands/panel');
 const setProfilePicture = require('./commands/setpp');
 const { setGroupDescription, setGroupName, setGroupPhoto } = require('./commands/groupmanage');
 const instagramCommand = require('./commands/instagram');
@@ -276,6 +277,9 @@ if (userData?.banned) {
                 await sock.sendMessage(chatId, {
                     text: `🔗 *Support*\n\nhttps://chat.whatsapp.com/GA4WrOFythU6g3BFVubYM7?mode=wwt`
                 }, { quoted: message });
+                return;
+            } else if (buttonId.startsWith('panel::')) {
+                await handlePanelButton(sock, senderId, buttonId, message);
                 return;
             }
         }
@@ -458,7 +462,7 @@ if (/^\d+$/.test(userMessage)) {
         const isAdminCommand = adminCommands.some(cmd => userMessage.startsWith(cmd));
 
         // List of owner commands
-        const ownerCommands = ['.mode', '.autostatus', '.antidelete', '.cleartmp', '.setpp', '.clearsession', '.areact', '.autoreact', '.autotyping', '.autoread', '.pmblocker'];
+        const ownerCommands = ['.mode', '.autostatus', '.antidelete', '.cleartmp', '.panel', '.setpp', '.clearsession', '.areact', '.autoreact', '.autotyping', '.autoread', '.pmblocker'];
         const isOwnerCommand = ownerCommands.some(cmd => userMessage.startsWith(cmd));
 
         let isSenderAdmin = false;
@@ -1396,6 +1400,9 @@ break;
                 break;
             case userMessage === '.cleartmp':
                 await clearTmpCommand(sock, chatId, message);
+                break;
+            case userMessage === '.panel':
+                await panelCommand(sock, chatId, message);
                 break;
             case userMessage === '.setpp':
                 await setProfilePicture(sock, chatId, message);
