@@ -66,7 +66,7 @@ async function updateViaGit() {
 
     const alreadyUpToDate = oldRev === remoteMain;
     if (!alreadyUpToDate) {
-        await run('git pull --ff-only origin main');
+        await run('git reset --hard origin/main');
     }
 
     const newRev = (await run('git rev-parse HEAD').catch(() => remoteMain)).trim();
