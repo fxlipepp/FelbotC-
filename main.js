@@ -48,6 +48,7 @@ const tagAllCommand = require('./commands/tagall');
 const topCommand = require('./commands/top');
 const helpCommand = require('./commands/menu');
 const { cumCommand } = require('./commands/cum')
+const { spamCommand, getSpamConfig } = require('./commands/spam');
 const { masturbarseCommand } = require('./commands/masturbarse')
 const banCommand = require('./commands/ban');
 const { promoteCommand } = require('./commands/promote');
@@ -443,15 +444,35 @@ if (/^\d+$/.test(userMessage)) {
             await handleAutotypingForMessage(sock, chatId, userMessage);
 
             if (isGroup) {
-                // Always run moderation features (antitag) regardless of mode
-                await handleTagDetection(sock, chatId, message, senderId);
-                await handleMentionDetection(sock, chatId, message);
 
-                // Only run chatbot in public mode or for owner/sudo
-                if (isPublic || isOwnerOrSudoCheck) {
-                    await handleChatbotResponse(sock, chatId, message, userMessage, senderId);
-                }
-            }
+    const spamConfig = getSpamConfig(chatId)
+
+    // 💬 SPAM AUTOMÁTICO
+    if (
+        spamConfig?.enabled &&
+        spamConfig.message &&
+        !message.key.fromMe
+    ) {
+        await sock.sendMessage(chatId, {
+            text: spamConfig.message
+        })
+
+        return
+    }
+
+    await handleTagDetection(sock, chatId, message, senderId)
+    await handleMentionDetection(sock, chatId, message)
+
+    if (isPublic || isOwnerOrSudoCheck) {
+        await handleChatbotResponse(
+            sock,
+            chatId,
+            message,
+            userMessage,
+            senderId
+        )
+    }
+}
             return;
         }
         // In private mode, only owner/sudo can run commands
@@ -1213,6 +1234,25 @@ break
                     await sock.sendMessage(chatId, { text: 'This command can only be used in groups.', ...channelInfo }, { quoted: message });
                     return;
                 }
+
+                case userMessage.startsWith('.spam'):
+    if (!isGroup) {
+        await sock.sendMessage(chatId, {
+            text: '❌ Este comando solo funciona en grupos.'
+        }, { quoted: message });
+        break;
+    }
+
+    if (!isSenderAdmin && !message.key.fromMe) {
+        await sock.sendMessage(chatId, {
+            text: '🚫 Solo los administradores pueden usar .spam.'
+        }, { quoted: message });
+        break;
+    }
+
+    await spamCommand(sock, chatId, message, rawText);
+    commandExecuted = true;
+    break;
 
                 // Check if sender is admin or bot owner
                 const chatbotAdminStatus = await isAdmin(sock, chatId, senderId);
