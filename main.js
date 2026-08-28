@@ -105,6 +105,7 @@ const { flirtCommand } = require('./commands/flirt');
 const characterCommand = require('./commands/character');
 const wastedCommand = require('./commands/wasted');
 const shipCommand = require('./commands/ship');
+const parejasCommand = require('./commands/parejas');
 const groupInfoCommand = require('./commands/groupinfo');
 const resetlinkCommand = require('./commands/resetlink');
 const staffCommand = require('./commands/staff');
@@ -1291,6 +1292,18 @@ break
     }
 
     await shipCommand(sock, chatId, message);
+    break;
+
+            case userMessage.startsWith('.parejas'):
+    if (!isGroup) {
+        await sock.sendMessage(chatId, {
+            text: '❌ Este comando solo funciona en grupos!',
+            ...channelInfo
+        }, { quoted: message });
+        return;
+    }
+
+    await parejasCommand(sock, chatId, message);
     break;
 
     case userMessage.startsWith('.piropo'):
