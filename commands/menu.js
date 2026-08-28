@@ -13,21 +13,22 @@ function formatUptime(seconds) {
 
 function buildIntroHeader(uptimeSeconds, version = '2.0.0') {
     const uptime = formatUptime(uptimeSeconds)
-    return `╭━━━〔 𝕱𝖊𝖑𝖇𝖔𝖙 夜 〕━━━⬣
-┃ 👑 Creador: Fxlipe 夜
-┃ ⚙️ Versión: v${version}
-┃ 📚 Comandos: 120
-┃ ⏳ Uptime: ${uptime}
-┃ 📢 Canal Oficial:
-┃ ✧ FELBOT 夜 | Oficial ✧
-╰━━━━━━━━━━━━━━━━⬣`
+    return `╭────────────────────────────╮
+│        𝕱𝖊𝖑𝖇𝖔𝖙 夜        │
+├────────────────────────────┤
+│ 👑 Fxlipe       ⚙️ v${version}
+│ 📚 120 comandos  ⏳ ${uptime}
+│ 📢 FELBOT 夜 | Canal oficial
+╰────────────────────────────╯`
 }
 
 function buildMenuText(uptimeSeconds, version = '2.0.0') {
     const introHeader = buildIntroHeader(uptimeSeconds, version)
     const helpMessage = `
-╭━━〔 👑 OWNER 〕━━⬣
-> ✦ Comandos de administracion.
+${introHeader}
+
+╭━━〔 👑 OWNER 〕━━━━━━━━━━⬣
+┃ Control y configuración del grupo.
 
 ❀ \`.felbot on\`
 > Activar Felbot en el grupo.
@@ -37,8 +38,8 @@ function buildMenuText(uptimeSeconds, version = '2.0.0') {
 
 ╰━━━━━━━━━━━━━━━━⬣
 
-╭━━〔 🌐 GENERAL 〕━━⬣
-> ✦ Comandos principales e información del bot.
+╭━━〔 🌐 GENERAL 〕━━━━━━━━━⬣
+┃ Información y herramientas principales.
 
 ❀ \`.menu\` › \`.help\`
 > Mostrar el menú completo del bot.
@@ -65,8 +66,8 @@ function buildMenuText(uptimeSeconds, version = '2.0.0') {
 > Ver la lista de administradores.
 ╰━━━━━━━━━━━━━━━━⬣
 
-╭━━〔 🛠️ UTILIDADES 〕━━⬣
-> ✦ Herramientas útiles y funciones extras.
+╭━━〔 🛠️ UTILIDADES 〕━━━━━━⬣
+┃ Herramientas rápidas para el día a día.
 
 ❀ \`.tts\` + <texto>
 > Convertir texto a voz.
@@ -81,8 +82,8 @@ function buildMenuText(uptimeSeconds, version = '2.0.0') {
 > Respuestas aleatorias tipo bola mágica.
 ╰━━━━━━━━━━━━━━━━⬣
 
-╭━━〔 👮 ADMIN 〕━━⬣
-> ✦ Herramientas de administración para grupos.
+╭━━〔 👮 ADMIN 〕━━━━━━━━━━⬣
+┃ Moderación y gestión avanzada del grupo.
 
 ❀ \`.ban\` + <@usuario>
 > Banear un usuario del bot.
@@ -145,8 +146,8 @@ function buildMenuText(uptimeSeconds, version = '2.0.0') {
 > Cerrar el grupo.
 ╰━━━━━━━━━━━━━━━━⬣
 
-╭━━〔 🔫 FREE FIRE 〕━━⬣
-> ✦ Comandos para ff.
+╭━━〔 🔫 FREE FIRE 〕━━━━━━⬣
+┃ Organiza tus partidas y equipos.
 
 ❀ \`.2vs2\` + <hora>
 > Lista de 2vs2.
@@ -167,8 +168,8 @@ function buildMenuText(uptimeSeconds, version = '2.0.0') {
 > Lista de 6vs6 (interna).
 ╰━━━━━━━━━━━━━━━━⬣
 
-╭━━〔 🔞 NSFW 〕━━⬣
-> ✦ Comandos Pornograficos .
+╭━━〔 🔞 NSFW 〕━━━━━━━━━━━⬣
+┃ Contenido para adultos.
 
 ❀ \`.xxnx\` + <texto>
 > Busqueda porno (Para descarga).
@@ -186,8 +187,8 @@ function buildMenuText(uptimeSeconds, version = '2.0.0') {
 > Masturbarse.
 ╰━━━━━━━━━━━━━━━━⬣
 
-╭━━〔 🎨 STICKERS 〕━━⬣
-> ✦ Herramientas de stickers e imágenes.
+╭━━〔 🎨 STICKERS 〕━━━━━━━⬣
+┃ Convierte imágenes, videos y texto.
 
 ❀ \`.s\`
 > Convertir imagen o video en sticker.
@@ -211,8 +212,8 @@ function buildMenuText(uptimeSeconds, version = '2.0.0') {
 > Eliminar fondo de imágenes.
 ╰━━━━━━━━━━━━━━━━⬣
 
-╭━━〔 🔤 TEXTMAKER 〕━━⬣
-> ✦ Crear textos con estilos épicos.
+╭━━〔 🔤 TEXTMAKER 〕━━━━━━⬣
+┃ Diseña textos con estilos especiales.
 
 ❀ \`.metallic\` + <texto>
 > Texto metálico brillante.
@@ -269,8 +270,8 @@ function buildMenuText(uptimeSeconds, version = '2.0.0') {
 > Texto en llamas 🔥
 ╰━━━━━━━━━━━━━━━━⬣
 
-╭━━〔 🖼️ ANIME 〕━━⬣
-> ✦ Reacciones y gifs estilo anime.
+╭━━〔 🖼️ ANIME 〕━━━━━━━━━━⬣
+┃ Reacciones, gifs y diversión anime.
 
 ❀ \`.nom\`
 > Comer cariñosamente a alguien.
@@ -297,8 +298,8 @@ function buildMenuText(uptimeSeconds, version = '2.0.0') {
 > Hacer facepalm anime.
 ╰━━━━━━━━━━━━━━━━⬣
 
-╭━━〔 🎮 JUEGOS 〕━━⬣
-> ✦ Juegos y entretenimiento interactivo.
+╭━━〔 🎮 JUEGOS 〕━━━━━━━━━⬣
+┃ Retos, partidas y entretenimiento.
 
 ❀ \`.tictactoe\`
 > Jugar tres en raya.
@@ -319,8 +320,11 @@ function buildMenuText(uptimeSeconds, version = '2.0.0') {
 > Retos aleatorios.
 ╰━━━━━━━━━━━━━━━━⬣
 
-╭━━〔 🎯 DIVERSIÓN 〕━━⬣
-> ✦ Comandos divertidos y sociales.
+╭━━〔 🎯 DIVERSIÓN 〕━━━━━━⬣
+┃ Comandos sociales para compartir.
+
+❀ \`.parejas\`
+> Crear el top 5 de parejas del grupo.
 
 ❀ \`.compliment\` + <@usuario>
 > Enviar cumplidos a alguien.
@@ -350,8 +354,8 @@ function buildMenuText(uptimeSeconds, version = '2.0.0') {
 > Estúpido del grupo.
 ╰━━━━━━━━━━━━━━━━⬣
 
-╭━━〔 📥 DESCARGAS 〕━━⬣
-> ✦ Descargar contenido multimedia.
+╭━━〔 📥 DESCARGAS 〕━━━━━━⬣
+┃ Encuentra y descarga contenido multimedia.
 
 ❀ \`.play\` + <nombre>
 > Buscar y descargar música.
@@ -378,9 +382,10 @@ function buildMenuText(uptimeSeconds, version = '2.0.0') {
 > Descargar videos de YouTube.
 ╰━━━━━━━━━━━━━━━━⬣
 
-╭━〔  𝕱𝖊𝖑𝖇𝖔𝖙 夜  〕━⬣
-> *🚀 Powered By Fxlipe 夜*
-╰━━━━━━━━━━━━⬣`
+╭────────────────────────────╮
+│     🚀 Powered by Fxlipe 夜  │
+│      Usa .menu para volver   │
+╰────────────────────────────╯`
 
     return `${helpMessage.trim()}`
 }
@@ -413,9 +418,9 @@ async function helpCommand(sock, chatId, message) {
     const introCaption = `${buildIntroHeader(process.uptime(), '2.0.0')}
 
 Bienvenido a Felbot 夜.
-Aquí encontrarás herramientas, administración, entretenimiento y mucho más.
+    Herramientas, administración y entretenimiento en un solo lugar.
 
-👇 Elige una opción para continuar.`
+    👇 Elige una opción para continuar.`
 
     try {
         const imagePath = path.join(__dirname, '..', 'assets', 'imagenes', 'admin', 'admin.png')
@@ -430,13 +435,13 @@ Aquí encontrarás herramientas, administración, entretenimiento y mucho más.
         }
 
         const buttonMenu = new ButtonV2(sock)
-            .setBody('Selecciona una opción para continuar.')
-            .setFooter('FelbotC - Menú interactivo')
-            .addButton('VER MENU COMPLETO', 'view_full_menu')
-            .addButton('CONTACTAME 夜', 'owner')
-            .addButton('REPORTAR ERROR ❗', 'report_error')
-            .addButton('SOLICITUD DE COMANDO 🕸️', 'request_command')
-            .addButton('ADQUIRIR BOT 💵', 'buy_bot')
+            .setBody('Todo listo. Elige una opción para explorar Felbot 夜.')
+            .setFooter('FelbotC • Menú interactivo')
+            .addButton('📚 VER COMANDOS', 'view_full_menu')
+            .addButton('👑 CONTACTAR OWNER', 'owner')
+            .addButton('🐞 REPORTAR ERROR', 'report_error')
+            .addButton('🕸️ SOLICITAR COMANDO', 'request_command')
+            .addButton('💵 ADQUIRIR BOT', 'buy_bot')
 
         await buttonMenu.send(chatId, { quoted: message })
     } catch (error) {
