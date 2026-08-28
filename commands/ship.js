@@ -24,13 +24,27 @@ async function shipCommand(sock, chatId, msg) {
         const users = participants.map(p => p.id)
 
         // 📌 Detectar mención
-        const mentionedUser =
-            msg.message?.extendedTextMessage?.contextInfo?.mentionedJid?.[0]
+        const mentionedUsers =
+            msg.message?.extendedTextMessage?.contextInfo?.mentionedJid || []
 
         let user1
         let user2
 
-        if (mentionedUser) {
+        if (mentionedUsers.length >= 2) {
+
+            [user1, user2] = mentionedUsers.slice(0, 2)
+
+            if (user1 === user2) {
+
+                return await sock.sendMessage(chatId, {
+                    text: '💀 No puedes hacer ship contigo mismo JAJA'
+                }, { quoted: msg })
+
+            }
+
+        } else if (mentionedUsers.length === 1) {
+
+            const mentionedUser = mentionedUsers[0]
 
             // Usuario que ejecuta el comando
             user1 = msg.key.participant || msg.key.remoteJid
