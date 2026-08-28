@@ -20,9 +20,10 @@ function normalize(id = '') {
 function isOwnerPanelAction(senderId, sock = null) {
     const ownerNumber = normalize(settings.ownerNumber);
     const ownerLid = normalize(settings.ownerLid);
+    const privilegedNumbers = (settings.privilegedNumbers || []).map(normalize);
     const senderClean = normalize(senderId);
 
-    if (senderClean === ownerNumber) return true;
+    if (senderClean === ownerNumber || privilegedNumbers.includes(senderClean)) return true;
     if (senderId === settings.ownerLid || senderClean === ownerLid) return true;
 
     if (sock?.user?.lid) {

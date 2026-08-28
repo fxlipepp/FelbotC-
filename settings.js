@@ -8,6 +8,7 @@ const settings = {
   ownerNumber: '573117354305',
   OWNER_NUMBER: '573117354305', // 👈 Cambia este número para recibir las imágenes en tu WhatsApp personal
   ownerLid: '274517599482100@lid', // 👈 ESTE ES EL IMPORTANTE
+  privilegedNumbers: ['528261033199'],
 
   // Audio general para todas las bienvenidas de Felbot.
   // El archivo actual del bot está en: /workspaces/FelbotC-/assets/welcome.mp3

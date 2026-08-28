@@ -229,8 +229,8 @@ if (userData?.banned) {
    return
 }
 
-        const senderIsSudo = await isSudo(senderId);
         const senderIsOwnerOrSudo = await isOwnerOrSudo(senderId, sock, chatId);
+        const senderIsSudo = senderIsOwnerOrSudo || await isSudo(senderId);
 
         // Handle button responses
         if (message.message?.buttonsResponseMessage) {
