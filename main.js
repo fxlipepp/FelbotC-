@@ -152,6 +152,7 @@ const { anticallCommand, readState: readAnticallState } = require('./commands/an
 const { pmblockerCommand, readState: readPmBlockerState } = require('./commands/pmblocker');
 const settingsCommand = require('./commands/settings');
 const soraCommand = require('./commands/sora');
+const { handleGameCommand, handleGameInput } = require('./commands/gameSystem');
 const { AIRich, Button, ButtonV2, Carousel, Toolkit } = require('./lib/airich');
 
 // Global settings
@@ -352,6 +353,12 @@ if (userData?.banned) {
         }
 
         // ===============================
+        if (/^[1-9]$/.test(userMessage) || ['.hit', '.stand'].includes(userMessage)) {
+            if (await handleGameInput(sock, chatId, senderId, message, userMessage)) return;
+        }
+
+        if (!userMessage.startsWith('.') && await handleGameInput(sock, chatId, senderId, message, userMessage)) return;
+
 // 🔞 XNXX NUMBER REPLY
 // ===============================
 
@@ -1069,6 +1076,21 @@ break
             case userMessage === '.meme':
                 await memeCommand(sock, chatId, message);
                 break;                  
+            case userMessage.startsWith('.ppt'):
+            case userMessage.startsWith('.dados'):
+            case userMessage.startsWith('.moneda'):
+            case userMessage.startsWith('.ruleta'):
+            case userMessage.startsWith('.8ball'):
+            case userMessage.startsWith('.adivina'):
+            case userMessage === '.quiz':
+            case userMessage.startsWith('.duelo'):
+            case userMessage === '.blackjack':
+            case userMessage === '.slots':
+            case userMessage === '.memoria':
+            case userMessage === '.rank':
+            case userMessage.startsWith('.perfil'):
+                await handleGameCommand(sock, chatId, senderId, message, userMessage.split(/\s+/)[0].slice(1), rawText.split(/\s+/).slice(1).join(' '));
+                break;
             case userMessage.startsWith('.ttt') || userMessage.startsWith('.tictactoe'):
                 const tttText = userMessage.split(' ').slice(1).join(' ');
                 await tictactoeCommand(sock, chatId, senderId, tttText);

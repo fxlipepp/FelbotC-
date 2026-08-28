@@ -18,6 +18,31 @@ const userSchema = new mongoose.Schema({
       default: false
    },
 
+   xp: {
+      type: Number,
+      default: 0
+   },
+
+   wins: {
+      type: Number,
+      default: 0
+   },
+
+   losses: {
+      type: Number,
+      default: 0
+   },
+
+   draws: {
+      type: Number,
+      default: 0
+   },
+
+   games: {
+      type: Number,
+      default: 0
+   },
+
    createdAt: {
       type: Date,
       default: Date.now

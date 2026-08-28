@@ -3,6 +3,7 @@ const path = require('path')
 const { ButtonV2 } = require('../lib/airich')
 
 function formatUptime(seconds) {
+
     const h = Math.floor(seconds / 3600)
     const m = Math.floor((seconds % 3600) / 60)
     const s = Math.floor(seconds % 60)
@@ -12,406 +13,424 @@ function formatUptime(seconds) {
 
 function buildIntroHeader(uptimeSeconds, version = '2.0.0') {
     const uptime = formatUptime(uptimeSeconds)
-
-    return `︶꒦꒷━━━━━━━ 𓆩 𝕱𝖊𝖑𝖇𝖔𝖙 夜 𓆪 ━━━━━━━꒷꒦︶
-
-𓆩 👑 𓆪 Creador  ╰┈➤ Fxlipe 夜
-𓆩 ⚙️ 𓆪 Versión  ╰┈➤ v${version}
-𓆩 📚 𓆪 Comandos ╰┈➤ 120+
-𓆩 ⏳ 𓆪 Uptime   ╰┈➤ ${uptime}
-
-𓆩 📢 𓆪 Canal Oficial
-╰┈➤ ✧ FELBOT 夜 | Oficial ✧
-
-︶꒦꒷━━━━━━━━━━━━━━━━━━꒷꒦︶`
+    return `╭━━━〔 𝕱𝖊𝖑𝖇𝖔𝖙 夜 〕━━━⬣
+┃ 👑 Creador: Fxlipe 夜
+┃ ⚙️ Versión: v${version}
+┃ 📚 Comandos: 120
+┃ ⏳ Uptime: ${uptime}
+┃ 📢 Canal Oficial:
+┃ ✧ FELBOT 夜 | Oficial ✧
+╰━━━━━━━━━━━━━━━━⬣`
 }
 
 function buildMenuText(uptimeSeconds, version = '2.0.0') {
-    const header = buildIntroHeader(uptimeSeconds, version)
+    const introHeader = buildIntroHeader(uptimeSeconds, version)
+    const helpMessage = `
+╭━━〔 👑 OWNER 〕━━⬣
+> ✦ Comandos de administracion.
 
-    return `${header}
+❀ \`.felbot on\`
+> Activar Felbot en el grupo.
 
-𓆩━━━━━━━━〔 👑 OWNER 〕━━━━━━━━𓆪
+❀ \`.felbot off\`
+> Desactivar Felbot en el grupo.
 
-𓆩✦𓆪 Comandos de administración principal.
+╰━━━━━━━━━━━━━━━━⬣
 
-╰┈➤ ❀ .felbot on
-     𓆩 Activar Felbot en el grupo.
+╭━━〔 🌐 GENERAL 〕━━⬣
+> ✦ Comandos principales e información del bot.
 
-╰┈➤ ❀ .felbot off
-     𓆩 Desactivar Felbot en el grupo.
+❀ \`.menu\` › \`.help\`
+> Mostrar el menú completo del bot.
 
-︶꒦꒷━━━━━━━━༺✦༻━━━━━━━━꒷꒦︶
+❀ \`.ping\`
+> Ver la velocidad y respuesta del bot.
 
+❀ \`.alive\`
+> Comprobar si el bot está activo.
 
-𓆩━━━━━━━━〔 🌐 GENERAL 〕━━━━━━━━𓆪
+❀ \.info\`
+> Ver la información de los creadores.
 
-𓆩✦𓆪 Información y comandos principales.
+❀ \`.owner\`
+> Ver el contacto del creador del bot.
 
-╰┈➤ ❀ .menu › .help
-     𓆩 Mostrar el menú completo.
+❀ \`.jid\`
+> Obtener tu ID de WhatsApp.
 
-╰┈➤ ❀ .ping
-     𓆩 Ver velocidad y respuesta.
+❀ \`.groupinfo\`
+> Mostrar información del grupo.
 
-╰┈➤ ❀ .alive
-     𓆩 Comprobar si el bot está activo.
+❀ \`.staff\` › \`.admins\`
+> Ver la lista de administradores.
+╰━━━━━━━━━━━━━━━━⬣
 
-╰┈➤ ❀ .info
-     𓆩 Ver información de los creadores.
+╭━━〔 🛠️ UTILIDADES 〕━━⬣
+> ✦ Herramientas útiles y funciones extras.
 
-╰┈➤ ❀ .owner
-     𓆩 Ver el contacto del creador.
+❀ \`.tts\` + <texto>
+> Convertir texto a voz.
 
-╰┈➤ ❀ .jid
-     𓆩 Obtener tu ID de WhatsApp.
+❀ \`.trt\` + <texto>
+> Traducir texto automáticamente.
 
-╰┈➤ ❀ .groupinfo
-     𓆩 Mostrar información del grupo.
+❀ \`.vv\`
+> Ver mensajes de visualización única.
 
-╰┈➤ ❀ .staff › .admins
-     𓆩 Ver lista de administradores.
+❀ \`.8ball\` + <pregunta>
+> Respuestas aleatorias tipo bola mágica.
+╰━━━━━━━━━━━━━━━━⬣
 
-︶꒦꒷━━━━━━━━༺✦༻━━━━━━━━꒷꒦︶
+╭━━〔 👮 ADMIN 〕━━⬣
+> ✦ Herramientas de administración para grupos.
 
+❀ \`.ban\` + <@usuario>
+> Banear un usuario del bot.
 
-𓆩━━━━━━━━〔 🛠️ UTILIDADES 〕━━━━━━━━𓆪
+❀ \`.unban\` + <@usuario>
+> Desbanear un usuario del bot.
 
-𓆩✦𓆪 Herramientas y funciones extras.
+❀ \`.kick\` + <@usuario>
+> Expulsar un miembro del grupo.
 
-╰┈➤ ❀ .tts + <texto>
-     𓆩 Convertir texto a voz.
+❀ \`.warn\` + <@usuario>
+> Dar advertencias a un usuario.
 
-╰┈➤ ❀ .trt + <texto>
-     𓆩 Traducir texto automáticamente.
+❀ \`.warnings\` + <@usuario>
+> Ver advertencias acumuladas.
 
-╰┈➤ ❀ .vv
-     𓆩 Ver mensajes de visualización única.
+❀ \`.mute\`
+> Silenciar el grupo temporalmente.
 
-╰┈➤ ❀ .8ball + <pregunta>
-     𓆩 Respuestas de bola mágica.
+❀ \`.unmute\`
+> Volver a activar mensajes del grupo.
 
-︶꒦꒷━━━━━━━━༺✦༻━━━━━━━━꒷꒦︶
+❀ \`.promote\` + <@usuario>
+> Dar administrador a un usuario.
 
+❀ \`.demote\` + <@usuario>
+> Quitar administrador a un usuario.
 
-𓆩━━━━━━━━〔 👮 ADMIN 〕━━━━━━━━𓆪
+❀ \`.delete\` › \`.del\`
+> Eliminar mensajes enviados.
 
-𓆩✦𓆪 Herramientas de administración para grupos.
+❀ \`.antilink\` on/off
+> Activar o desactivar anti enlaces.
 
-╰┈➤ ❀ .ban + <@usuario>
-     𓆩 Banear un usuario del bot.
+❀ \`.modoadmin\` on/off
+> Activar o desactivar modo admin.
 
-╰┈➤ ❀ .unban + <@usuario>
-     𓆩 Desbanear un usuario.
+❀ \`.welcome\` on/off
+> Activar o desactivar bienvenidas.
 
-╰┈➤ ❀ .kick + <@usuario>
-     𓆩 Expulsar un miembro del grupo.
+❀ \`.n\` + <texto>
+> Mencionar a todos los miembros.
 
-╰┈➤ ❀ .warn + <@usuario>
-     𓆩 Dar una advertencia.
+❀ \`.todos\`
+> Etiquetar a todos los participantes.
 
-╰┈➤ ❀ .warnings + <@usuario>
-     𓆩 Ver advertencias acumuladas.
+❀ \`.setgname\` + <texto>
+> Cambiar nombre del grupo.
 
-╰┈➤ ❀ .mute
-     𓆩 Silenciar el grupo temporalmente.
+❀ \`.setgpp\` + <imagen>
+> Cambiar foto del grupo.
 
-╰┈➤ ❀ .unmute
-     𓆩 Volver a activar mensajes.
+❀ \`.setgdesc\` + <texto>
+> Cambiar descripción del grupo.
 
-╰┈➤ ❀ .promote + <@usuario>
-     𓆩 Dar administrador.
+❀ \`.abrir\` 
+> Abrir el grupo.
 
-╰┈➤ ❀ .demote + <@usuario>
-     𓆩 Quitar administrador.
+❀ \`.cerrar\` 
+> Cerrar el grupo.
+╰━━━━━━━━━━━━━━━━⬣
 
-╰┈➤ ❀ .delete › .del
-     𓆩 Eliminar mensajes enviados.
+╭━━〔 🔫 FREE FIRE 〕━━⬣
+> ✦ Comandos para ff.
 
-╰┈➤ ❀ .antilink on/off
-     𓆩 Activar o desactivar anti enlaces.
+❀ \`.2vs2\` + <hora>
+> Lista de 2vs2.
 
-╰┈➤ ❀ .modoadmin on/off
-     𓆩 Activar o desactivar modo admin.
+❀ \`.4vs4\` + <hora>
+> Lista de 4vs4.
 
-╰┈➤ ❀ .welcome on/off
-     𓆩 Activar o desactivar bienvenidas.
+❀ \`.6vs6\` + <hora>
+> Lista de 6vs6.
 
-╰┈➤ ❀ .n + <texto>
-     𓆩 Mencionar a todos los miembros.
+❀ \`.int2\` 
+> Lista de 2vs2 (interna).
 
-╰┈➤ ❀ .todos
-     𓆩 Etiquetar a todos los participantes.
+❀ \`.int4\` 
+> Lista de 4vs4 (interna).
 
-╰┈➤ ❀ .setgname + <texto>
-     𓆩 Cambiar nombre del grupo.
+❀ \`.int6\` 
+> Lista de 6vs6 (interna).
+╰━━━━━━━━━━━━━━━━⬣
 
-╰┈➤ ❀ .setgpp + <imagen>
-     𓆩 Cambiar foto del grupo.
+╭━━〔 🔞 NSFW 〕━━⬣
+> ✦ Comandos Pornograficos .
 
-╰┈➤ ❀ .setgdesc + <texto>
-     𓆩 Cambiar descripción del grupo.
+❀ \`.xxnx\` + <texto>
+> Busqueda porno (Para descarga).
 
-╰┈➤ ❀ .abrir
-     𓆩 Abrir el grupo.
+❀ \`.follar\` + <@usuario>
+> Follarse a un usuario.
 
-╰┈➤ ❀ .cerrar
-     𓆩 Cerrar el grupo.
+❀ \`.cum\` + <@usuario>
+> Cum sobre un usuario.
 
-︶꒦꒷━━━━━━━━༺✦༻━━━━━━━━꒷꒦︶
+❀ \`.masturbarsef\` (Femenino)
+> Masturbarse.
 
+❀ \`.masturbarsem\` (Masculino)
+> Masturbarse.
+╰━━━━━━━━━━━━━━━━⬣
 
-𓆩━━━━━━━━〔 🔫 FREE FIRE 〕━━━━━━━━𓆪
+╭━━〔 🎨 STICKERS 〕━━⬣
+> ✦ Herramientas de stickers e imágenes.
 
-𓆩✦𓆪 Comandos para Free Fire.
+❀ \`.s\`
+> Convertir imagen o video en sticker.
 
-╰┈➤ ❀ .2vs2 + <hora>
-     𓆩 Lista de 2vs2.
+❀ \`.crop\`
+> Imagen-Video a stiker (centrado).
 
-╰┈➤ ❀ .4vs4 + <hora>
-     𓆩 Lista de 4vs4.
+❀ \`.brat\`
+> Convertir texto sticker.
 
-╰┈➤ ❀ .6vs6 + <hora>
-     𓆩 Lista de 6vs6.
+❀ \`.wm\`
+> Cambiar packname de un sticker.
 
-╰┈➤ ❀ .int2
-     𓆩 Lista interna de 2vs2.
+❀ \`.attp\` + <texto>
+> Crear sticker animado con texto.
 
-╰┈➤ ❀ .int4
-     𓆩 Lista interna de 4vs4.
+❀ \`.emojimix\` + <emoji+emoji>
+> Combinar emojis en stickers.
 
-╰┈➤ ❀ .int6
-     𓆩 Lista interna de 6vs6.
+❀ \`.removebg\`
+> Eliminar fondo de imágenes.
+╰━━━━━━━━━━━━━━━━⬣
 
-︶꒦꒷━━━━━━━━༺✦༻━━━━━━━━꒷꒦︶
+╭━━〔 🔤 TEXTMAKER 〕━━⬣
+> ✦ Crear textos con estilos épicos.
 
+❀ \`.metallic\` + <texto>
+> Texto metálico brillante.
 
-𓆩━━━━━━━━〔 🎨 STICKERS 〕━━━━━━━━𓆪
+❀ \`.ice\` + <texto>
+> Texto congelado estilo hielo.
 
-𓆩✦𓆪 Herramientas de stickers e imágenes.
+❀ \`.snow\` + <texto>
+> Texto cubierto de nieve.
 
-╰┈➤ ❀ .s
-     𓆩 Convertir imagen o video en sticker.
+❀ \`.impressive\` + <texto>
+> Texto impresionante decorado.
 
-╰┈➤ ❀ .crop
-     𓆩 Imagen/video a sticker centrado.
+❀ \`.matrix\` + <texto>
+> Texto estilo Matrix hacker.
 
-╰┈➤ ❀ .brat
-     𓆩 Convertir texto en sticker.
+❀ \`.light\` + <texto>
+> Texto iluminado.
 
-╰┈➤ ❀ .wm
-     𓆩 Cambiar packname de un sticker.
+❀ \`.neon\` + <texto>
+> Texto con efecto neón.
 
-╰┈➤ ❀ .attp + <texto>
-     𓆩 Crear sticker animado con texto.
+❀ \`.devil\` + <texto>
+> Texto estilo demoníaco.
 
-╰┈➤ ❀ .emojimix + <emoji+emoji>
-     𓆩 Combinar emojis en stickers.
+❀ \`.purple\` + <texto>
+> Texto morado brillante.
 
-╰┈➤ ❀ .removebg
-     𓆩 Eliminar fondo de imágenes.
+❀ \`.thunder\` + <texto>
+> Texto con rayos eléctricos.
 
-︶꒦꒷━━━━━━━━༺✦༻━━━━━━━━꒷꒦︶
+❀ \`.parejas\`
+> Texto decorado con hojas.
 
+❀ \`.1917\` + <texto>
+> Texto estilo película 1917.
 
-𓆩━━━━━━━━〔 🔤 TEXTMAKER 〕━━━━━━━━𓆪
+❀ \`.arena\` + <texto>
+> Texto arena/desierto.
 
-𓆩✦𓆪 Crea textos con estilos especiales.
+❀ \`.hacker\` + <texto>
+> Texto hacker oscuro.
 
-╰┈➤ ❀ .metallic + <texto>
-     𓆩 Texto metálico brillante.
+❀ \`.sand\` + <texto>
+> Texto de arena caliente.
 
-╰┈➤ ❀ .ice + <texto>
-     𓆩 Texto congelado estilo hielo.
+❀ \`.blackpink\` + <texto>
+> Texto estilo BLACKPINK.
 
-╰┈➤ ❀ .snow + <texto>
-     𓆩 Texto cubierto de nieve.
+❀ \`.glitch\` + <texto>
+> Texto con efecto glitch.
 
-╰┈➤ ❀ .impressive + <texto>
-     𓆩 Texto impresionante decorado.
+❀ \`.fire\` + <texto>
+> Texto en llamas 🔥
+╰━━━━━━━━━━━━━━━━⬣
 
-╰┈➤ ❀ .matrix + <texto>
-     𓆩 Texto estilo Matrix.
+╭━━〔 🖼️ ANIME 〕━━⬣
+> ✦ Reacciones y gifs estilo anime.
 
-╰┈➤ ❀ .light + <texto>
-     𓆩 Texto iluminado.
+❀ \`.nom\`
+> Comer cariñosamente a alguien.
 
-╰┈➤ ❀ .neon + <texto>
-     𓆩 Texto con efecto neón.
+❀ \`.poke\`
+> Picar/molestar a alguien.
 
-╰┈➤ ❀ .devil + <texto>
-     𓆩 Texto estilo demoníaco.
+❀ \`.cry\`
+> Llorar estilo anime.
 
-╰┈➤ ❀ .purple + <texto>
-     𓆩 Texto morado brillante.
+❀ \`.besar\` + <@usuario>
+> Besar a Usuario.
 
-╰┈➤ ❀ .thunder + <texto>
-     𓆩 Texto con rayos eléctricos.
+❀ \`.pat\`
+> Dar palmadas en la cabeza.
 
-╰┈➤ ❀ .leaves + <texto>
-     𓆩 Texto decorado con hojas.
+❀ \`.hug\`
+> Abrazar a alguien.
 
-╰┈➤ ❀ .1917 + <texto>
-     𓆩 Texto estilo película 1917.
+❀ \`.wink\`
+> Guiñar el ojo.
 
-╰┈➤ ❀ .arena + <texto>
-     𓆩 Texto estilo arena/desierto.
+❀ \`.facepalm\`
+> Hacer facepalm anime.
+╰━━━━━━━━━━━━━━━━⬣
 
-╰┈➤ ❀ .hacker + <texto>
-     𓆩 Texto estilo hacker oscuro.
+╭━━〔 🎮 JUEGOS 〕━━⬣
+> ✦ Juegos y entretenimiento interactivo.
 
-╰┈➤ ❀ .sand + <texto>
-     𓆩 Texto de arena caliente.
+❀ \`.ppt\` + <@usuario>
+> Piedra, papel o tijera.
 
-╰┈➤ ❀ .blackpink + <texto>
-     𓆩 Texto estilo BLACKPINK.
+❀ \`.dados\`
+> Lanzar dos dados.
 
-╰┈➤ ❀ .glitch + <texto>
-     𓆩 Texto con efecto glitch.
+❀ \`.moneda\` + cara/cruz
+> Cara o cruz.
 
-╰┈➤ ❀ .fire + <texto>
-     𓆩 Texto en llamas 🔥
+❀ \`.ruleta\` [@usuario]
+> Ruleta aleatoria recreativa.
 
-︶꒦꒷━━━━━━━━༺✦༻━━━━━━━━꒷꒦︶
+❀ \`.8ball\` + <pregunta>
+> Consultar la bola mágica.
 
+❀ \`.adivina\` [categoria]
+> Adivinar una palabra.
 
-𓆩━━━━━━━━〔 🖼️ ANIME 〕━━━━━━━━𓆪
+❀ \`.quiz\`
+> Preguntas y respuestas.
 
-𓆩✦𓆪 Reacciones y gifs estilo anime.
+❀ \`.duelo\` + <@usuario>
+> Duelo entre usuarios.
 
-╰┈➤ ❀ .nom
-     𓆩 Comer cariñosamente a alguien.
+❀ \`.blackjack\`
+> Jugar blackjack.
 
-╰┈➤ ❀ .poke
-     𓆩 Picar/molestar a alguien.
+❀ \`.slots\`
+> Maquina tragamonedas recreativa.
 
-╰┈➤ ❀ .cry
-     𓆩 Llorar estilo anime.
+❀ \`.memoria\`
+> Juego de memoria.
 
-╰┈➤ ❀ .besar + <@usuario>
-     𓆩 Besar a un usuario.
+❀ \`.tictactoe\`
+> Jugar tres en raya.
 
-╰┈➤ ❀ .pat
-     𓆩 Dar palmadas en la cabeza.
+❀ \`.hangman\`
+> Jugar ahorcado.
 
-╰┈➤ ❀ .hug
-     𓆩 Abrazar a alguien.
+❀ \`.guess\`
+> Juego de adivinar palabras.
 
-╰┈➤ ❀ .wink
-     𓆩 Guiñar el ojo.
+❀ \`.trivia\`
+> Responder preguntas de trivia.
 
-╰┈➤ ❀ .facepalm
-     𓆩 Hacer facepalm anime.
+❀ \`.truth\`
+> Preguntas de verdad.
 
-︶꒦꒷━━━━━━━━༺✦༻━━━━━━━━꒷꒦︶
+❀ \`.dare\`
+> Retos aleatorios.
 
+❀ \`.perfil\`
+> Ver tus estadisticas.
 
-𓆩━━━━━━━━〔 🎮 JUEGOS 〕━━━━━━━━𓆪
+❀ \`.rank\`
+> Ranking de jugadores.
+╰━━━━━━━━━━━━━━━━⬣
 
-𓆩✦𓆪 Juegos y entretenimiento interactivo.
+╭━━〔 🎯 DIVERSIÓN 〕━━⬣
+> ✦ Comandos divertidos y sociales.
 
-╰┈➤ ❀ .tictactoe
-     𓆩 Jugar tres en raya.
+❀ \`.Parejas\` 
+> Top 5 parejas del grupo.
 
-╰┈➤ ❀ .hangman
-     𓆩 Jugar ahorcado.
+❀ \`.compliment\` + <@usuario>
+> Enviar cumplidos a alguien.
 
-╰┈➤ ❀ .guess
-     𓆩 Juego de adivinar palabras.
+❀ \`.propuesta\` + <@usuario>
+> Envia propuesta de matrimonio.
 
-╰┈➤ ❀ .trivia
-     𓆩 Responder preguntas de trivia.
+❀ \`.top\` + <texto>
+> Top 5 (categoria).
 
-╰┈➤ ❀ .truth
-     𓆩 Preguntas de verdad.
+❀ \`.piropo\` + <@usuario>
+> Enviar piropos a alguien.
 
-╰┈➤ ❀ .dare
-     𓆩 Retos aleatorios.
+❀ \`.insult\` + <@usuario>
+> Insultar amistosamente a alguien.
 
-︶꒦꒷━━━━━━━━༺✦༻━━━━━━━━꒷꒦︶
+❀ \`.flirt\`
+> Coquetear con un usuario.
 
+❀ \`.ship\`
+> Ver porcentaje de compatibilidad.
 
-𓆩━━━━━━━━〔 🎯 DIVERSIÓN 〕━━━━━━━━𓆪
+❀ \`.simp\` + <@usuario>
+> Tarjeta Simp.
 
-𓆩✦𓆪 Comandos sociales y entretenimiento.
+❀ \`.stupid\` + <@usuario>
+> Estúpido del grupo.
+╰━━━━━━━━━━━━━━━━⬣
 
-╰┈➤ ❀ .parejas
-     𓆩 Top 5 parejas del grupo.
+╭━━〔 📥 DESCARGAS 〕━━⬣
+> ✦ Descargar contenido multimedia.
 
-╰┈➤ ❀ .compliment + <@usuario>
-     𓆩 Enviar cumplidos.
+❀ \`.play\` + <nombre>
+> Buscar y descargar música.
 
-╰┈➤ ❀ .propuesta + <@usuario>
-     𓆩 Enviar propuesta de matrimonio.
+❀ \`.video\` + <nombre>
+> Buscar y video de yt.
 
-╰┈➤ ❀ .top + <texto>
-     𓆩 Crear un Top 5.
+❀ \`.song\` + <nombre>
+> Descargar canciones en mp3.
 
-╰┈➤ ❀ .piropo + <@usuario>
-     𓆩 Enviar piropos.
+❀ \`.spotify\` + <link>
+> Descargar audio de Spotify.
 
-╰┈➤ ❀ .insult + <@usuario>
-     𓆩 Insultar amistosamente.
+❀ \`.tiktok\` + <link>
+> Descargar videos de TikTok.
 
-╰┈➤ ❀ .flirt
-     𓆩 Coquetear con un usuario.
+❀ \`.facebook\` + <link>
+> Descargar videos de Facebook.
 
-╰┈➤ ❀ .ship
-     𓆩 Ver porcentaje de compatibilidad.
+❀ \`.instagram\` + <link>
+> Descargar reels y publicaciones.
 
-╰┈➤ ❀ .simp + <@usuario>
-     𓆩 Mostrar tarjeta Simp.
+❀ \`.ytmp4\` + <link>
+> Descargar videos de YouTube.
+╰━━━━━━━━━━━━━━━━⬣
 
-╰┈➤ ❀ .stupid + <@usuario>
-     𓆩 Usuario más despistado.
+╭━〔  𝕱𝖊𝖑𝖇𝖔𝖙 夜  〕━⬣
+> *🚀 Powered By Fxlipe 夜*
+╰━━━━━━━━━━━━⬣`
 
-︶꒦꒷━━━━━━━━༺✦༻━━━━━━━━꒷꒦︶
-
-
-𓆩━━━━━━━━〔 📥 DESCARGAS 〕━━━━━━━━𓆪
-
-𓆩✦𓆪 Descarga contenido multimedia.
-
-╰┈➤ ❀ .play + <nombre>
-     𓆩 Buscar y descargar música.
-
-╰┈➤ ❀ .video + <nombre>
-     𓆩 Buscar y descargar videos.
-
-╰┈➤ ❀ .song + <nombre>
-     𓆩 Descargar canciones en MP3.
-
-╰┈➤ ❀ .spotify + <link>
-     𓆩 Descargar audio de Spotify.
-
-╰┈➤ ❀ .tiktok + <link>
-     𓆩 Descargar videos de TikTok.
-
-╰┈➤ ❀ .facebook + <link>
-     𓆩 Descargar videos de Facebook.
-
-╰┈➤ ❀ .instagram + <link>
-     𓆩 Descargar reels y publicaciones.
-
-╰┈➤ ❀ .ytmp4 + <link>
-     𓆩 Descargar videos de YouTube.
-
-︶꒦꒷━━━━━━━━༺✦༻━━━━━━━━꒷꒦︶
-
-
-︶꒦꒷━━━━━━━ 𓆩 𝕱𝖊𝖑𝖇𝖔𝖙 夜 𓆪 ━━━━━━━꒷꒦︶
-
-𓆩 🚀 𓆪 Powered By Fxlipe 夜
-𓆩 💜 𓆪 Gracias por utilizar Felbot
-
-︶꒦꒷━━━━━━━━━━━━━━━━━━꒷꒦︶`
+    return `${helpMessage.trim()}`
 }
 
 function getMenuButtonAction(buttonId) {
     switch (buttonId) {
         case 'view_full_menu':
             return { type: 'send_full_menu' }
-
         default:
             return null
     }
@@ -419,18 +438,11 @@ function getMenuButtonAction(buttonId) {
 
 async function handleMenuButton(sock, chatId, buttonId, message) {
     const action = getMenuButtonAction(buttonId)
-
     if (!action) return false
 
     if (action.type === 'send_full_menu') {
         const fullMenu = buildMenuText(process.uptime(), '2.0.0')
-
-        await sock.sendMessage(
-            chatId,
-            { text: fullMenu },
-            { quoted: message }
-        )
-
+        await sock.sendMessage(chatId, { text: fullMenu }, { quoted: message })
         return true
     }
 
@@ -438,85 +450,48 @@ async function handleMenuButton(sock, chatId, buttonId, message) {
 }
 
 async function helpCommand(sock, chatId, message) {
-    const fullMenu = buildMenuText(process.uptime(), '2.0.0')
 
+    const fullMenu = buildMenuText(process.uptime(), '2.0.0')
     const introCaption = `${buildIntroHeader(process.uptime(), '2.0.0')}
 
-𓆩━━━━━━━━〔 ✨ BIENVENIDO 〕━━━━━━━━𓆪
+Bienvenido a Felbot 夜.
+Aquí encontrarás herramientas, administración, entretenimiento y mucho más.
 
-𓆩♡𓆪 Bienvenido a 𝕱𝖊𝖑𝖇𝖔𝖙 夜.
-
-╰┈➤ Aquí encontrarás:
-
-𓆩✦𓆪 Administración
-𓆩✦𓆪 Utilidades
-𓆩✦𓆪 Stickers
-𓆩✦𓆪 Juegos
-𓆩✦𓆪 Descargas
-𓆩✦𓆪 Diversión
-𓆩✦𓆪 Y mucho más...
-
-︶꒦꒷━━━━━━━━༺✦༻━━━━━━━━꒷꒦︶
-
-𓆩👇𓆪 Selecciona una opción para continuar.`
+👇 Elige una opción para continuar.`
 
     try {
-        const imagePath = path.join(
-            __dirname,
-            '..',
-            'assets',
-            'imagenes',
-            'admin',
-            'admin.png'
-        )
-
-        const imageBuffer = fs.existsSync(imagePath)
-            ? fs.readFileSync(imagePath)
-            : null
+        const imagePath = path.join(__dirname, '..', 'assets', 'imagenes', 'admin', 'admin.png')
+        const imageBuffer = fs.existsSync(imagePath) ? fs.readFileSync(imagePath) : null
 
         if (imageBuffer) {
-            await sock.sendMessage(
-                chatId,
-                {
-                    image: imageBuffer,
-                    mimetype: 'image/png',
-                    caption: introCaption
-                },
-                { quoted: message }
-            )
+            await sock.sendMessage(chatId, {
+                image: imageBuffer,
+                mimetype: 'image/png',
+                caption: introCaption
+            }, { quoted: message })
         }
 
         const buttonMenu = new ButtonV2(sock)
-            .setBody(
-                '︶꒦꒷━━━━ 𓆩 𝕱𝖊𝖑𝖇𝖔𝖙 夜 𓆪 ━━━━꒷꒦︶\n\n' +
-                '𓆩✦𓆪 Selecciona una opción\n' +
-                '╰┈➤ para continuar.\n\n' +
-                '︶꒦꒷━━━━━━━━༺✦༻━━━━━━━━꒷꒦︶'
-            )
-            .setFooter('𓆩 𝕱𝖊𝖑𝖇𝖔𝖙 夜 • Fxlipe 𓆪')
-            .addButton('📚 VER MENÚ COMPLETO', 'view_full_menu')
-            .addButton('👑 CONTACTAME', 'owner')
-            .addButton('❗ REPORTAR ERROR', 'report_error')
-            .addButton('🕸️ SOLICITAR COMANDO', 'request_command')
-            .addButton('💵 ADQUIRIR BOT', 'buy_bot')
+            .setBody('Selecciona una opción para continuar.')
+            .setFooter('FelbotC - Menú interactivo')
+            .addButton('VER MENU COMPLETO', 'view_full_menu')
+            .addButton('CONTACTAME 夜', 'owner')
+            .addButton('REPORTAR ERROR ❗', 'report_error')
+            .addButton('SOLICITUD DE COMANDO 🕸️', 'request_command')
+            .addButton('ADQUIRIR BOT 💵', 'buy_bot')
 
         await buttonMenu.send(chatId, { quoted: message })
-
     } catch (error) {
         console.error(error)
-
-        await sock.sendMessage(
-            chatId,
-            { text: fullMenu },
-            { quoted: message }
-        )
+        await sock.sendMessage(chatId, {
+            text: fullMenu,
+        }, { quoted: message })
     }
 }
 
 helpCommand.buildMenuText = buildMenuText
 helpCommand.getMenuButtonAction = getMenuButtonAction
 helpCommand.handleMenuButton = handleMenuButton
-
 module.exports = helpCommand
 module.exports.buildMenuText = buildMenuText
 module.exports.getMenuButtonAction = getMenuButtonAction
