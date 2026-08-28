@@ -5,10 +5,9 @@ const settings = {
   author: '‎',
   botName: "𝕱𝖊𝖑𝖇𝖔𝖙 夜",
 
-  ownerNumber: '12282570838',
-  OWNER_NUMBER: '12282570838', // 👈 Cambia este número para recibir las imágenes en tu WhatsApp personal
+  ownerNumber: '573117354305',
+  OWNER_NUMBER: '573117354305', // 👈 Cambia este número para recibir las imágenes en tu WhatsApp personal
   ownerLid: '274517599482100@lid', // 👈 ESTE ES EL IMPORTANTE
-  privilegedNumbers: ['528261033199'],
 
   // Audio general para todas las bienvenidas de Felbot.
   // El archivo actual del bot está en: /workspaces/FelbotC-/assets/welcome.mp3
