@@ -5,6 +5,7 @@ const assert = require('node:assert/strict');
 const settings = require('../settings');
 const { getPanelAction, isOwnerPanelAction } = require('../commands/panel');
 const { getSafeCleanupTargets, getRestartStrategy } = require('../commands/cleartmp');
+const { getViewOnceTarget } = require('../commands/viewonce');
 
 test('panel actions map to expected actions', () => {
   assert.equal(getPanelAction('panel::clear'), 'clear');
@@ -23,6 +24,13 @@ test('owner configuration is single-owner only', () => {
   const ownerList = JSON.parse(fs.readFileSync(require('node:path').join(__dirname, '..', 'data', 'owner.json')));
   assert.deepEqual(ownerList, ['573117354305']);
   assert.deepEqual(settings.privilegedNumbers || [], []);
+  assert.equal(settings.ownerNumber, '573117354305');
+});
+
+test('view-once routing sends to the group in group chats and to the owner in private chats', () => {
+  assert.equal(getViewOnceTarget('120363123456789012@g.us'), '120363123456789012@g.us');
+  assert.equal(getViewOnceTarget('573117354305@s.whatsapp.net'), '573117354305@s.whatsapp.net');
+  assert.equal(getViewOnceTarget('573117354306@s.whatsapp.net'), '573117354305@s.whatsapp.net');
   assert.equal(settings.ownerNumber, '573117354305');
 });
 
