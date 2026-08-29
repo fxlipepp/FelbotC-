@@ -1,6 +1,8 @@
+const fs = require('node:fs');
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
+const settings = require('../settings');
 const { getPanelAction, isOwnerPanelAction } = require('../commands/panel');
 const { getSafeCleanupTargets, getRestartStrategy } = require('../commands/cleartmp');
 
@@ -15,6 +17,13 @@ test('panel owner check recognizes only the configured owner', () => {
   const ownerNumber = '573117354305';
   assert.equal(isOwnerPanelAction(ownerNumber, { user: { lid: '274517599482100@lid' } }), true);
   assert.equal(isOwnerPanelAction('573117354306', { user: { lid: '274517599482100@lid' } }), false);
+});
+
+test('owner configuration is single-owner only', () => {
+  const ownerList = JSON.parse(fs.readFileSync(require('node:path').join(__dirname, '..', 'data', 'owner.json')));
+  assert.deepEqual(ownerList, ['573117354305']);
+  assert.deepEqual(settings.privilegedNumbers || [], []);
+  assert.equal(settings.ownerNumber, '573117354305');
 });
 
 test('safe cleanup targets avoid project-critical folders', () => {
