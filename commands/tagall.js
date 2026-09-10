@@ -127,13 +127,14 @@ async function tagAllCommand(sock, chatId, senderId, message) {
 
         const adminCountryCode = extractCountryCode(adminPhone)
         const adminFlag = getCountryFlag(adminCountryCode)
+        const displayAdminPhone = senderId.split('@')[0]
 
         // 📝 TEXTO PREMIUM
         const texto = `
 ╭─❀「 𝙈𝙀𝙉𝘾𝙄𝙊𝙉 𝙂𝙀𝙉𝙀𝙍𝘼𝙇 」❀
 
  ✦ Admin:
-> ${adminFlag} @${adminPhone.replace('+', '')}
+> ${adminFlag} @${displayAdminPhone}
 
  ✦ >>>Mensaje:
 > ${displayMessage}
@@ -164,9 +165,10 @@ ${participantes.map(p => {
     const countryCode = extractCountryCode(phoneNumber)
     const flag = getCountryFlag(countryCode)
 
-    // El + no se coloca después de @ porque WhatsApp
-    // reconoce la mención mediante el JID original.
-    return ` ${flag} @${phoneNumber.replace('+', '')}`
+    // Usar el ID original del participante para la mención (sin +)
+    const displayPhone = p.id.split('@')[0]
+    
+    return ` ${flag} @${displayPhone}`
 
 }).join('\n')}
 
