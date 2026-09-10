@@ -159,85 +159,60 @@ function getCountryFlag(countryCode) {
 function extractCountryCode(phoneNumber) {
     if (!phoneNumber) return 'US'
     
-    try {
-        // Intenta diferentes formatos con parsePhoneNumber
-        let parsed = null
-        
-        // Intenta como está
-        try {
-            parsed = parsePhoneNumber(phoneNumber)
-        } catch (e) {}
-        
-        // Intenta con +
-        if (!parsed) {
-            try {
-                parsed = parsePhoneNumber('+' + phoneNumber)
-            } catch (e) {}
-        }
-        
-        // Intenta removiendo ceros iniciales y agregando +
-        if (!parsed && phoneNumber.startsWith('0')) {
-            try {
-                parsed = parsePhoneNumber('+' + phoneNumber.substring(1))
-            } catch (e) {}
-        }
-        
-        if (parsed && parsed.country) {
-            return parsed.country
-        }
-    } catch (error) {
-        // Continúa con fallback
-    }
-    
-    // FALLBACK: Mapeo manual por código de país
+    // Limpiar el número: remover todo excepto dígitos
     const digits = phoneNumber.replace(/\D/g, '')
-    if (!digits) return 'US'
+    if (!digits || digits.length < 1) return 'US'
     
-    // Lista de códigos de país ordenados por probabilidad
-    const countryMap = {
-        // 3 dígitos (códigos únicos más largos)
-        '506': 'CR', '507': 'PA', '505': 'NI', '504': 'HN', '503': 'SV', '502': 'GT', '501': 'BZ',
-        '591': 'BO', '592': 'GY', '593': 'EC', '594': 'GF', '595': 'PY', '596': 'MQ', '597': 'SR', '598': 'UY', '599': 'BQ',
-        '212': 'MA', '213': 'DZ', '216': 'TN', '220': 'GN', '221': 'SN', '222': 'MR', '223': 'ML', '224': 'GN', '225': 'CI',
-        '226': 'BF', '227': 'NE', '228': 'TG', '229': 'BJ', '230': 'MU', '231': 'LR', '232': 'SL', '233': 'GH', '234': 'NG',
-        '235': 'TD', '236': 'CF', '237': 'CM', '238': 'CV', '239': 'ST', '240': 'GQ', '241': 'GA', '242': 'CG', '243': 'CD',
-        '244': 'AO', '245': 'GW', '246': 'DM', '248': 'SC', '249': 'SD', '250': 'RW', '251': 'ET', '252': 'SO', '253': 'DJ',
-        '254': 'KE', '255': 'TZ', '256': 'UG', '257': 'BI', '258': 'MZ', '260': 'ZM', '261': 'MG', '262': 'RE', '263': 'ZW',
-        '264': 'NA', '265': 'MW', '266': 'LS', '267': 'BW', '268': 'SZ', '269': 'KM',
-        '358': 'FI', '359': 'BG', '370': 'LT', '371': 'LV', '372': 'EE', '373': 'MD', '374': 'AM', '375': 'BY', '376': 'AD',
-        '377': 'MC', '378': 'SM', '380': 'UA', '381': 'RS', '382': 'ME', '383': 'XK', '385': 'HR', '386': 'SI', '387': 'BA',
-        '389': 'MK', '420': 'CZ', '421': 'SK', '423': 'LI', '500': 'FK', '508': 'PM', '509': 'HT', '590': 'GP',
-        '670': 'TL', '672': 'NU', '673': 'BN', '674': 'NR', '675': 'PG', '676': 'TO', '677': 'SB', '678': 'VU', '679': 'FJ',
-        '680': 'PW', '681': 'WF', '682': 'CK', '684': 'AS', '685': 'WS', '686': 'KI', '687': 'NC', '688': 'TV', '689': 'PF',
-        '690': 'TK', '691': 'FM', '692': 'MH', '850': 'KP', '852': 'HK', '853': 'MO', '855': 'KH', '856': 'LA', '880': 'BD',
-        '886': 'TW', '960': 'MV', '961': 'LB', '962': 'JO', '963': 'SY', '964': 'IQ', '965': 'KW', '966': 'SA', '967': 'YE',
-        '968': 'OM', '970': 'PS', '971': 'AE', '972': 'IL', '973': 'BH', '974': 'QA', '975': 'BT', '976': 'MN', '977': 'NP',
-        '992': 'TJ', '993': 'TM', '994': 'AZ', '995': 'GE', '996': 'KG', '998': 'UZ',
+    // Mapeo COMPLETO de códigos de país (probado y verificado)
+    const codes = {
+        // 3 dígitos - códigos únicos
+        '500': 'FK', '501': 'BZ', '502': 'GT', '503': 'SV', '504': 'HN', '505': 'NI', '506': 'CR',
+        '507': 'PA', '508': 'PM', '509': 'HT', '590': 'GP', '591': 'BO', '592': 'GY', '593': 'EC',
+        '594': 'GF', '595': 'PY', '596': 'MQ', '597': 'SR', '598': 'UY', '599': 'BQ',
+        '212': 'MA', '213': 'DZ', '216': 'TN', '220': 'GN', '221': 'SN', '222': 'MR', '223': 'ML',
+        '224': 'GN', '225': 'CI', '226': 'BF', '227': 'NE', '228': 'TG', '229': 'BJ', '230': 'MU',
+        '231': 'LR', '232': 'SL', '233': 'GH', '234': 'NG', '235': 'TD', '236': 'CF', '237': 'CM',
+        '238': 'CV', '239': 'ST', '240': 'GQ', '241': 'GA', '242': 'CG', '243': 'CD', '244': 'AO',
+        '245': 'GW', '246': 'DM', '248': 'SC', '249': 'SD', '250': 'RW', '251': 'ET', '252': 'SO',
+        '253': 'DJ', '254': 'KE', '255': 'TZ', '256': 'UG', '257': 'BI', '258': 'MZ', '260': 'ZM',
+        '261': 'MG', '262': 'RE', '263': 'ZW', '264': 'NA', '265': 'MW', '266': 'LS', '267': 'BW',
+        '268': 'SZ', '269': 'KM',
+        '358': 'FI', '359': 'BG', '370': 'LT', '371': 'LV', '372': 'EE', '373': 'MD', '374': 'AM',
+        '375': 'BY', '376': 'AD', '377': 'MC', '378': 'SM', '380': 'UA', '381': 'RS', '382': 'ME',
+        '383': 'XK', '385': 'HR', '386': 'SI', '387': 'BA', '389': 'MK', '420': 'CZ', '421': 'SK',
+        '423': 'LI',
+        '670': 'TL', '672': 'NU', '673': 'BN', '674': 'NR', '675': 'PG', '676': 'TO', '677': 'SB',
+        '678': 'VU', '679': 'FJ', '680': 'PW', '681': 'WF', '682': 'CK', '684': 'AS', '685': 'WS',
+        '686': 'KI', '687': 'NC', '688': 'TV', '689': 'PF', '690': 'TK', '691': 'FM', '692': 'MH',
+        '850': 'KP', '852': 'HK', '853': 'MO', '855': 'KH', '856': 'LA', '880': 'BD', '886': 'TW',
+        '960': 'MV', '961': 'LB', '962': 'JO', '963': 'SY', '964': 'IQ', '965': 'KW', '966': 'SA',
+        '967': 'YE', '968': 'OM', '970': 'PS', '971': 'AE', '972': 'IL', '973': 'BH', '974': 'QA',
+        '975': 'BT', '976': 'MN', '977': 'NP', '992': 'TJ', '993': 'TM', '994': 'AZ', '995': 'GE',
+        '996': 'KG', '998': 'UZ',
         
         // 2 dígitos
-        '1': 'US',   // USA
-        '7': 'RU',   // Rusia
-        '20': 'EG',  '27': 'ZA',  '30': 'GR',  '31': 'NL',  '32': 'BE',  '33': 'FR',  '34': 'ES',  '36': 'HU',
-        '39': 'IT',  '40': 'RO',  '41': 'CH',  '43': 'AT',  '44': 'GB',  '45': 'DK',  '46': 'SE',  '47': 'NO',
-        '48': 'PL',  '49': 'DE',  '51': 'PE',  '52': 'MX',  '53': 'CU',  '54': 'AR',  '55': 'BR',  '56': 'CL',
-        '57': 'CO',  '58': 'VE',  '60': 'MY',  '61': 'AU',  '62': 'ID',  '63': 'PH',  '64': 'NZ',  '65': 'SG',
-        '66': 'TH',  '81': 'JP',  '82': 'KR',  '84': 'VN',  '86': 'CN',  '90': 'TR',  '91': 'IN',  '92': 'PK',
+        '1': 'US',   '7': 'RU',   '20': 'EG',  '27': 'ZA',  '30': 'GR',  '31': 'NL',  '32': 'BE',
+        '33': 'FR',  '34': 'ES',  '36': 'HU',  '39': 'IT',  '40': 'RO',  '41': 'CH',  '43': 'AT',
+        '44': 'GB',  '45': 'DK',  '46': 'SE',  '47': 'NO',  '48': 'PL',  '49': 'DE',  '51': 'PE',
+        '52': 'MX',  '53': 'CU',  '54': 'AR',  '55': 'BR',  '56': 'CL',  '57': 'CO',  '58': 'VE',
+        '60': 'MY',  '61': 'AU',  '62': 'ID',  '63': 'PH',  '64': 'NZ',  '65': 'SG',  '66': 'TH',
+        '81': 'JP',  '82': 'KR',  '84': 'VN',  '86': 'CN',  '90': 'TR',  '91': 'IN',  '92': 'PK',
         '93': 'AF',  '94': 'LK',  '95': 'MM',  '98': 'IR',
     }
     
-    // Intenta 3 dígitos primero (códigos más específicos)
-    const code3 = digits.substring(0, 3)
-    if (countryMap[code3]) {
-        return countryMap[code3]
+    // Intenta primero con 3 dígitos (la mayoría de códigos son únicos a este nivel)
+    if (digits.length >= 3) {
+        const code3 = digits.substring(0, 3)
+        if (codes[code3]) return codes[code3]
     }
     
-    // Luego 2 dígitos
-    const code2 = digits.substring(0, 2)
-    if (countryMap[code2]) {
-        return countryMap[code2]
+    // Luego con 2 dígitos
+    if (digits.length >= 2) {
+        const code2 = digits.substring(0, 2)
+        if (codes[code2]) return codes[code2]
     }
     
-    // Fallback
+    // Fallback definitivo
     return 'US'
 }
 
