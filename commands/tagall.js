@@ -1,53 +1,64 @@
 const isAdmin = require('../lib/isAdmin')
-const { parsePhoneNumber } = require('libphonenumber-js')
+const { parsePhoneNumberFromString } = require('libphonenumber-js')
 
 // Función para obtener bandera por código de país ISO
 function getCountryFlag(countryCode) {
-    // Si no hay código o no es válido, retornar globo
     if (!countryCode || countryCode.length !== 2) {
         return '🌍'
     }
-    
-    // Convertir código ISO (2 letras) a emoji de bandera usando Unicode
-    // Regional indicator symbols: A=127462, Z=127487
+
     const codePoints = countryCode
         .toUpperCase()
         .split('')
         .map(char => 127397 + char.charCodeAt())
-    
+
     return String.fromCodePoint(...codePoints)
 }
 
-// Función para extraer el código de país del número
+// Función para obtener el país de un número telefónico
 function extractCountryCode(phoneNumber) {
     if (!phoneNumber) return null
-    
+
     try {
-        // Extraer solo dígitos
-        const digits = phoneNumber.replace(/\D/g, '')
-        if (!digits) return null
-        
-        // Intentar parsePhoneNumber con +
-        let parsed = null
-        try {
-            parsed = parsePhoneNumber('+' + digits)
-        } catch (e) {}
-        
-        // Si falla, intentar sin +
-        if (!parsed) {
-            try {
-                parsed = parsePhoneNumber(digits)
-            } catch (e) {}
-        }
-        
-        // Devolver el código ISO del país (2 letras)
-        if (parsed && parsed.country) {
+        const cleaned = String(phoneNumber)
+            .trim()
+            .replace(/[^\d+]/g, '')
+
+        if (!cleaned) return null
+
+        const internationalNumber = cleaned.startsWith('+')
+            ? cleaned
+            : `+${cleaned}`
+
+        const parsed = parsePhoneNumberFromString(internationalNumber)
+
+        if (parsed && parsed.isValid() && parsed.country) {
             return parsed.country
         }
+
     } catch (error) {
-        // Silenciosamente ignorar errores
+        // Ignorar números no válidos
     }
-    
+
+    return null
+}
+
+// Obtener el número telefónico real disponible del participante
+function getParticipantPhone(participant) {
+    if (!participant) return null
+
+    if (participant.phoneNumber) {
+        return participant.phoneNumber
+    }
+
+    if (participant.id && participant.id.endsWith('@s.whatsapp.net')) {
+        return participant.id.split('@')[0]
+    }
+
+    if (participant.id && /^\d+$/.test(participant.id.split('@')[0])) {
+        return participant.id.split('@')[0]
+    }
+
     return null
 }
 
@@ -82,19 +93,37 @@ async function tagAllCommand(sock, chatId, senderId, message) {
         const mentions = participantes.map(p => p.id)
 
         // 📝 Extrae el mensaje personalizado
-        const fullText = message.message?.conversation || message.message?.extendedTextMessage?.text || ''
+        const fullText =
+            message.message?.conversation ||
+            message.message?.extendedTextMessage?.text ||
+            ''
+
         const commandParts = fullText.split(' ')
         const messageContent = commandParts.slice(1).join(' ').trim()
         const displayMessage = messageContent || 'Sin Mensaje Predeterminado'
 
         // 📝 Obtén bandera del admin
-        const adminPhone = senderId.split('@')[0]
+        let adminPhone = senderId.split('@')[0]
+
+        if (!/^\d+$/.test(adminPhone)) {
+            const adminParticipant = participantes.find(p => p.id === senderId)
+
+            if (adminParticipant) {
+                const realAdminPhone = getParticipantPhone(adminParticipant)
+
+                if (realAdminPhone) {
+                    adminPhone = String(realAdminPhone)
+                        .replace(/\D/g, '')
+                }
+            }
+        }
+
         const adminCountryCode = extractCountryCode(adminPhone)
         const adminFlag = getCountryFlag(adminCountryCode)
 
         // 📝 TEXTO PREMIUM
         const texto = `
-╭─❀「 𝙈𝙀𝙉𝙘𝙄𝙊𝙉 𝙂𝙀𝙉𝙀𝙍𝘼𝙇 」❀
+╭─❀「 𝙈𝙀𝙉𝘾𝙄𝙊𝙉 𝙂𝙀𝙉𝙀𝙍𝘼𝙇 」❀
 
  ✦ Admin:
 > ${adminFlag} @${adminPhone}
@@ -108,10 +137,20 @@ async function tagAllCommand(sock, chatId, senderId, message) {
 ────୨ৎ────
 
 ${participantes.map(p => {
-    const phoneNumber = p.id.split('@')[0]
-    const countryCode = extractCountryCode(phoneNumber)
+
+    const realPhone = getParticipantPhone(p)
+
+    if (!realPhone) {
+        const jidValue = p.id?.split('@')[0] || 'usuario'
+        return ` 🌍 @${jidValue}`
+    }
+
+    const phoneNumber = String(realPhone).replace(/\D/g, '')
+    const countryCode = extractCountryCode(realPhone)
     const flag = getCountryFlag(countryCode)
+
     return ` ${flag} @${phoneNumber}`
+
 }).join('\n')}
 
 ╰─❀
