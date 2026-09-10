@@ -1021,7 +1021,7 @@ break
         message
     )
     break;
-            case userMessage === '.todos':
+            case userMessage.startsWith('.todos'):
                 await tagAllCommand(sock, chatId, senderId, message);
                 break;
             case userMessage === '.tagnotadmin':
