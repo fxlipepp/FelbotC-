@@ -157,7 +157,7 @@ function getCountryFlag(countryCode) {
 
 // Función para extraer el código de país del número
 function extractCountryCode(phoneNumber) {
-    if (!phoneNumber) return '1'
+    if (!phoneNumber) return 'US'
     
     try {
         // Intenta parsear con +
@@ -172,7 +172,175 @@ function extractCountryCode(phoneNumber) {
             return parsed.country
         }
     } catch (error) {
-        // Fallback silencioso
+        // Fallback a mapeo manual
+    }
+    
+    // Fallback: mapeo manual de códigos de país por dígitos
+    const digits = phoneNumber.replace(/\D/g, '')
+    const countryCodeMap = {
+        '1': 'US',    // USA, Canadá
+        '7': 'RU',    // Rusia
+        '20': 'EG',   // Egipto
+        '27': 'ZA',   // Sudáfrica
+        '30': 'GR',   // Grecia
+        '31': 'NL',   // Países Bajos
+        '32': 'BE',   // Bélgica
+        '33': 'FR',   // Francia
+        '34': 'ES',   // España
+        '36': 'HU',   // Hungría
+        '39': 'IT',   // Italia
+        '40': 'RO',   // Rumania
+        '41': 'CH',   // Suiza
+        '43': 'AT',   // Austria
+        '44': 'GB',   // Reino Unido
+        '45': 'DK',   // Dinamarca
+        '46': 'SE',   // Suecia
+        '47': 'NO',   // Noruega
+        '48': 'PL',   // Polonia
+        '49': 'DE',   // Alemania
+        '51': 'PE',   // Perú
+        '52': 'MX',   // México
+        '53': 'CU',   // Cuba
+        '54': 'AR',   // Argentina
+        '55': 'BR',   // Brasil
+        '56': 'CL',   // Chile
+        '57': 'CO',   // Colombia
+        '58': 'VE',   // Venezuela
+        '60': 'MY',   // Malasia
+        '61': 'AU',   // Australia
+        '62': 'ID',   // Indonesia
+        '63': 'PH',   // Filipinas
+        '64': 'NZ',   // Nueva Zelanda
+        '65': 'SG',   // Singapur
+        '66': 'TH',   // Tailandia
+        '81': 'JP',   // Japón
+        '82': 'KR',   // Corea del Sur
+        '84': 'VN',   // Vietnam
+        '86': 'CN',   // China
+        '90': 'TR',   // Turquía
+        '91': 'IN',   // India
+        '92': 'PK',   // Pakistán
+        '93': 'AF',   // Afganistán
+        '94': 'LK',   // Sri Lanka
+        '95': 'MM',   // Myanmar
+        '98': 'IR',   // Irán
+        '212': 'MA',  // Marruecos
+        '213': 'DZ',  // Argelia
+        '216': 'TN',  // Túnez
+        '234': 'NG',  // Nigeria
+        '254': 'KE',  // Kenia
+        '256': 'UG',  // Uganda
+        '358': 'FI',  // Finlandia
+        '359': 'BG',  // Bulgaria
+        '370': 'LT',  // Lituania
+        '371': 'LV',  // Letonia
+        '372': 'EE',  // Estonia
+        '373': 'MD',  // Moldavia
+        '374': 'AM',  // Armenia
+        '375': 'BY',  // Bielorrusia
+        '376': 'AD',  // Andorra
+        '377': 'MC',  // Mónaco
+        '378': 'SM',  // San Marino
+        '380': 'UA',  // Ucrania
+        '381': 'RS',  // Serbia
+        '382': 'ME',  // Montenegro
+        '383': 'XK',  // Kosovo
+        '385': 'HR',  // Croacia
+        '386': 'SI',  // Eslovenia
+        '387': 'BA',  // Bosnia
+        '389': 'MK',  // Macedonia
+        '420': 'CZ',  // República Checa
+        '421': 'SK',  // Eslovaquia
+        '423': 'LI',  // Liechtenstein
+        '500': 'FK',  // Islas Malvinas
+        '501': 'BZ',  // Belice
+        '502': 'GT',  // Guatemala
+        '503': 'SV',  // El Salvador
+        '504': 'HN',  // Honduras
+        '505': 'NI',  // Nicaragua
+        '506': 'CR',  // Costa Rica
+        '507': 'PA',  // Panamá
+        '508': 'PM',  // San Pedro y Miquetón
+        '509': 'HT',  // Haití
+        '590': 'GP',  // Guadalupe
+        '591': 'BO',  // Bolivia
+        '592': 'GY',  // Guyana
+        '593': 'EC',  // Ecuador
+        '594': 'GF',  // Guayana Francesa
+        '595': 'PY',  // Paraguay
+        '596': 'MQ',  // Martinica
+        '597': 'SR',  // Surinam
+        '598': 'UY',  // Uruguay
+        '599': 'BQ',  // Antillas Holandesas
+        '670': 'TL',  // Timor Oriental
+        '672': 'NU',  // Niue
+        '673': 'BN',  // Brunei
+        '674': 'NR',  // Nauru
+        '675': 'PG',  // Papúa Nueva Guinea
+        '676': 'TO',  // Tonga
+        '677': 'SB',  // Islas Salomón
+        '678': 'VU',  // Vanuatu
+        '679': 'FJ',  // Fiji
+        '680': 'PW',  // Palaos
+        '681': 'WF',  // Wallis y Futuna
+        '682': 'CK',  // Islas Cook
+        '684': 'AS',  // Samoa Americana
+        '685': 'WS',  // Samoa
+        '686': 'KI',  // Kiribati
+        '687': 'NC',  // Nueva Caledonia
+        '688': 'TV',  // Tuvalu
+        '689': 'PF',  // Polinesia Francesa
+        '690': 'TK',  // Tokelau
+        '691': 'FM',  // Micronesia
+        '692': 'MH',  // Islas Marshall
+        '850': 'KP',  // Corea del Norte
+        '852': 'HK',  // Hong Kong
+        '853': 'MO',  // Macao
+        '855': 'KH',  // Camboya
+        '856': 'LA',  // Laos
+        '880': 'BD',  // Bangladesh
+        '886': 'TW',  // Taiwán
+        '960': 'MV',  // Maldivas
+        '961': 'LB',  // Líbano
+        '962': 'JO',  // Jordania
+        '963': 'SY',  // Siria
+        '964': 'IQ',  // Irak
+        '965': 'KW',  // Kuwait
+        '966': 'SA',  // Arabia Saudita
+        '967': 'YE',  // Yemen
+        '968': 'OM',  // Omán
+        '970': 'PS',  // Palestina
+        '971': 'AE',  // Emiratos Árabes Unidos
+        '972': 'IL',  // Israel
+        '973': 'BH',  // Bahrein
+        '974': 'QA',  // Qatar
+        '975': 'BT',  // Bután
+        '976': 'MN',  // Mongolia
+        '977': 'NP',  // Nepal
+        '992': 'TJ',  // Tayikistán
+        '993': 'TM',  // Turkmenistán
+        '994': 'AZ',  // Azerbaiyán
+        '995': 'GE',  // Georgia
+        '996': 'KG',  // Kirguistán
+        '998': 'UZ',  // Uzbekistán
+    }
+    
+    // Intenta de 3 dígitos primero
+    if (digits.length >= 3) {
+        const code3 = digits.substring(0, 3)
+        if (countryCodeMap[code3]) return countryCodeMap[code3]
+    }
+    
+    // Intenta de 2 dígitos
+    if (digits.length >= 2) {
+        const code2 = digits.substring(0, 2)
+        if (countryCodeMap[code2]) return countryCodeMap[code2]
+    }
+    
+    // Intenta de 1 dígito
+    if (digits.length >= 1) {
+        const code1 = digits.substring(0, 1)
+        if (countryCodeMap[code1]) return countryCodeMap[code1]
     }
     
     return 'US'
