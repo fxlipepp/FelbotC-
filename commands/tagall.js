@@ -159,24 +159,9 @@ function getCountryFlag(countryCode) {
 function extractCountryCode(phoneNumber) {
     if (!phoneNumber) return 'US'
     
-    try {
-        // Intenta parsear con +
-        let parsed = parsePhoneNumber('+' + phoneNumber.replace(/\D/g, ''))
-        
-        if (!parsed || !parsed.country) {
-            // Intenta sin +
-            parsed = parsePhoneNumber(phoneNumber)
-        }
-        
-        if (parsed && parsed.country) {
-            return parsed.country
-        }
-    } catch (error) {
-        // Fallback a mapeo manual
-    }
-    
-    // Fallback: mapeo manual de códigos de país por dígitos
     const digits = phoneNumber.replace(/\D/g, '')
+    
+    // Mapeo de códigos de país por prefijo (dígitos iniciales)
     const countryCodeMap = {
         '1': 'US',    // USA, Canadá
         '7': 'RU',    // Rusia
@@ -325,24 +310,31 @@ function extractCountryCode(phoneNumber) {
         '998': 'UZ',  // Uzbekistán
     }
     
-    // Intenta de 3 dígitos primero
+    // Intenta de 3 dígitos primero (códigos de país más largos)
     if (digits.length >= 3) {
         const code3 = digits.substring(0, 3)
-        if (countryCodeMap[code3]) return countryCodeMap[code3]
+        if (countryCodeMap[code3]) {
+            return countryCodeMap[code3]
+        }
     }
     
     // Intenta de 2 dígitos
     if (digits.length >= 2) {
         const code2 = digits.substring(0, 2)
-        if (countryCodeMap[code2]) return countryCodeMap[code2]
+        if (countryCodeMap[code2]) {
+            return countryCodeMap[code2]
+        }
     }
     
     // Intenta de 1 dígito
     if (digits.length >= 1) {
         const code1 = digits.substring(0, 1)
-        if (countryCodeMap[code1]) return countryCodeMap[code1]
+        if (countryCodeMap[code1]) {
+            return countryCodeMap[code1]
+        }
     }
     
+    // Fallback
     return 'US'
 }
 
