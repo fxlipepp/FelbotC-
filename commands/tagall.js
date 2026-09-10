@@ -1,154 +1,155 @@
 const isAdmin = require('../lib/isAdmin')
+const { parsePhoneNumber } = require('libphonenumber-js')
 
 // Función para obtener bandera por código de país
 function getCountryFlag(countryCode) {
     const flagMap = {
-        '1': '🇺🇸',     // USA, Canadá
-        '7': '🇷🇺',     // Rusia
-        '20': '🇪🇬',    // Egipto
-        '27': '🇿🇦',    // Sudáfrica
-        '30': '🇬🇷',    // Grecia
-        '31': '🇳🇱',    // Países Bajos
-        '32': '🇧🇪',    // Bélgica
-        '33': '🇫🇷',    // Francia
-        '34': '🇪🇸',    // España
-        '36': '🇭🇺',    // Hungría
-        '39': '🇮🇹',    // Italia
-        '40': '🇷🇴',    // Rumania
-        '41': '🇨🇭',    // Suiza
-        '43': '🇦🇹',    // Austria
-        '44': '🇬🇧',    // Reino Unido
-        '45': '🇩🇰',    // Dinamarca
-        '46': '🇸🇪',    // Suecia
-        '47': '🇳🇴',    // Noruega
-        '48': '🇵🇱',    // Polonia
-        '49': '🇩🇪',    // Alemania
-        '51': '🇵🇪',    // Perú
-        '52': '🇲🇽',    // México
-        '53': '🇨🇺',    // Cuba
-        '54': '🇦🇷',    // Argentina
-        '55': '🇧🇷',    // Brasil
-        '56': '🇨🇱',    // Chile
-        '57': '🇨🇴',    // Colombia
-        '58': '🇻🇪',    // Venezuela
-        '60': '🇲🇾',    // Malasia
-        '61': '🇦🇺',    // Australia
-        '62': '🇮🇩',    // Indonesia
-        '63': '🇵🇭',    // Filipinas
-        '64': '🇳🇿',    // Nueva Zelanda
-        '65': '🇸🇬',    // Singapur
-        '66': '🇹🇭',    // Tailandia
-        '81': '🇯🇵',    // Japón
-        '82': '🇰🇷',    // Corea del Sur
-        '84': '🇻🇳',    // Vietnam
-        '86': '🇨🇳',    // China
-        '90': '🇹🇷',    // Turquía
-        '91': '🇮🇳',    // India
-        '92': '🇵🇰',    // Pakistán
-        '93': '🇦🇫',    // Afganistán
-        '94': '🇱🇰',    // Sri Lanka
-        '95': '🇲🇲',    // Myanmar
-        '98': '🇮🇷',    // Irán
-        '212': '🇲🇦',   // Marruecos
-        '213': '🇩🇿',   // Argelia
-        '216': '🇹🇳',   // Túnez
-        '234': '🇳🇬',   // Nigeria
-        '254': '🇰🇪',   // Kenia
-        '256': '🇺🇬',   // Uganda
-        '358': '🇫🇮',   // Finlandia
-        '359': '🇧🇬',   // Bulgaria
-        '370': '🇱🇹',   // Lituania
-        '371': '🇱🇻',   // Letonia
-        '372': '🇪🇪',   // Estonia
-        '373': '🇲🇩',   // Moldavia
-        '374': '🇦🇲',   // Armenia
-        '375': '🇧🇾',   // Bielorrusia
-        '376': '🇦🇩',   // Andorra
-        '377': '🇲🇨',   // Mónaco
-        '378': '🇸🇲',   // San Marino
-        '380': '🇺🇦',   // Ucrania
-        '381': '🇷🇸',   // Serbia
-        '382': '🇲🇪',   // Montenegro
-        '383': '🇽🇰',   // Kosovo
-        '385': '🇭🇷',   // Croacia
-        '386': '🇸🇮',   // Eslovenia
-        '387': '🇧🇦',   // Bosnia
-        '389': '🇲🇰',   // Macedonia
-        '420': '🇨🇿',   // República Checa
-        '421': '🇸🇰',   // Eslovaquia
-        '423': '🇱🇮',   // Liechtenstein
-        '500': '🇫🇰',   // Islas Malvinas
-        '501': '🇧🇿',   // Belice
-        '502': '🇬🇹',   // Guatemala
-        '503': '🇸🇻',   // El Salvador
-        '504': '🇭🇳',   // Honduras
-        '505': '🇳🇮',   // Nicaragua
-        '506': '🇨🇷',   // Costa Rica
-        '507': '🇵🇦',   // Panamá
-        '508': '🇵🇲',   // San Pedro y Miquetón
-        '509': '🇭🇹',   // Haití
-        '590': '🇬🇵',   // Guadalupe
-        '591': '🇧🇴',   // Bolivia
-        '592': '🇬🇾',   // Guyana
-        '593': '🇪🇨',   // Ecuador
-        '594': '🇬🇫',   // Guayana Francesa
-        '595': '🇵🇾',   // Paraguay
-        '596': '🇲🇶',   // Martinica
-        '597': '🇸🇷',   // Surinam
-        '598': '🇺🇾',   // Uruguay
-        '599': '🇧🇶',   // Antillas Holandesas
-        '670': '🇹🇱',   // Timor Oriental
-        '672': '🇳🇺',   // Niue
-        '673': '🇧🇳',   // Brunei
-        '674': '🇳🇷',   // Nauru
-        '675': '🇵🇬',   // Papúa Nueva Guinea
-        '676': '🇹🇴',   // Tonga
-        '677': '🇸🇧',   // Islas Salomón
-        '678': '🇻🇺',   // Vanuatu
-        '679': '🇫🇯',   // Fiji
-        '680': '🇵🇼',   // Palaos
-        '681': '🇼🇫',   // Wallis y Futuna
-        '682': '🇨🇰',   // Islas Cook
-        '683': '🇳🇺',   // Niue
-        '684': '🇦🇸',   // Samoa Americana
-        '685': '🇼🇸',   // Samoa
-        '686': '🇰🇮',   // Kiribati
-        '687': '🇳🇨',   // Nueva Caledonia
-        '688': '🇹🇻',   // Tuvalu
-        '689': '🇵🇫',   // Polinesia Francesa
-        '690': '🇹🇰',   // Tokelau
-        '691': '🇫🇲',   // Micronesia
-        '692': '🇲🇭',   // Islas Marshall
-        '850': '🇰🇵',   // Corea del Norte
-        '852': '🇭🇰',   // Hong Kong
-        '853': '🇲🇴',   // Macao
-        '855': '🇰🇭',   // Camboya
-        '856': '🇱🇦',   // Laos
-        '880': '🇧🇩',   // Bangladesh
-        '886': '🇹🇼',   // Taiwán
-        '960': '🇲🇻',   // Maldivas
-        '961': '🇱🇧',   // Líbano
-        '962': '🇯🇴',   // Jordania
-        '963': '🇸🇾',   // Siria
-        '964': '🇮🇶',   // Irak
-        '965': '🇰🇼',   // Kuwait
-        '966': '🇸🇦',   // Arabia Saudita
-        '967': '🇾🇪',   // Yemen
-        '968': '🇴🇲',   // Omán
-        '970': '🇵🇸',   // Palestina
-        '971': '🇦🇪',   // Emiratos Árabes Unidos
-        '972': '🇮🇱',   // Israel
-        '973': '🇧🇭',   // Bahrein
-        '974': '🇶🇦',   // Qatar
-        '975': '🇧🇹',   // Bután
-        '976': '🇲🇳',   // Mongolia
-        '977': '🇳🇵',   // Nepal
-        '992': '🇹🇯',   // Tayikistán
-        '993': '🇹🇲',   // Turkmenistán
-        '994': '🇦🇿',   // Azerbaiyán
-        '995': '🇬🇪',   // Georgia
-        '996': '🇰🇬',   // Kirguistán
-        '998': '🇺🇿',   // Uzbekistán
+        'US': '🇺🇸',     // USA
+        'CA': '🇨🇦',     // Canadá
+        'RU': '🇷🇺',     // Rusia
+        'EG': '🇪🇬',     // Egipto
+        'ZA': '🇿🇦',     // Sudáfrica
+        'GR': '🇬🇷',     // Grecia
+        'NL': '🇳🇱',     // Países Bajos
+        'BE': '🇧🇪',     // Bélgica
+        'FR': '🇫🇷',     // Francia
+        'ES': '🇪🇸',     // España
+        'HU': '🇭🇺',     // Hungría
+        'IT': '🇮🇹',     // Italia
+        'RO': '🇷🇴',     // Rumania
+        'CH': '🇨🇭',     // Suiza
+        'AT': '🇦🇹',     // Austria
+        'GB': '🇬🇧',     // Reino Unido
+        'DK': '🇩🇰',     // Dinamarca
+        'SE': '🇸🇪',     // Suecia
+        'NO': '🇳🇴',     // Noruega
+        'PL': '🇵🇱',     // Polonia
+        'DE': '🇩🇪',     // Alemania
+        'PE': '🇵🇪',     // Perú
+        'MX': '🇲🇽',     // México
+        'CU': '🇨🇺',     // Cuba
+        'AR': '🇦🇷',     // Argentina
+        'BR': '🇧🇷',     // Brasil
+        'CL': '🇨🇱',     // Chile
+        'CO': '🇨🇴',     // Colombia
+        'VE': '🇻🇪',     // Venezuela
+        'MY': '🇲🇾',     // Malasia
+        'AU': '🇦🇺',     // Australia
+        'ID': '🇮🇩',     // Indonesia
+        'PH': '🇵🇭',     // Filipinas
+        'NZ': '🇳🇿',     // Nueva Zelanda
+        'SG': '🇸🇬',     // Singapur
+        'TH': '🇹🇭',     // Tailandia
+        'JP': '🇯🇵',     // Japón
+        'KR': '🇰🇷',     // Corea del Sur
+        'VN': '🇻🇳',     // Vietnam
+        'CN': '🇨🇳',     // China
+        'TR': '🇹🇷',     // Turquía
+        'IN': '🇮🇳',     // India
+        'PK': '🇵🇰',     // Pakistán
+        'AF': '🇦🇫',     // Afganistán
+        'LK': '🇱🇰',     // Sri Lanka
+        'MM': '🇲🇲',     // Myanmar
+        'IR': '🇮🇷',     // Irán
+        'MA': '🇲🇦',     // Marruecos
+        'DZ': '🇩🇿',     // Argelia
+        'TN': '🇹🇳',     // Túnez
+        'NG': '🇳🇬',     // Nigeria
+        'KE': '🇰🇪',     // Kenia
+        'UG': '🇺🇬',     // Uganda
+        'FI': '🇫🇮',     // Finlandia
+        'BG': '🇧🇬',     // Bulgaria
+        'LT': '🇱🇹',     // Lituania
+        'LV': '🇱🇻',     // Letonia
+        'EE': '🇪🇪',     // Estonia
+        'MD': '🇲🇩',     // Moldavia
+        'AM': '🇦🇲',     // Armenia
+        'BY': '🇧🇾',     // Bielorrusia
+        'AD': '🇦🇩',     // Andorra
+        'MC': '🇲🇨',     // Mónaco
+        'SM': '🇸🇲',     // San Marino
+        'UA': '🇺🇦',     // Ucrania
+        'RS': '🇷🇸',     // Serbia
+        'ME': '🇲🇪',     // Montenegro
+        'XK': '🇽🇰',     // Kosovo
+        'HR': '🇭🇷',     // Croacia
+        'SI': '🇸🇮',     // Eslovenia
+        'BA': '🇧🇦',     // Bosnia
+        'MK': '🇲🇰',     // Macedonia
+        'CZ': '🇨🇿',     // República Checa
+        'SK': '🇸🇰',     // Eslovaquia
+        'LI': '🇱🇮',     // Liechtenstein
+        'FK': '🇫🇰',     // Islas Malvinas
+        'BZ': '🇧🇿',     // Belice
+        'GT': '🇬🇹',     // Guatemala
+        'SV': '🇸🇻',     // El Salvador
+        'HN': '🇭🇳',     // Honduras
+        'NI': '🇳🇮',     // Nicaragua
+        'CR': '🇨🇷',     // Costa Rica
+        'PA': '🇵🇦',     // Panamá
+        'PM': '🇵🇲',     // San Pedro y Miquetón
+        'HT': '🇭🇹',     // Haití
+        'GP': '🇬🇵',     // Guadalupe
+        'BO': '🇧🇴',     // Bolivia
+        'GY': '🇬🇾',     // Guyana
+        'EC': '🇪🇨',     // Ecuador
+        'GF': '🇬🇫',     // Guayana Francesa
+        'PY': '🇵🇾',     // Paraguay
+        'MQ': '🇲🇶',     // Martinica
+        'SR': '🇸🇷',     // Surinam
+        'UY': '🇺🇾',     // Uruguay
+        'BQ': '🇧🇶',     // Antillas Holandesas
+        'TL': '🇹🇱',     // Timor Oriental
+        'NU': '🇳🇺',     // Niue
+        'BN': '🇧🇳',     // Brunei
+        'NR': '🇳🇷',     // Nauru
+        'PG': '🇵🇬',     // Papúa Nueva Guinea
+        'TO': '🇹🇴',     // Tonga
+        'SB': '🇸🇧',     // Islas Salomón
+        'VU': '🇻🇺',     // Vanuatu
+        'FJ': '🇫🇯',     // Fiji
+        'PW': '🇵🇼',     // Palaos
+        'WF': '🇼🇫',     // Wallis y Futuna
+        'CK': '🇨🇰',     // Islas Cook
+        'AS': '🇦🇸',     // Samoa Americana
+        'WS': '🇼🇸',     // Samoa
+        'KI': '🇰🇮',     // Kiribati
+        'NC': '🇳🇨',     // Nueva Caledonia
+        'TV': '🇹🇻',     // Tuvalu
+        'PF': '🇵🇫',     // Polinesia Francesa
+        'TK': '🇹🇰',     // Tokelau
+        'FM': '🇫🇲',     // Micronesia
+        'MH': '🇲🇭',     // Islas Marshall
+        'KP': '🇰🇵',     // Corea del Norte
+        'HK': '🇭🇰',     // Hong Kong
+        'MO': '🇲🇴',     // Macao
+        'KH': '🇰🇭',     // Camboya
+        'LA': '🇱🇦',     // Laos
+        'BD': '🇧🇩',     // Bangladesh
+        'TW': '🇹🇼',     // Taiwán
+        'MV': '🇲🇻',     // Maldivas
+        'LB': '🇱🇧',     // Líbano
+        'JO': '🇯🇴',     // Jordania
+        'SY': '🇸🇾',     // Siria
+        'IQ': '🇮🇶',     // Irak
+        'KW': '🇰🇼',     // Kuwait
+        'SA': '🇸🇦',     // Arabia Saudita
+        'YE': '🇾🇪',     // Yemen
+        'OM': '🇴🇲',     // Omán
+        'PS': '🇵🇸',     // Palestina
+        'AE': '🇦🇪',     // Emiratos Árabes Unidos
+        'IL': '🇮🇱',     // Israel
+        'BH': '🇧🇭',     // Bahrein
+        'QA': '🇶🇦',     // Qatar
+        'BT': '🇧🇹',     // Bután
+        'MN': '🇲🇳',     // Mongolia
+        'NP': '🇳🇵',     // Nepal
+        'TJ': '🇹🇯',     // Tayikistán
+        'TM': '🇹🇲',     // Turkmenistán
+        'AZ': '🇦🇿',     // Azerbaiyán
+        'GE': '🇬🇪',     // Georgia
+        'KG': '🇰🇬',     // Kirguistán
+        'UZ': '🇺🇿',     // Uzbekistán
     }
     
     return flagMap[countryCode] || '🌍'
@@ -158,25 +159,23 @@ function getCountryFlag(countryCode) {
 function extractCountryCode(phoneNumber) {
     if (!phoneNumber) return '1'
     
-    // Extrae solo los dígitos iniciales hasta encontrar un patrón válido
-    const digits = phoneNumber.replace(/\D/g, '')
-    
-    // Intenta códigos de 3 dígitos primero, luego 2, luego 1
-    if (digits.length >= 3) {
-        const code3 = digits.substring(0, 3)
-        if (['212', '213', '216', '234', '254', '256', '358', '359', '370', '371', '372', '373', '374', '375', '376', '377', '378', '380', '381', '382', '383', '385', '386', '387', '389', '420', '421', '423', '500', '501', '502', '503', '504', '505', '506', '507', '508', '509', '590', '591', '592', '593', '594', '595', '596', '597', '598', '599', '670', '672', '673', '674', '675', '676', '677', '678', '679', '680', '681', '682', '683', '684', '685', '686', '687', '688', '689', '690', '691', '692', '850', '852', '853', '855', '856', '880', '886', '960', '961', '962', '963', '964', '965', '966', '967', '968', '970', '971', '972', '973', '974', '975', '976', '977', '992', '993', '994', '995', '996', '998'].includes(code3)) {
-            return code3
+    try {
+        // Intenta parsear con +
+        let parsed = parsePhoneNumber('+' + phoneNumber.replace(/\D/g, ''))
+        
+        if (!parsed || !parsed.country) {
+            // Intenta sin +
+            parsed = parsePhoneNumber(phoneNumber)
         }
+        
+        if (parsed && parsed.country) {
+            return parsed.country
+        }
+    } catch (error) {
+        // Fallback silencioso
     }
     
-    if (digits.length >= 2) {
-        const code2 = digits.substring(0, 2)
-        if (['20', '27', '30', '31', '32', '33', '34', '36', '39', '40', '41', '43', '44', '45', '46', '47', '48', '49', '51', '52', '53', '54', '55', '56', '57', '58', '60', '61', '62', '63', '64', '65', '66', '81', '82', '84', '86', '90', '91', '92', '93', '94', '95', '98'].includes(code2)) {
-            return code2
-        }
-    }
-    
-    return digits.substring(0, 1) || '1'
+    return 'US'
 }
 
 async function tagAllCommand(sock, chatId, senderId, message) {
