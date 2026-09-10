@@ -2,12 +2,18 @@ const fs = require('fs')
 const path = require('path')
 const Group = require('../models/Group')
 const settings = require('../settings')
+const { downloadContentFromMessage } = require('@whiskeysockets/baileys')
 
 const welcomePath = path.join(__dirname, '../data/welcome.json')
+const CUSTOM_AUDIO_DIR = path.join(__dirname, '../data/customAudio/welcome')
 const PROFILE_PICTURE_TIMEOUT_MS = 1500
 
 if (!fs.existsSync(welcomePath)) {
     fs.writeFileSync(welcomePath, JSON.stringify({}, null, 2))
+}
+
+if (!fs.existsSync(CUSTOM_AUDIO_DIR)) {
+    fs.mkdirSync(CUSTOM_AUDIO_DIR, { recursive: true })
 }
 
 function loadWelcome() {
@@ -33,6 +39,15 @@ function getWelcomeAudioPath() {
     }
 
     return String(settings.welcomeAudioPath || process.env.WELCOME_AUDIO_PATH || '').trim() || null
+}
+
+function getCustomWelcomeAudioPath(groupId) {
+    if (!groupId) return null
+    const groupAudioPath = path.join(CUSTOM_AUDIO_DIR, `${groupId}.mp3`)
+    if (fs.existsSync(groupAudioPath)) {
+        return groupAudioPath
+    }
+    return null
 }
 
 function withTimeout(promise, ms, label) {
@@ -127,9 +142,93 @@ async function welcomeCommand(sock, chatId, message) {
             text: '✅ Mensaje de bienvenida guardado.'
         }, { quoted: message })
     }
+
+    if (action === 'setwelcome') {
+        if (!chatId.endsWith('@g.us')) {
+            return await sock.sendMessage(chatId, {
+                text: '❌ Este comando solo funciona en grupos.'
+            }, { quoted: message })
+        }
+
+        const quoted = message.message?.extendedTextMessage?.contextInfo?.quotedMessage
+        if (!quoted?.audioMessage) {
+            return await sock.sendMessage(chatId, {
+                text: '⚠️ Debes responder a un audio con `.setwelcome`'
+            }, { quoted: message })
+        }
+
+        try {
+            const stream = await downloadContentFromMessage(quoted.audioMessage, 'audio')
+            const chunks = []
+            for await (const chunk of stream) chunks.push(chunk)
+            const audioBuffer = Buffer.concat(chunks)
+
+            const audioPath = path.join(CUSTOM_AUDIO_DIR, `${chatId}.mp3`)
+            fs.writeFileSync(audioPath, audioBuffer)
+
+            groupData.welcome.customAudioPath = audioPath
+            await groupData.save()
+
+            return await sock.sendMessage(chatId, {
+                text: '✅ Audio de bienvenida personalizado configurado.'
+            }, { quoted: message })
+        } catch (error) {
+            console.error('Error setting welcome audio:', error)
+            return await sock.sendMessage(chatId, {
+                text: `❌ Error al guardar el audio: ${error.message}`
+            }, { quoted: message })
+        }
+    }
+
+    if (action === 'resetwelcome') {
+        if (!chatId.endsWith('@g.us')) {
+            return await sock.sendMessage(chatId, {
+                text: '❌ Este comando solo funciona en grupos.'
+            }, { quoted: message })
+        }
+
+        try {
+            const audioPath = path.join(CUSTOM_AUDIO_DIR, `${chatId}.mp3`)
+            if (fs.existsSync(audioPath)) {
+                fs.unlinkSync(audioPath)
+            }
+
+            groupData.welcome.customAudioPath = null
+            await groupData.save()
+
+            return await sock.sendMessage(chatId, {
+                text: '✅ Audio de bienvenida restablecido al predeterminado.'
+            }, { quoted: message })
+        } catch (error) {
+            console.error('Error resetting welcome audio:', error)
+            return await sock.sendMessage(chatId, {
+                text: `❌ Error al restablecer el audio: ${error.message}`
+            }, { quoted: message })
+        }
+    }
 }
 
-async function sendWelcomeAudio(sock, groupId) {
+async function sendWelcomeAudio(sock, groupId, groupData = null) {
+    // Intentar usar audio personalizado primero
+    if (groupData?.welcome?.customAudioPath && fs.existsSync(groupData.welcome.customAudioPath)) {
+        try {
+            const audioBuffer = fs.readFileSync(groupData.welcome.customAudioPath)
+            console.log(`[${new Date().toLocaleTimeString()}] 📤 Iniciando envío de audio personalizado de bienvenida a ${groupId}`)
+
+            await sock.sendMessage(groupId, {
+                audio: audioBuffer,
+                mimetype: 'audio/mpeg',
+                ptt: false
+            })
+
+            console.log(`[${new Date().toLocaleTimeString()}] 🔊 Audio personalizado de bienvenida enviado al grupo ${groupId}`)
+            return
+        } catch (error) {
+            console.log(`[${new Date().toLocaleTimeString()}] ❌ Error con audio personalizado:`, error)
+        }
+    }
+
+    // Fallback a audio predeterminado
     const audioPath = getWelcomeAudioPath();
     if (!audioPath || !fs.existsSync(audioPath)) {
         console.log(`[${new Date().toLocaleTimeString()}] ⚠️ No hay audio de bienvenida disponible para ${groupId}`)
@@ -280,7 +379,7 @@ async function handleJoinEvent(sock, id, participants, author) {
             console.log(`[${new Date().toLocaleTimeString()}] ✅ Bienvenida enviada para ${participantId} en ${groupName}`)
 
             // Se envía en segundo plano para no bloquear la bienvenida principal.
-            sendWelcomeAudio(sock, id).catch((error) => {
+            sendWelcomeAudio(sock, id, groupData).catch((error) => {
                 console.log(`[${new Date().toLocaleTimeString()}] ❌ Welcome audio error:`, error)
             })
 

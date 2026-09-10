@@ -36,6 +36,10 @@ const groupSchema = new mongoose.Schema({
       message: {
          type: String,
          default: null
+      },
+      customAudioPath: {
+         type: String,
+         default: null
       }
    },
 
@@ -49,6 +53,10 @@ const groupSchema = new mongoose.Schema({
          default: 'Una mierda menos, no te extrañaremos.'
       },
       imagePath: {
+         type: String,
+         default: null
+      },
+      customAudioPath: {
          type: String,
          default: null
       },
