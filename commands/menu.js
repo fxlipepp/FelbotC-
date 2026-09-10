@@ -123,6 +123,18 @@ function buildMenuText(uptimeSeconds, version = '2.0.0') {
 ❀ \`.welcome\` on/off
 > Activar o desactivar bienvenidas.
 
+❀ \`.setwelcome\`
+>  audio personalizado de bienvenida.
+
+❀ \`.resetwelcome\`
+> Eliminar audio de bienvenida.
+
+❀ \`.setbye\`
+> audio personalizado de despedida.
+
+❀ \`.resetbye\`
+> Eliminar audio de despedida.
+
 ❀ \`.n\` + <texto>
 > Mencionar a todos los miembros.
 
