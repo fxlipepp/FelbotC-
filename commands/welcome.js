@@ -66,8 +66,15 @@ async function welcomeCommand(sock, chatId, message) {
         message.message?.extendedTextMessage?.text ||
         ''
 
-    const args = text.split(' ').slice(1)
-    const action = args[0]?.toLowerCase()
+    const parts = text.split(' ')
+    const baseCommand = parts[0].toLowerCase().substring(1) // Extrae 'welcome', 'setwelcome', etc.
+    const args = parts.slice(1)
+    
+    // Detecta si el comando es welcome, setwelcome, resetwelcome, etc.
+    let action
+    if (baseCommand === 'welcome' || baseCommand === 'setwelcome' || baseCommand === 'resetwelcome') {
+        action = baseCommand === 'welcome' ? args[0]?.toLowerCase() : baseCommand
+    }
 
     let groupData = await Group.findOne({
         groupId: chatId

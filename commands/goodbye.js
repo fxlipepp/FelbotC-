@@ -39,8 +39,17 @@ async function goodbyeCommand(sock, chatId, message) {
     }
 
     const text = message.message?.conversation || message.message?.extendedTextMessage?.text || '';
-    const args = text.split(' ').slice(1);
-    const action = args[0]?.toLowerCase();
+    const parts = text.split(' ')
+    const baseCommand = parts[0].toLowerCase().substring(1) // Extrae 'goodbye', 'despedida', 'setbye', etc.
+    const args = parts.slice(1)
+    
+    // Detecta si el comando es goodbye, despedida, setbye, resetbye, etc.
+    let action
+    if (baseCommand === 'goodbye' || baseCommand === 'despedida') {
+        action = args[0]?.toLowerCase()
+    } else if (baseCommand === 'setbye' || baseCommand === 'resetbye') {
+        action = baseCommand
+    }
 
     let groupData = await Group.findOne({ groupId: chatId });
     if (!groupData) {
