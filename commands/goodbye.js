@@ -2,13 +2,28 @@ const fs = require('fs');
 const path = require('path');
 const Group = require('../models/Group');
 const settings = require('../settings');
+const { downloadContentFromMessage } = require('@whiskeysockets/baileys');
 
 const DEFAULT_GOODBYE_MESSAGE = 'Una mierda menos, no te extrañaremos.';
+const CUSTOM_AUDIO_DIR = path.join(__dirname, '../data/customAudio/goodbye')
+
+if (!fs.existsSync(CUSTOM_AUDIO_DIR)) {
+    fs.mkdirSync(CUSTOM_AUDIO_DIR, { recursive: true })
+}
 
 function getGoodbyeAudioPath(groupData = {}) {
     const configured = groupData?.goodbye?.audioPath || settings.goodbyeAudioPath || process.env.GOODBYE_AUDIO_PATH;
     if (!configured) return null;
     return fs.existsSync(configured) ? configured : null;
+}
+
+function getCustomGoodbyeAudioPath(groupId) {
+    if (!groupId) return null
+    const groupAudioPath = path.join(CUSTOM_AUDIO_DIR, `${groupId}.mp3`)
+    if (fs.existsSync(groupAudioPath)) {
+        return groupAudioPath
+    }
+    return null
 }
 
 function getGoodbyeImagePath(groupData = {}) {
@@ -119,6 +134,70 @@ async function goodbyeCommand(sock, chatId, message) {
         return;
     }
 
+    if (action === 'setbye') {
+        if (!chatId.endsWith('@g.us')) {
+            return await sock.sendMessage(chatId, {
+                text: '❌ Este comando solo funciona en grupos.'
+            }, { quoted: message })
+        }
+
+        const quoted = message.message?.extendedTextMessage?.contextInfo?.quotedMessage
+        if (!quoted?.audioMessage) {
+            return await sock.sendMessage(chatId, {
+                text: '⚠️ Debes responder a un audio con `.setbye`'
+            }, { quoted: message })
+        }
+
+        try {
+            const stream = await downloadContentFromMessage(quoted.audioMessage, 'audio')
+            const chunks = []
+            for await (const chunk of stream) chunks.push(chunk)
+            const audioBuffer = Buffer.concat(chunks)
+
+            const audioPath = path.join(CUSTOM_AUDIO_DIR, `${chatId}.mp3`)
+            fs.writeFileSync(audioPath, audioBuffer)
+
+            groupData.goodbye.customAudioPath = audioPath
+            await groupData.save()
+
+            return await sock.sendMessage(chatId, {
+                text: '✅ Audio de despedida personalizado configurado.'
+            }, { quoted: message })
+        } catch (error) {
+            console.error('Error setting goodbye audio:', error)
+            return await sock.sendMessage(chatId, {
+                text: `❌ Error al guardar el audio: ${error.message}`
+            }, { quoted: message })
+        }
+    }
+
+    if (action === 'resetbye') {
+        if (!chatId.endsWith('@g.us')) {
+            return await sock.sendMessage(chatId, {
+                text: '❌ Este comando solo funciona en grupos.'
+            }, { quoted: message })
+        }
+
+        try {
+            const audioPath = path.join(CUSTOM_AUDIO_DIR, `${chatId}.mp3`)
+            if (fs.existsSync(audioPath)) {
+                fs.unlinkSync(audioPath)
+            }
+
+            groupData.goodbye.customAudioPath = null
+            await groupData.save()
+
+            return await sock.sendMessage(chatId, {
+                text: '✅ Audio de despedida restablecido al predeterminado.'
+            }, { quoted: message })
+        } catch (error) {
+            console.error('Error resetting goodbye audio:', error)
+            return await sock.sendMessage(chatId, {
+                text: `❌ Error al restablecer el audio: ${error.message}`
+            }, { quoted: message })
+        }
+    }
+
     await sock.sendMessage(chatId, { text: '⚠️ Usa: .despedida on / off / set texto / image ruta / audio ruta' }, { quoted: message });
 }
 
@@ -180,10 +259,15 @@ async function handleLeaveEvent(sock, id, participants) {
             }
 
             const goodbyeAudioPath = getGoodbyeAudioPath(groupData);
-            if (goodbyeAudioPath) {
+            
+            // Priorizar audio personalizado si existe
+            const customAudioPath = getCustomGoodbyeAudioPath(id)
+            const audioPathToUse = customAudioPath || goodbyeAudioPath
+            
+            if (audioPathToUse) {
                 try {
                     await sock.sendMessage(id, {
-                        audio: fs.readFileSync(goodbyeAudioPath),
+                        audio: fs.readFileSync(audioPathToUse),
                         mimetype: 'audio/mpeg',
                         ptt: false
                     });
