@@ -1,3 +1,4 @@
+
 const isAdmin = require('../lib/isAdmin')
 const { parsePhoneNumberFromString } = require('libphonenumber-js')
 
@@ -90,6 +91,7 @@ async function tagAllCommand(sock, chatId, senderId, message) {
             }, { quoted: message })
         }
 
+        // Mantener los IDs originales para que las menciones funcionen
         const mentions = participantes.map(p => p.id)
 
         // 📝 Extrae el mensaje personalizado
@@ -113,9 +115,14 @@ async function tagAllCommand(sock, chatId, senderId, message) {
 
                 if (realAdminPhone) {
                     adminPhone = String(realAdminPhone)
-                        .replace(/\D/g, '')
+                        .replace(/[^\d+]/g, '')
                 }
             }
+        }
+
+        // Asegurar que el número del admin tenga +
+        if (adminPhone && !adminPhone.startsWith('+')) {
+            adminPhone = `+${adminPhone}`
         }
 
         const adminCountryCode = extractCountryCode(adminPhone)
@@ -126,7 +133,7 @@ async function tagAllCommand(sock, chatId, senderId, message) {
 ╭─❀「 𝙈𝙀𝙉𝘾𝙄𝙊𝙉 𝙂𝙀𝙉𝙀𝙍𝘼𝙇 」❀
 
  ✦ Admin:
-> ${adminFlag} @${adminPhone}
+> ${adminFlag} @${adminPhone.replace('+', '')}
 
  ✦ >>>Mensaje:
 > ${displayMessage}
@@ -145,11 +152,21 @@ ${participantes.map(p => {
         return ` 🌍 @${jidValue}`
     }
 
-    const phoneNumber = String(realPhone).replace(/\D/g, '')
-    const countryCode = extractCountryCode(realPhone)
+    // Conservar el + para trabajar con el número internacional
+    let phoneNumber = String(realPhone)
+        .trim()
+        .replace(/[^\d+]/g, '')
+
+    if (!phoneNumber.startsWith('+')) {
+        phoneNumber = `+${phoneNumber}`
+    }
+
+    const countryCode = extractCountryCode(phoneNumber)
     const flag = getCountryFlag(countryCode)
 
-    return ` ${flag} @${phoneNumber}`
+    // El + no se coloca después de @ porque WhatsApp
+    // reconoce la mención mediante el JID original.
+    return ` ${flag} @${phoneNumber.replace('+', '')}`
 
 }).join('\n')}
 
@@ -184,3 +201,4 @@ ${participantes.map(p => {
 }
 
 module.exports = tagAllCommand
+
