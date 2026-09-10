@@ -1193,7 +1193,7 @@ break
                 await blurCommand(sock, chatId, message, quotedMessage);
                 break;
 
-         case userMessage.startsWith('.welcome'):
+         case userMessage.startsWith('.welcome') || userMessage.startsWith('.setwelcome') || userMessage.startsWith('.resetwelcome'):
 
     if (!isGroup) {
 
@@ -1220,7 +1220,7 @@ break
 
     break
            
-            case userMessage.startsWith('.goodbye') || userMessage.startsWith('.despedida'):
+            case userMessage.startsWith('.goodbye') || userMessage.startsWith('.despedida') || userMessage.startsWith('.setbye') || userMessage.startsWith('.resetbye'):
                 if (isGroup) {
                     if (!isSenderAdmin) {
                         const adminStatus = await isAdmin(sock, chatId, senderId);
