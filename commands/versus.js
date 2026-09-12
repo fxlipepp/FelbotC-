@@ -47,7 +47,7 @@ function getMatchInfo(type) {
     const size = parseInt(type.replace('int', ''), 10)
 
     return {
-        title: `${size} VS ${size} CLK`,
+        title: type === '6vs6' ? '6 VS 6 BY' : `${size} VS ${size} CLK`,
         size,
         maxTitular: size,
         maxSuplentes: Math.max(1, Math.floor(size / 2))
