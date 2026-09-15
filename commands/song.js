@@ -1,4 +1,3 @@
-const yts = require('yt-search')
 const { execFile } = require('child_process')
 const fs = require('fs')
 const path = require('path')
@@ -49,44 +48,174 @@ function createBar(percent) {
    const total = 10
    const filled = Math.round(percent / 10)
 
-   return '▰'.repeat(filled) + '▱'.repeat(total - filled)
+   return '▰'.repeat(filled) +
+      '▱'.repeat(total - filled)
 }
 
 // ===============================
-// YT-DLP DOWNLOAD
+// BUSCAR CON YT-DLP
+// ===============================
+
+async function searchYouTube(query) {
+
+   console.log(`
+╭──────────────────────⬣
+│ 🔎 BUSCANDO CON YT-DLP
+├──────────────────────⬣
+│ 🎵 ${query}
+╰──────────────────────⬣
+`)
+
+   const { stdout } = await execFileAsync(
+      'yt-dlp',
+      [
+         `ytsearch10:${query}`,
+
+         '--flat-playlist',
+
+         '--dump-single-json',
+
+         '--skip-download',
+
+         '--no-warnings',
+
+         '--quiet'
+      ],
+      {
+         timeout: 60000,
+         maxBuffer: 20 * 1024 * 1024
+      }
+   )
+
+   const data = JSON.parse(stdout)
+
+   if (
+      !data ||
+      !data.entries ||
+      !data.entries.length
+   ) {
+      throw new Error(
+         'No se encontraron resultados'
+      )
+   }
+
+   // Buscar una canción adecuada
+   const result =
+      data.entries.find(v =>
+         v.title &&
+         !v.title
+            .toLowerCase()
+            .includes('playlist')
+      ) ||
+      data.entries[0]
+
+   if (!result?.url && !result?.id) {
+      throw new Error(
+         'Resultado de YouTube inválido'
+      )
+   }
+
+   const videoUrl =
+      result.webpage_url ||
+      result.url ||
+      `https://www.youtube.com/watch?v=${result.id}`
+
+   // Obtener información completa del video
+   const { stdout: infoOutput } =
+      await execFileAsync(
+         'yt-dlp',
+         [
+            videoUrl,
+
+            '--dump-single-json',
+
+            '--skip-download',
+
+            '--no-warnings',
+
+            '--quiet'
+         ],
+         {
+            timeout: 60000,
+            maxBuffer: 20 * 1024 * 1024
+         }
+      )
+
+   const info =
+      JSON.parse(infoOutput)
+
+   return {
+      url: videoUrl,
+      title:
+         info.title ||
+         result.title ||
+         'YouTube Audio',
+
+      thumbnail:
+         info.thumbnail ||
+         result.thumbnail ||
+         'https://i.imgur.com/AfFp7pu.png',
+
+      timestamp:
+         info.duration_string ||
+         'Unknown',
+
+      author: {
+         name:
+            info.uploader ||
+            info.channel ||
+            'Unknown'
+      },
+
+      views:
+         info.view_count || 0,
+
+      ago:
+         'Unknown'
+   }
+}
+
+// ===============================
+// DESCARGAR AUDIO
 // ===============================
 
 async function downloadAudio(url) {
 
-   const tempDir = path.join(
-      os.tmpdir(),
-      'felbot-play'
-   )
+   const tempDir =
+      path.join(
+         os.tmpdir(),
+         'felbot-play'
+      )
 
    if (!fs.existsSync(tempDir)) {
-      fs.mkdirSync(tempDir, {
-         recursive: true
-      })
+      fs.mkdirSync(
+         tempDir,
+         { recursive: true }
+      )
    }
 
    const fileId =
       `${Date.now()}-` +
-      `${Math.random().toString(36).slice(2)}`
+      `${Math.random()
+         .toString(36)
+         .slice(2)}`
 
-   const outputFile = path.join(
-      tempDir,
-      `${fileId}.mp3`
-   )
+   const outputFile =
+      path.join(
+         tempDir,
+         `${fileId}.mp3`
+      )
 
    console.log(`
 ╭──────────────────────⬣
-│ 🚀 USANDO YT-DLP
+│ 🚀 DESCARGANDO AUDIO
 ├──────────────────────⬣
-│ 🎵 Descargando audio...
+│ 🎵 YT-DLP + FFMPEG
 ╰──────────────────────⬣
 `)
 
-   const start = Date.now()
+   const start =
+      Date.now()
 
    try {
 
@@ -96,8 +225,10 @@ async function downloadAudio(url) {
             '--no-playlist',
 
             '--extract-audio',
+
             '--audio-format',
             'mp3',
+
             '--audio-quality',
             '128K',
 
@@ -105,57 +236,57 @@ async function downloadAudio(url) {
             outputFile,
 
             '--no-warnings',
+
             '--quiet',
 
             '--ffmpeg-location',
-            process.env.FFMPEG_PATH || 'ffmpeg',
+            process.env.FFMPEG_PATH ||
+               'ffmpeg',
 
             url
          ],
          {
             timeout: 120000,
-            maxBuffer: 20 * 1024 * 1024
+            maxBuffer:
+               20 * 1024 * 1024
          }
       )
 
       if (!fs.existsSync(outputFile)) {
          throw new Error(
-            'yt-dlp no generó el archivo MP3'
+            'yt-dlp no generó el MP3'
          )
       }
 
-      const stats = fs.statSync(outputFile)
+      const stats =
+         fs.statSync(outputFile)
 
       if (!stats.size) {
          throw new Error(
-            'El archivo MP3 está vacío'
+            'El MP3 está vacío'
          )
       }
 
+      const buffer =
+         fs.readFileSync(outputFile)
+
       console.log(`
 ╭──────────────────────⬣
-│ ✅ YT-DLP COMPLETADO
+│ ✅ AUDIO DESCARGADO
 ├──────────────────────⬣
-│ 📦 Tamaño: ${(stats.size / 1024 / 1024).toFixed(2)} MB
-│ ⚡ Tiempo: ${((Date.now() - start) / 1000).toFixed(1)}s
+│ 📦 ${(stats.size / 1024 / 1024).toFixed(2)} MB
+│ ⚡ ${((Date.now() - start) / 1000).toFixed(1)}s
 ╰──────────────────────⬣
 `)
 
-      const buffer = fs.readFileSync(outputFile)
-
-      // 🧹 BORRAR ARCHIVO TEMPORAL
       try {
          fs.unlinkSync(outputFile)
       } catch {}
 
-      return {
-         buffer,
-         title: null
-      }
+      return buffer
 
    } catch (error) {
 
-      // 🧹 BORRAR SI QUEDÓ ARCHIVO
       try {
          if (fs.existsSync(outputFile)) {
             fs.unlinkSync(outputFile)
@@ -177,9 +308,14 @@ async function downloadAudio(url) {
 // COMMAND
 // ===============================
 
-async function songCommand(sock, chatId, message) {
+async function songCommand(
+   sock,
+   chatId,
+   message
+) {
 
-   const startTime = Date.now()
+   const startTime =
+      Date.now()
 
    try {
 
@@ -194,14 +330,15 @@ async function songCommand(sock, chatId, message) {
          message.message?.extendedTextMessage?.text ||
          ''
 
-      const query = text
-         .split(' ')
-         .slice(1)
-         .join(' ')
-         .trim()
+      const query =
+         text
+            .split(' ')
+            .slice(1)
+            .join(' ')
+            .trim()
 
       // ===============================
-      // VALIDAR QUERY
+      // VALIDAR
       // ===============================
 
       if (!query) {
@@ -223,7 +360,7 @@ async function songCommand(sock, chatId, message) {
       let video
 
       // ===============================
-      // DIRECT YOUTUBE URL
+      // URL DIRECTA
       // ===============================
 
       if (
@@ -240,56 +377,36 @@ async function songCommand(sock, chatId, message) {
             author: {
                name: 'Unknown'
             },
-            views: 0,
-            ago: 'Unknown'
+            views: 0
          }
 
       } else {
 
          // ===============================
-         // SEARCH CACHE
+         // CACHE
          // ===============================
 
-         if (searchCache.has(query)) {
+         if (
+            searchCache.has(query)
+         ) {
 
             console.log(
                '⚡ Usando search cache'
             )
 
-            video = searchCache.get(query)
+            video =
+               searchCache.get(query)
 
          } else {
 
-            console.log(
-               `🔎 Buscando: ${query}`
-            )
-
-            const search = await yts(query)
-
-            if (!search?.videos?.length) {
-
-               return await sock.sendMessage(
-                  chatId,
-                  {
-                     text:
-                        '❌ No encontré resultados 😭'
-                  },
-                  {
-                     quoted: message
-                  }
-               )
-            }
+            // ===============================
+            // SEARCH
+            // ===============================
 
             video =
-               search.videos.find(v =>
-                  v.seconds > 30 &&
-                  v.seconds < 1800 &&
-                  v.title &&
-                  !v.title
-                     .toLowerCase()
-                     .includes('playlist')
-               ) ||
-               search.videos[0]
+               await searchYouTube(
+                  query
+               )
 
             searchCache.set(
                query,
@@ -301,7 +418,9 @@ async function songCommand(sock, chatId, message) {
             )
 
             setTimeout(() => {
-               searchCache.delete(query)
+               searchCache.delete(
+                  query
+               )
             }, 1000 * 60 * 5)
          }
       }
@@ -326,7 +445,7 @@ async function songCommand(sock, chatId, message) {
 > ❀ Duración: ${video.timestamp || 'Unknown'}
 > ❀ Vistas: ${video.views?.toLocaleString() || '0'}
 
-> 🚀 Usando servidor local...
+> 🚀 Buscando servidor...
 > ${createBar(10)} 10%`
             },
             {
@@ -338,31 +457,19 @@ async function songCommand(sock, chatId, message) {
       // DOWNLOAD
       // ===============================
 
-      const download =
+      let audioBuffer =
          await downloadAudio(
             video.url
          )
-
-      let audioBuffer =
-         download.buffer
-
-      // ===============================
-      // VALIDATE AUDIO
-      // ===============================
 
       if (
          !audioBuffer ||
          audioBuffer.length < 50000
       ) {
          throw new Error(
-            'Audio inválido o demasiado pequeño'
+            'Audio inválido'
          )
       }
-
-      console.log(
-         'AUDIO SIZE:',
-         `${(audioBuffer.length / 1024 / 1024).toFixed(2)} MB`
-      )
 
       console.log(
          'FIRST BYTES:',
@@ -389,7 +496,7 @@ async function songCommand(sock, chatId, message) {
 
 > ❀ Título: ${video.title}
 
-> ⚡ Preparando audio...
+> ⚡ Convirtiendo audio...
 > ${createBar(90)} 90%`
          }
       )
@@ -406,7 +513,9 @@ async function songCommand(sock, chatId, message) {
          let inputExt = 'mp3'
 
          if (
-            firstBytes.includes('66747970')
+            firstBytes.includes(
+               '66747970'
+            )
          ) {
             inputExt = 'mp4'
          }
@@ -432,10 +541,6 @@ async function songCommand(sock, chatId, message) {
             audioBuffer
       }
 
-      // ===============================
-      // VALIDATE FINAL BUFFER
-      // ===============================
-
       if (
          !finalBuffer ||
          finalBuffer.length < 50000
@@ -449,24 +554,29 @@ async function songCommand(sock, chatId, message) {
       // TITLE
       // ===============================
 
-      const safeTitle = (
-         video.title ||
-         'song'
-      )
-         .replace(/[^\w\s-]/g, '')
-         .trim()
-         .slice(0, 100) ||
+      const safeTitle =
+         (
+            video.title ||
+            'song'
+         )
+            .replace(
+               /[^\w\s-]/g,
+               ''
+            )
+            .trim()
+            .slice(0, 100) ||
          'song'
 
       // ===============================
-      // SEND AUDIO
+      // SEND
       // ===============================
 
       await sock.sendMessage(
          chatId,
          {
             audio: finalBuffer,
-            mimetype: 'audio/mpeg',
+            mimetype:
+               'audio/mpeg',
             fileName:
                `${safeTitle}.mp3`,
             ptt: false
@@ -497,14 +607,13 @@ async function songCommand(sock, chatId, message) {
 > ❀ Duración: ${video.timestamp || 'Unknown'}
 
 > 🚀 Completado en ${(
-   (Date.now() - startTime) /
+   (Date.now() -
+      startTime) /
    1000
 ).toFixed(1)}s
 > ${createBar(100)} 100%`
          }
       )
-
-      cleanMemory()
 
       console.log(`
 ╭──────────────────────⬣
@@ -512,47 +621,29 @@ async function songCommand(sock, chatId, message) {
 ├──────────────────────⬣
 │ 🎧 ${safeTitle}
 │ ⏱️ ${(
-   (Date.now() - startTime) /
+   (Date.now() -
+      startTime) /
    1000
 ).toFixed(1)}s
 ╰──────────────────────⬣
 `)
 
+      cleanMemory()
+
    } catch (err) {
 
       console.error(
          '❌ SONG ERROR:',
+         err?.stderr ||
+         err?.message ||
          err
       )
-
-      let errorMessage =
-         '❌ Error descargando el audio 😭'
-
-      if (
-         err?.message?.includes(
-            'Video unavailable'
-         ) ||
-         err?.message?.includes(
-            'Private video'
-         )
-      ) {
-         errorMessage =
-            '❌ Ese video no está disponible 😭'
-      }
-
-      if (
-         err?.message?.includes(
-            'Sign in'
-         )
-      ) {
-         errorMessage =
-            '❌ YouTube rechazó la descarga. Intenta otra canción 😭'
-      }
 
       await sock.sendMessage(
          chatId,
          {
-            text: errorMessage
+            text:
+               '❌ Error descargando el audio 😭'
          },
          {
             quoted: message
