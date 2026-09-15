@@ -3,7 +3,10 @@ const assert = require('node:assert/strict');
 const { getMenuButtonAction } = require('../commands/menu');
 
 function getNativeMenuInteraction(message) {
-  const response = message?.message?.interactiveResponseMessage;
+  const messageContent = message?.message?.viewOnceMessageV2?.message ||
+    message?.message?.viewOnceMessage?.message ||
+    message?.message;
+  const response = messageContent?.interactiveResponseMessage;
   const paramsJson = response?.nativeFlowResponseMessage?.paramsJson;
   if (!paramsJson) return null;
 
@@ -44,4 +47,27 @@ test('native menu interaction uses the current response sender', () => {
     sender: 'user-b@c.us',
     buttonId: 'view_full_menu',
   });
+});
+
+test('native menu interaction is detected when wrapped as view once', () => {
+  const interaction = getNativeMenuInteraction({
+    key: {
+      remoteJid: 'group@g.us',
+      participant: 'user-c@c.us',
+    },
+    message: {
+      viewOnceMessageV2: {
+        message: {
+          interactiveResponseMessage: {
+            nativeFlowResponseMessage: {
+              paramsJson: JSON.stringify({ id: 'view_full_menu' }),
+            },
+          },
+        },
+      },
+    },
+  });
+
+  assert.equal(interaction.sender, 'user-c@c.us');
+  assert.equal(interaction.buttonId, 'view_full_menu');
 });

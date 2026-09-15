@@ -233,8 +233,12 @@ if (userData?.banned) {
 }
 
         // Read native-flow responses from the message that contains the click.
-        let buttonId = message.message?.buttonsResponseMessage?.selectedButtonId;
-        const response = message?.message?.interactiveResponseMessage;
+        const messageContent = message.message?.ephemeralMessage?.message ||
+            message.message?.viewOnceMessageV2?.message ||
+            message.message?.viewOnceMessage?.message ||
+            message.message;
+        let buttonId = messageContent?.buttonsResponseMessage?.selectedButtonId;
+        const response = messageContent?.interactiveResponseMessage;
         const paramsJson = response?.nativeFlowResponseMessage?.paramsJson;
 
         if (paramsJson) {
