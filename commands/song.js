@@ -1,11 +1,9 @@
-const { execFile } = require('child_process')
+const youtubedl = require('youtube-dl-exec')
+const ffmpegPath = require('ffmpeg-static')
 const fs = require('fs')
 const path = require('path')
 const os = require('os')
-const { promisify } = require('util')
 const { toAudio } = require('../lib/converter')
-
-const execFileAsync = promisify(execFile)
 
 // ===============================
 // CACHE
@@ -53,7 +51,17 @@ function createBar(percent) {
 }
 
 // ===============================
-// BUSCAR CON YT-DLP
+// YT-DLP OPTIONS
+// ===============================
+
+const YTDLP_OPTIONS = {
+   noWarnings: true,
+   noPlaylist: true,
+   ffmpegLocation: ffmpegPath
+}
+
+// ===============================
+// BUSCAR YOUTUBE
 // ===============================
 
 async function searchYouTube(query) {
@@ -66,94 +74,90 @@ async function searchYouTube(query) {
 ╰──────────────────────⬣
 `)
 
-   const { stdout } = await execFileAsync(
-      'yt-dlp',
-      [
-         `ytsearch10:${query}`,
+   const results =
+      await youtubedl(
+         `ytsearch5:${query}`,
+         {
+            ...YTDLP_OPTIONS,
 
-         '--flat-playlist',
-
-         '--dump-single-json',
-
-         '--skip-download',
-
-         '--no-warnings',
-
-         '--quiet'
-      ],
-      {
-         timeout: 60000,
-         maxBuffer: 20 * 1024 * 1024
-      }
-   )
-
-   const data = JSON.parse(stdout)
+            flatPlaylist: true,
+            dumpSingleJson: true,
+            skipDownload: true
+         }
+      )
 
    if (
-      !data ||
-      !data.entries ||
-      !data.entries.length
+      !results ||
+      !results.entries ||
+      !results.entries.length
    ) {
       throw new Error(
          'No se encontraron resultados'
       )
    }
 
-   // Buscar una canción adecuada
-   const result =
-      data.entries.find(v =>
-         v.title &&
-         !v.title
+   // Buscar el resultado más apropiado
+   const selected =
+      results.entries.find(video =>
+         video.title &&
+         !video.title
             .toLowerCase()
-            .includes('playlist')
+            .includes('playlist') &&
+         (!video.duration ||
+            (
+               video.duration > 30 &&
+               video.duration < 1800
+            ))
       ) ||
-      data.entries[0]
+      results.entries.find(video =>
+         video.title
+      ) ||
+      results.entries[0]
 
-   if (!result?.url && !result?.id) {
+   if (!selected) {
       throw new Error(
-         'Resultado de YouTube inválido'
+         'No se encontró una canción'
       )
    }
 
    const videoUrl =
-      result.webpage_url ||
-      result.url ||
-      `https://www.youtube.com/watch?v=${result.id}`
+      selected.webpage_url ||
+      selected.url ||
+      (
+         selected.id
+            ? `https://www.youtube.com/watch?v=${selected.id}`
+            : null
+      )
 
-   // Obtener información completa del video
-   const { stdout: infoOutput } =
-      await execFileAsync(
-         'yt-dlp',
-         [
-            videoUrl,
+   if (!videoUrl) {
+      throw new Error(
+         'No se pudo obtener la URL del video'
+      )
+   }
 
-            '--dump-single-json',
-
-            '--skip-download',
-
-            '--no-warnings',
-
-            '--quiet'
-         ],
+   // Obtener información completa
+   const info =
+      await youtubedl(
+         videoUrl,
          {
-            timeout: 60000,
-            maxBuffer: 20 * 1024 * 1024
+            ...YTDLP_OPTIONS,
+
+            dumpSingleJson: true,
+            skipDownload: true
          }
       )
 
-   const info =
-      JSON.parse(infoOutput)
-
    return {
       url: videoUrl,
+
       title:
          info.title ||
-         result.title ||
+         selected.title ||
          'YouTube Audio',
 
       thumbnail:
          info.thumbnail ||
-         result.thumbnail ||
+         selected.thumbnail ||
          'https://i.imgur.com/AfFp7pu.png',
 
       timestamp:
@@ -168,10 +172,7 @@ async function searchYouTube(query) {
       },
 
       views:
-         info.view_count || 0,
-
-      ago:
-         'Unknown'
+         info.view_count || 0
    }
 }
 
@@ -190,7 +191,9 @@ async function downloadAudio(url) {
    if (!fs.existsSync(tempDir)) {
       fs.mkdirSync(
          tempDir,
-         { recursive: true }
+         {
+            recursive: true
+         }
       )
    }
 
@@ -210,7 +213,8 @@ async function downloadAudio(url) {
 ╭──────────────────────⬣
 │ 🚀 DESCARGANDO AUDIO
 ├──────────────────────⬣
-│ 🎵 YT-DLP + FFMPEG
+│ 🎵 YT-DLP LOCAL
+│ 🎬 FFMPEG LOCAL
 ╰──────────────────────⬣
 `)
 
@@ -219,42 +223,29 @@ async function downloadAudio(url) {
 
    try {
 
-      await execFileAsync(
-         'yt-dlp',
-         [
-            '--no-playlist',
-
-            '--extract-audio',
-
-            '--audio-format',
-            'mp3',
-
-            '--audio-quality',
-            '128K',
-
-            '--output',
-            outputFile,
-
-            '--no-warnings',
-
-            '--quiet',
-
-            '--ffmpeg-location',
-            process.env.FFMPEG_PATH ||
-               'ffmpeg',
-
-            url
-         ],
+      await youtubedl(
+         url,
          {
-            timeout: 120000,
-            maxBuffer:
-               20 * 1024 * 1024
+            ...YTDLP_OPTIONS,
+
+            extractAudio: true,
+
+            audioFormat: 'mp3',
+
+            audioQuality: '128K',
+
+            output: outputFile,
+
+            quiet: true
+         },
+         {
+            timeout: 120000
          }
       )
 
       if (!fs.existsSync(outputFile)) {
          throw new Error(
-            'yt-dlp no generó el MP3'
+            'No se generó el MP3'
          )
       }
 
@@ -268,19 +259,27 @@ async function downloadAudio(url) {
       }
 
       const buffer =
-         fs.readFileSync(outputFile)
+         fs.readFileSync(
+            outputFile
+         )
 
       console.log(`
 ╭──────────────────────⬣
 │ ✅ AUDIO DESCARGADO
 ├──────────────────────⬣
 │ 📦 ${(stats.size / 1024 / 1024).toFixed(2)} MB
-│ ⚡ ${((Date.now() - start) / 1000).toFixed(1)}s
+│ ⚡ ${(
+   (Date.now() - start) /
+   1000
+).toFixed(1)}s
 ╰──────────────────────⬣
 `)
 
+      // 🧹 LIMPIAR ARCHIVO
       try {
-         fs.unlinkSync(outputFile)
+         fs.unlinkSync(
+            outputFile
+         )
       } catch {}
 
       return buffer
@@ -288,8 +287,14 @@ async function downloadAudio(url) {
    } catch (error) {
 
       try {
-         if (fs.existsSync(outputFile)) {
-            fs.unlinkSync(outputFile)
+         if (
+            fs.existsSync(
+               outputFile
+            )
+         ) {
+            fs.unlinkSync(
+               outputFile
+            )
          }
       } catch {}
 
@@ -364,20 +369,50 @@ async function songCommand(
       // ===============================
 
       if (
-         query.includes('youtube.com') ||
-         query.includes('youtu.be')
+         query.includes(
+            'youtube.com'
+         ) ||
+         query.includes(
+            'youtu.be'
+         )
       ) {
+
+         video =
+            await youtubedl(
+               query,
+               {
+                  ...YTDLP_OPTIONS,
+
+                  dumpSingleJson: true,
+
+                  skipDownload: true
+               }
+            )
 
          video = {
             url: query,
-            title: 'YouTube Audio',
+
+            title:
+               video.title ||
+               'YouTube Audio',
+
             thumbnail:
+               video.thumbnail ||
                'https://i.imgur.com/AfFp7pu.png',
-            timestamp: 'Unknown',
+
+            timestamp:
+               video.duration_string ||
+               'Unknown',
+
             author: {
-               name: 'Unknown'
+               name:
+                  video.uploader ||
+                  video.channel ||
+                  'Unknown'
             },
-            views: 0
+
+            views:
+               video.view_count || 0
          }
 
       } else {
@@ -395,13 +430,11 @@ async function songCommand(
             )
 
             video =
-               searchCache.get(query)
+               searchCache.get(
+                  query
+               )
 
          } else {
-
-            // ===============================
-            // SEARCH
-            // ===============================
 
             video =
                await searchYouTube(
@@ -434,7 +467,8 @@ async function songCommand(
             chatId,
             {
                image: {
-                  url: video.thumbnail
+                  url:
+                     video.thumbnail
                },
 
                caption:
@@ -445,7 +479,7 @@ async function songCommand(
 > ❀ Duración: ${video.timestamp || 'Unknown'}
 > ❀ Vistas: ${video.views?.toLocaleString() || '0'}
 
-> 🚀 Buscando servidor...
+> 🚀 Buscando canción...
 > ${createBar(10)} 10%`
             },
             {
@@ -485,10 +519,12 @@ async function songCommand(
       await sock.sendMessage(
          chatId,
          {
-            edit: loading.key,
+            edit:
+               loading.key,
 
             image: {
-               url: video.thumbnail
+               url:
+                  video.thumbnail
             },
 
             caption:
@@ -510,14 +546,16 @@ async function songCommand(
                .slice(0, 64)
                .toString('hex')
 
-         let inputExt = 'mp3'
+         let inputExt =
+            'mp3'
 
          if (
             firstBytes.includes(
                '66747970'
             )
          ) {
-            inputExt = 'mp4'
+            inputExt =
+               'mp4'
          }
 
          console.log(
@@ -534,7 +572,8 @@ async function songCommand(
 
          console.log(
             '⚠️ Conversión no necesaria:',
-            err?.message || err
+            err?.message ||
+            err
          )
 
          finalBuffer =
@@ -564,25 +603,34 @@ async function songCommand(
                ''
             )
             .trim()
-            .slice(0, 100) ||
+            .slice(
+               0,
+               100
+            ) ||
          'song'
 
       // ===============================
-      // SEND
+      // SEND AUDIO
       // ===============================
 
       await sock.sendMessage(
          chatId,
          {
-            audio: finalBuffer,
+            audio:
+               finalBuffer,
+
             mimetype:
                'audio/mpeg',
+
             fileName:
                `${safeTitle}.mp3`,
-            ptt: false
+
+            ptt:
+               false
          },
          {
-            quoted: message
+            quoted:
+               message
          }
       )
 
@@ -593,10 +641,12 @@ async function songCommand(
       await sock.sendMessage(
          chatId,
          {
-            edit: loading.key,
+            edit:
+               loading.key,
 
             image: {
-               url: video.thumbnail
+               url:
+                  video.thumbnail
             },
 
             caption:
@@ -646,7 +696,8 @@ async function songCommand(
                '❌ Error descargando el audio 😭'
          },
          {
-            quoted: message
+            quoted:
+               message
          }
       )
 
@@ -654,4 +705,4 @@ async function songCommand(
    }
 }
 
-module.exports = songCommand //A
+module.exports = songCommand
