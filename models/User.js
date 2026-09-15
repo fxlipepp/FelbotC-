@@ -18,6 +18,11 @@ const userSchema = new mongoose.Schema({
       default: false
    },
 
+   protected: {
+      type: Boolean,
+      default: false
+   },
+
    xp: {
       type: Number,
       default: 0
