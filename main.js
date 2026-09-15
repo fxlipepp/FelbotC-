@@ -232,9 +232,6 @@ if (userData?.banned) {
    return
 }
 
-        const senderIsOwnerOrSudo = await isOwnerOrSudo(senderId, sock, chatId);
-        const senderIsSudo = senderIsOwnerOrSudo || await isSudo(senderId);
-
         // Read native-flow responses from the message that contains the click.
         let buttonId = message.message?.buttonsResponseMessage?.selectedButtonId;
         const response = message?.message?.interactiveResponseMessage;
@@ -301,6 +298,9 @@ if (userData?.banned) {
                 return;
             }
         }
+
+        const senderIsOwnerOrSudo = await isOwnerOrSudo(senderId, sock, chatId);
+        const senderIsSudo = senderIsOwnerOrSudo || await isSudo(senderId);
 
         const userMessage = (
             message.message?.conversation?.trim() ||
