@@ -240,6 +240,10 @@ async function handleMessages(sock, messageUpdate, printLog) {
         const message = messages[0];
         if (!message?.message) return;
 
+        chatId = message.key?.remoteJid;
+        senderId = message.key?.participant || message.participant || message.key?.remoteJid;
+        isGroup = chatId?.endsWith('@g.us');
+
 
         // Handle autoread functionality
         await handleAutoread(sock, message);
@@ -255,31 +259,38 @@ async function handleMessages(sock, messageUpdate, printLog) {
             return;
         }
 
-        const messageContent = message.message?.ephemeralMessage?.message ||
-            message.message?.viewOnceMessageV2?.message ||
-            message.message?.viewOnceMessage?.message ||
-            message.message;
+        let messageContent = message.message;
+        if (messageContent?.ephemeralMessage?.message) {
+            messageContent = messageContent.ephemeralMessage.message;
+        }
+        if (messageContent?.viewOnceMessage?.message) {
+            messageContent = messageContent.viewOnceMessage.message;
+        }
+        if (messageContent?.viewOnceMessageV2?.message) {
+            messageContent = messageContent.viewOnceMessageV2.message;
+        }
+        if (messageContent?.viewOnceMessageV2Extension?.message) {
+            messageContent = messageContent.viewOnceMessageV2Extension.message;
+        }
+
         const nativeResponse = messageContent?.interactiveResponseMessage;
         const nativeParamsJson = nativeResponse?.nativeFlowResponseMessage?.paramsJson;
         let nativeButtonId;
 
         if (nativeParamsJson) {
             try {
-                nativeButtonId = JSON.parse(nativeParamsJson)?.id;
+                const params = JSON.parse(nativeParamsJson);
+                nativeButtonId = params?.id || params?.button_id || null;
             } catch (error) {
-                console.error('Invalid native button params:', error.message);
+                console.error('❌ Error leyendo botón nativo:', error.message);
             }
         }
 
         if (menuButtonIds.has(nativeButtonId)) {
-            await handleNativeMenuButton(sock, message.key.remoteJid, nativeButtonId, message);
+            console.log(`🔘 Botón del menú: ${nativeButtonId} | Usuario: ${senderId} | Chat: ${chatId}`);
+            await handleNativeMenuButton(sock, chatId, nativeButtonId, message);
             return;
         }
-
-        chatId = message.key.remoteJid;
-        senderId = message.key?.participant || message.participant || message.key?.remoteJid;
-        isGroup = chatId.endsWith('@g.us');
-
 
         const mutedUser = await User.findOne({ userId: senderId })
 
