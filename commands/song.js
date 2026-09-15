@@ -1,48 +1,22 @@
-const axios = require('axios')
 const yts = require('yt-search')
-const https = require('https')
+const { execFile } = require('child_process')
+const fs = require('fs')
+const path = require('path')
+const os = require('os')
+const { promisify } = require('util')
 const { toAudio } = require('../lib/converter')
 
-// ===============================
-// HTTPS AGENT
-// ===============================
-
-const httpsAgent = new https.Agent({
-   keepAlive: true,
-   keepAliveMsecs: 10000,
-   maxSockets: 50,
-   maxFreeSockets: 20,
-   timeout: 8000
-})
-
-// ===============================
-// AXIOS CONFIG
-// ===============================
-
-const AXIOS_DEFAULTS = {
-   timeout: 8000,
-   httpsAgent,
-   maxRedirects: 5,
-   headers: {
-      'User-Agent': 'Mozilla/5.0',
-      'Accept': '*/*',
-      'Connection': 'keep-alive'
-   }
-}
+const execFileAsync = promisify(execFile)
 
 // ===============================
 // CACHE
 // ===============================
 
 const searchCache = new Map()
-const downloadCache = new Map()
 
 function limitMapSize(map, max = 100) {
-
    if (map.size > max) {
-
       const firstKey = map.keys().next().value
-
       map.delete(firstKey)
    }
 }
@@ -52,28 +26,19 @@ function limitMapSize(map, max = 100) {
 // ===============================
 
 function cleanMemory() {
-
    try {
-
       if (searchCache.size > 70) {
          searchCache.clear()
-      }
-
-      if (downloadCache.size > 70) {
-         downloadCache.clear()
       }
 
       if (global.gc) {
          global.gc()
       }
-
    } catch {}
 }
 
 setInterval(() => {
-
    cleanMemory()
-
 }, 1000 * 60 * 20)
 
 // ===============================
@@ -81,176 +46,133 @@ setInterval(() => {
 // ===============================
 
 function createBar(percent) {
-
    const total = 10
-
    const filled = Math.round(percent / 10)
 
    return '▰'.repeat(filled) + '▱'.repeat(total - filled)
 }
 
-function formatBytes(bytes) {
-
-   if (!bytes) return 'Desconocido'
-
-   const sizes = ['B', 'KB', 'MB', 'GB']
-
-   const i = Math.floor(
-      Math.log(bytes) / Math.log(1024)
-   )
-
-   return `${(bytes / Math.pow(1024, i)).toFixed(1)} ${sizes[i]}`
-}
-
-function isRealMp3(buffer) {
-
-   return (
-      buffer.slice(0, 3).toString() === 'ID3' ||
-      (
-         buffer[0] === 0xff &&
-         (buffer[1] & 0xe0) === 0xe0
-      )
-   )
-}
-
 // ===============================
-// RETRY
-// ===============================
-
-async function tryRequest(getter, attempts = 2) {
-
-   let lastError
-
-   for (let i = 0; i < attempts; i++) {
-
-      try {
-
-         return await getter()
-
-      } catch (err) {
-
-         lastError = err
-      }
-   }
-
-   throw lastError
-}
-
-// ===============================
-// APIs
-// ===============================
-
-async function elite(url, signal) {
-
-   const { data } = await tryRequest(() =>
-      axios.get(
-         `https://eliteprotech-apis.zone.id/ytdown?url=${encodeURIComponent(url)}&format=mp3`,
-         {
-            ...AXIOS_DEFAULTS,
-            signal
-         }
-      )
-   )
-
-   if (!data?.downloadURL) {
-      throw new Error('Elite failed')
-   }
-
-   return {
-      download: data.downloadURL,
-      title: data.title
-   }
-}
-
-async function yupra(url, signal) {
-
-   const { data } = await tryRequest(() =>
-      axios.get(
-         `https://api.yupra.my.id/api/downloader/ytmp3?url=${encodeURIComponent(url)}`,
-         {
-            ...AXIOS_DEFAULTS,
-            signal
-         }
-      )
-   )
-
-   if (!data?.data?.download_url) {
-      throw new Error('Yupra failed')
-   }
-
-   return {
-      download: data.data.download_url,
-      title: data.data.title
-   }
-}
-
-async function okatsu(url, signal) {
-
-   const { data } = await tryRequest(() =>
-      axios.get(
-         `https://okatsu-rolezapiiz.vercel.app/downloader/ytmp3?url=${encodeURIComponent(url)}`,
-         {
-            ...AXIOS_DEFAULTS,
-            signal
-         }
-      )
-   )
-
-   if (!data?.dl) {
-      throw new Error('Okatsu failed')
-   }
-
-   return {
-      download: data.dl,
-      title: data.title
-   }
-}
-
-// ===============================
-// DOWNLOAD AUDIO
+// YT-DLP DOWNLOAD
 // ===============================
 
 async function downloadAudio(url) {
 
+   const tempDir = path.join(
+      os.tmpdir(),
+      'felbot-play'
+   )
+
+   if (!fs.existsSync(tempDir)) {
+      fs.mkdirSync(tempDir, {
+         recursive: true
+      })
+   }
+
+   const fileId =
+      `${Date.now()}-` +
+      `${Math.random().toString(36).slice(2)}`
+
+   const outputFile = path.join(
+      tempDir,
+      `${fileId}.mp3`
+   )
+
    console.log(`
 ╭──────────────────────⬣
-│ 🚀 USANDO ELITE
+│ 🚀 USANDO YT-DLP
+├──────────────────────⬣
+│ 🎵 Descargando audio...
 ╰──────────────────────⬣
 `)
 
    const start = Date.now()
 
-   const data = await elite(url)
+   try {
 
-   if (!data?.download) {
-      throw new Error('Elite sin URL')
-   }
+      await execFileAsync(
+         'yt-dlp',
+         [
+            '--no-playlist',
 
-   const response = await axios({
-      url: data.download,
-      method: 'GET',
-      responseType: 'stream',
-      timeout: 8000,
-      httpsAgent,
-      validateStatus: s => s >= 200 && s < 400,
-      headers: {
-         'User-Agent': 'Mozilla/5.0'
+            '--extract-audio',
+            '--audio-format',
+            'mp3',
+            '--audio-quality',
+            '128K',
+
+            '--output',
+            outputFile,
+
+            '--no-warnings',
+            '--quiet',
+
+            '--ffmpeg-location',
+            process.env.FFMPEG_PATH || 'ffmpeg',
+
+            url
+         ],
+         {
+            timeout: 120000,
+            maxBuffer: 20 * 1024 * 1024
+         }
+      )
+
+      if (!fs.existsSync(outputFile)) {
+         throw new Error(
+            'yt-dlp no generó el archivo MP3'
+         )
       }
-   })
 
-   console.log(`
+      const stats = fs.statSync(outputFile)
+
+      if (!stats.size) {
+         throw new Error(
+            'El archivo MP3 está vacío'
+         )
+      }
+
+      console.log(`
 ╭──────────────────────⬣
-│ ✅ ELITE RESPONDIÓ
+│ ✅ YT-DLP COMPLETADO
 ├──────────────────────⬣
-│ ⚡ Tiempo: ${Date.now() - start}ms
+│ 📦 Tamaño: ${(stats.size / 1024 / 1024).toFixed(2)} MB
+│ ⚡ Tiempo: ${((Date.now() - start) / 1000).toFixed(1)}s
 ╰──────────────────────⬣
 `)
 
-   return {
-      response,
-      data
+      const buffer = fs.readFileSync(outputFile)
+
+      // 🧹 BORRAR ARCHIVO TEMPORAL
+      try {
+         fs.unlinkSync(outputFile)
+      } catch {}
+
+      return {
+         buffer,
+         title: null
+      }
+
+   } catch (error) {
+
+      // 🧹 BORRAR SI QUEDÓ ARCHIVO
+      try {
+         if (fs.existsSync(outputFile)) {
+            fs.unlinkSync(outputFile)
+         }
+      } catch {}
+
+      console.error(
+         '❌ YT-DLP ERROR:',
+         error?.stderr ||
+         error?.message ||
+         error
+      )
+
+      throw error
    }
 }
+
 // ===============================
 // COMMAND
 // ===============================
@@ -272,21 +194,36 @@ async function songCommand(sock, chatId, message) {
          message.message?.extendedTextMessage?.text ||
          ''
 
-      const query = text.split(' ').slice(1).join(' ').trim()
+      const query = text
+         .split(' ')
+         .slice(1)
+         .join(' ')
+         .trim()
+
+      // ===============================
+      // VALIDAR QUERY
+      // ===============================
 
       if (!query) {
 
-         return await sock.sendMessage(chatId, {
-            text: '🎵 Escribe una canción 😭'
-         }, {
-            quoted: message
-         })
+         return await sock.sendMessage(
+            chatId,
+            {
+               text:
+                  '🎵 Escribe una canción 😭\n\n' +
+                  'Ejemplo:\n' +
+                  '.play Canserbero - Es épico'
+            },
+            {
+               quoted: message
+            }
+         )
       }
 
       let video
 
       // ===============================
-      // SEARCH
+      // DIRECT YOUTUBE URL
       // ===============================
 
       if (
@@ -297,7 +234,8 @@ async function songCommand(sock, chatId, message) {
          video = {
             url: query,
             title: 'YouTube Audio',
-            thumbnail: 'https://i.imgur.com/AfFp7pu.png',
+            thumbnail:
+               'https://i.imgur.com/AfFp7pu.png',
             timestamp: 'Unknown',
             author: {
                name: 'Unknown'
@@ -308,40 +246,62 @@ async function songCommand(sock, chatId, message) {
 
       } else {
 
+         // ===============================
+         // SEARCH CACHE
+         // ===============================
+
          if (searchCache.has(query)) {
 
-            console.log('⚡ Usando search cache')
+            console.log(
+               '⚡ Usando search cache'
+            )
 
             video = searchCache.get(query)
 
          } else {
 
+            console.log(
+               `🔎 Buscando: ${query}`
+            )
+
             const search = await yts(query)
 
             if (!search?.videos?.length) {
 
-               return await sock.sendMessage(chatId, {
-                  text: '❌ No encontré resultados 😭'
-               }, {
-                  quoted: message
-               })
+               return await sock.sendMessage(
+                  chatId,
+                  {
+                     text:
+                        '❌ No encontré resultados 😭'
+                  },
+                  {
+                     quoted: message
+                  }
+               )
             }
 
             video =
                search.videos.find(v =>
                   v.seconds > 30 &&
                   v.seconds < 1800 &&
-                  !v.title.toLowerCase().includes('playlist')
-               ) || search.videos[0]
+                  v.title &&
+                  !v.title
+                     .toLowerCase()
+                     .includes('playlist')
+               ) ||
+               search.videos[0]
 
-            searchCache.set(query, video)
+            searchCache.set(
+               query,
+               video
+            )
 
-            limitMapSize(searchCache)
+            limitMapSize(
+               searchCache
+            )
 
             setTimeout(() => {
-
                searchCache.delete(query)
-
             }, 1000 * 60 * 5)
          }
       }
@@ -350,11 +310,15 @@ async function songCommand(sock, chatId, message) {
       // LOADING
       // ===============================
 
-      const loading = await sock.sendMessage(chatId, {
-         image: {
-            url: video.thumbnail
-         },
-         caption:
+      const loading =
+         await sock.sendMessage(
+            chatId,
+            {
+               image: {
+                  url: video.thumbnail
+               },
+
+               caption:
 `🎶 *DESCARGANDO AUDIO*
 
 > ❀ Título: ${video.title}
@@ -362,116 +326,123 @@ async function songCommand(sock, chatId, message) {
 > ❀ Duración: ${video.timestamp || 'Unknown'}
 > ❀ Vistas: ${video.views?.toLocaleString() || '0'}
 
-> 🚀 Buscando servidor...
-> ${createBar(5)} 5%`
-      }, {
-         quoted: message
-      })
+> 🚀 Usando servidor local...
+> ${createBar(10)} 10%`
+            },
+            {
+               quoted: message
+            }
+         )
 
       // ===============================
       // DOWNLOAD
       // ===============================
 
-      const {
-         response: audioResponse,
-         data: audioData
-      } = await downloadAudio(video.url)
-
-      const total = Number(
-         audioResponse.headers['content-length']
-      ) || 0
-
-      let downloaded = 0
-      let lastPercent = 0
-      let chunks = []
-
-      audioResponse.data.on('data', async chunk => {
-
-         chunks.push(chunk)
-
-         downloaded += chunk.length
-
-         if (!total) return
-
-         const percent = Math.floor(
-            (downloaded / total) * 100
+      const download =
+         await downloadAudio(
+            video.url
          )
 
-         
-      })
+      let audioBuffer =
+         download.buffer
 
-      await new Promise((resolve, reject) => {
+      // ===============================
+      // VALIDATE AUDIO
+      // ===============================
 
-         audioResponse.data.on('end', resolve)
-         audioResponse.data.on('error', reject)
-
-      })
-
-      const audioBuffer = Buffer.concat(chunks)
+      if (
+         !audioBuffer ||
+         audioBuffer.length < 50000
+      ) {
+         throw new Error(
+            'Audio inválido o demasiado pequeño'
+         )
+      }
 
       console.log(
-   'FIRST BYTES:',
-   audioBuffer.slice(0, 32).toString('hex')
-)
+         'AUDIO SIZE:',
+         `${(audioBuffer.length / 1024 / 1024).toFixed(2)} MB`
+      )
 
-      chunks = null
-
-      if (!audioBuffer || audioBuffer.length < 50000) {
-         throw new Error('Invalid audio buffer')
-      }
+      console.log(
+         'FIRST BYTES:',
+         audioBuffer
+            .slice(0, 32)
+            .toString('hex')
+      )
 
       // ===============================
       // PROCESS
       // ===============================
 
-      await sock.sendMessage(chatId, {
-         edit: loading.key,
-         image: {
-            url: video.thumbnail
-         },
-         caption:
+      await sock.sendMessage(
+         chatId,
+         {
+            edit: loading.key,
+
+            image: {
+               url: video.thumbnail
+            },
+
+            caption:
 `🔄 *PROCESANDO AUDIO*
 
 > ❀ Título: ${video.title}
 
-> ⚡ Convirtiendo audio...
+> ⚡ Preparando audio...
 > ${createBar(90)} 90%`
-      })
+         }
+      )
 
-     let finalBuffer
+      let finalBuffer
 
-try {
+      try {
 
-   const firstBytes = audioBuffer
-      .slice(0, 64)
-      .toString('hex')
+         const firstBytes =
+            audioBuffer
+               .slice(0, 64)
+               .toString('hex')
 
-   let inputExt = 'mp3'
+         let inputExt = 'mp3'
 
-   if (
-      firstBytes.includes('66747970')
-   ) {
-      inputExt = 'mp4'
-   }
+         if (
+            firstBytes.includes('66747970')
+         ) {
+            inputExt = 'mp4'
+         }
 
-   console.log(
-      `🔍 INPUT EXT: ${inputExt}`
-   )
+         console.log(
+            `🔍 INPUT EXT: ${inputExt}`
+         )
 
-   finalBuffer = await toAudio(
-      audioBuffer,
-      inputExt
-   )
+         finalBuffer =
+            await toAudio(
+               audioBuffer,
+               inputExt
+            )
 
-} catch (err) {
+      } catch (err) {
 
-   console.log(err)
+         console.log(
+            '⚠️ Conversión no necesaria:',
+            err?.message || err
+         )
 
-   finalBuffer = audioBuffer
-}
+         finalBuffer =
+            audioBuffer
+      }
 
-      if (!finalBuffer || finalBuffer.length < 50000) {
-         throw new Error('Conversion failed')
+      // ===============================
+      // VALIDATE FINAL BUFFER
+      // ===============================
+
+      if (
+         !finalBuffer ||
+         finalBuffer.length < 50000
+      ) {
+         throw new Error(
+            'Conversion failed'
+         )
       }
 
       // ===============================
@@ -479,12 +450,13 @@ try {
       // ===============================
 
       const safeTitle = (
-         audioData.title ||
          video.title ||
          'song'
       )
          .replace(/[^\w\s-]/g, '')
          .trim()
+         .slice(0, 100) ||
+         'song'
 
       // ===============================
       // SEND AUDIO
@@ -495,7 +467,8 @@ try {
          {
             audio: finalBuffer,
             mimetype: 'audio/mpeg',
-            fileName: `${safeTitle}.mp3`,
+            fileName:
+               `${safeTitle}.mp3`,
             ptt: false
          },
          {
@@ -507,21 +480,29 @@ try {
       // FINAL
       // ===============================
 
-      await sock.sendMessage(chatId, {
-         edit: loading.key,
-         image: {
-            url: video.thumbnail
-         },
-         caption:
+      await sock.sendMessage(
+         chatId,
+         {
+            edit: loading.key,
+
+            image: {
+               url: video.thumbnail
+            },
+
+            caption:
 `✅ *AUDIO ENVIADO*
 
 > ❀ Título: ${safeTitle}
 > ❀ Autor: ${video.author?.name || 'Unknown'}
 > ❀ Duración: ${video.timestamp || 'Unknown'}
 
-> 🚀 Completado en ${((Date.now() - startTime) / 1000).toFixed(1)}s
+> 🚀 Completado en ${(
+   (Date.now() - startTime) /
+   1000
+).toFixed(1)}s
 > ${createBar(100)} 100%`
-      })
+         }
+      )
 
       cleanMemory()
 
@@ -530,28 +511,53 @@ try {
 │ ✅ DESCARGA COMPLETADA
 ├──────────────────────⬣
 │ 🎧 ${safeTitle}
-│ ⏱️ ${((Date.now() - startTime) / 1000).toFixed(1)}s
+│ ⏱️ ${(
+   (Date.now() - startTime) /
+   1000
+).toFixed(1)}s
 ╰──────────────────────⬣
 `)
 
    } catch (err) {
 
-      console.error('❌ SONG ERROR:', err)
+      console.error(
+         '❌ SONG ERROR:',
+         err
+      )
 
-      let msg = '❌ Error descargando el audio 😭'
+      let errorMessage =
+         '❌ Error descargando el audio 😭'
 
       if (
-         err?.response?.status === 451 ||
-         err?.message?.includes('451')
+         err?.message?.includes(
+            'Video unavailable'
+         ) ||
+         err?.message?.includes(
+            'Private video'
+         )
       ) {
-         msg = '❌ Contenido bloqueado o restringido 😭'
+         errorMessage =
+            '❌ Ese video no está disponible 😭'
       }
 
-      await sock.sendMessage(chatId, {
-         text: msg
-      }, {
-         quoted: message
-      })
+      if (
+         err?.message?.includes(
+            'Sign in'
+         )
+      ) {
+         errorMessage =
+            '❌ YouTube rechazó la descarga. Intenta otra canción 😭'
+      }
+
+      await sock.sendMessage(
+         chatId,
+         {
+            text: errorMessage
+         },
+         {
+            quoted: message
+         }
+      )
 
       cleanMemory()
    }
