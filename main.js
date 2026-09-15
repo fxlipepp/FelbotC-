@@ -235,9 +235,21 @@ if (userData?.banned) {
         const senderIsOwnerOrSudo = await isOwnerOrSudo(senderId, sock, chatId);
         const senderIsSudo = senderIsOwnerOrSudo || await isSudo(senderId);
 
-        // Handle button responses
-        if (message.message?.buttonsResponseMessage) {
-            const buttonId = message.message.buttonsResponseMessage.selectedButtonId;
+        // Handle classic and native flow button responses through the same actions
+        let buttonId = message.message?.buttonsResponseMessage?.selectedButtonId;
+        const nativeResponse = message.message?.interactiveResponseMessage;
+        const paramsJson = nativeResponse?.nativeFlowResponseMessage?.paramsJson;
+
+        if (paramsJson) {
+            try {
+                const params = JSON.parse(paramsJson);
+                buttonId = params?.id || buttonId;
+            } catch (error) {
+                console.error('Invalid native button params:', error.message);
+            }
+        }
+
+        if (buttonId) {
             const chatId = message.key.remoteJid;
 
             if (buttonId === 'channel') {

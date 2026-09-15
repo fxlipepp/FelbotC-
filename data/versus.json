@@ -833,5 +833,43 @@
     ],
     "suplentes": [],
     "equipo2": []
+  },
+  "120363412225617637@g.us|3EB00325848899EF9D33B4": {
+    "matchId": "4bade762-5381-451f-8b74-61eb8e5fae36",
+    "chatId": "120363412225617637@g.us",
+    "messageId": "3EB00325848899EF9D33B4",
+    "key": {
+      "remoteJid": "120363412225617637@g.us",
+      "fromMe": true,
+      "id": "3EB0132B8C30E057496944"
+    },
+    "type": "4vs4",
+    "title": "4 VS 4 CLK",
+    "time": null,
+    "groupName": "Fxlbot Creators",
+    "maxTitular": 4,
+    "maxSuplentes": 2,
+    "titular": [],
+    "suplentes": [],
+    "equipo2": []
+  },
+  "120363412225617637@g.us|3EB08EC5D85726511A864C": {
+    "matchId": "09e95db1-02f7-42a5-83d7-40cbaff75eff",
+    "chatId": "120363412225617637@g.us",
+    "messageId": "3EB08EC5D85726511A864C",
+    "key": {
+      "remoteJid": "120363412225617637@g.us",
+      "fromMe": true,
+      "id": "3EB08EC5D85726511A864C"
+    },
+    "type": "int2",
+    "title": "2 VS 2 CLK",
+    "time": null,
+    "groupName": "Fxlbot Creators",
+    "maxTitular": 2,
+    "maxSuplentes": 1,
+    "titular": [],
+    "suplentes": [],
+    "equipo2": []
   }
 }
