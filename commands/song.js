@@ -654,4 +654,4 @@ async function songCommand(
    }
 }
 
-module.exports = songCommand
+module.exports = songCommand //A
