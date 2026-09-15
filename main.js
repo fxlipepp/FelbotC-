@@ -175,6 +175,59 @@ const channelInfo = {
     }
 };
 
+const menuButtonIds = new Set([
+    'view_full_menu',
+    'owner',
+    'report_error',
+    'request_command',
+    'buy_bot'
+]);
+
+async function handleNativeMenuButton(sock, chatId, buttonId, message) {
+    if (buttonId === 'owner') {
+        const ownerCommand = require('./commands/owner');
+        await ownerCommand(sock, chatId);
+        return true;
+    }
+
+    if (buttonId === 'request_command') {
+        const ownerNumber = settings.ownerNumber.replace(/[^0-9]/g, '');
+        const requestMessage = 'Buenas tengo una solicitud de comando, puedes ayudarme?';
+        const requestUrl = `https://wa.me/${ownerNumber}?text=${encodeURIComponent(requestMessage)}`;
+        await sock.sendMessage(chatId, {
+            text: `📩 Para solicitar un comando, abre este enlace:\n${requestUrl}`
+        }, { quoted: message });
+        return true;
+    }
+
+    if (buttonId === 'buy_bot') {
+        const ownerNumber = settings.ownerNumber.replace(/[^0-9]/g, '');
+        const buyMessage = 'Buenas deseo adquirir el bot, me puedes asesorar?';
+        const buyUrl = `https://wa.me/${ownerNumber}?text=${encodeURIComponent(buyMessage)}`;
+        await sock.sendMessage(chatId, {
+            text: `📩 Para adquirir el bot, abre este enlace:\n${buyUrl}`
+        }, { quoted: message });
+        return true;
+    }
+
+    if (buttonId === 'report_error') {
+        const ownerNumber = settings.ownerNumber.replace(/[^0-9]/g, '');
+        const errorMessage = 'Buenas, deseo reportar un error en el bot ❗';
+        const errorUrl = `https://wa.me/${ownerNumber}?text=${encodeURIComponent(errorMessage)}`;
+        await sock.sendMessage(chatId, {
+            text: `🐞 Para reportar un error, abre este enlace:\n${errorUrl}`
+        }, { quoted: message });
+        return true;
+    }
+
+    if (buttonId === 'view_full_menu') {
+        await helpCommand.handleMenuButton(sock, chatId, buttonId, message);
+        return true;
+    }
+
+    return false;
+}
+
 async function handleMessages(sock, messageUpdate, printLog) {
     let chatId
     let senderId
@@ -199,6 +252,27 @@ async function handleMessages(sock, messageUpdate, printLog) {
         // Handle message revocation
         if (message.message?.protocolMessage?.type === 0) {
             await handleMessageRevocation(sock, message);
+            return;
+        }
+
+        const messageContent = message.message?.ephemeralMessage?.message ||
+            message.message?.viewOnceMessageV2?.message ||
+            message.message?.viewOnceMessage?.message ||
+            message.message;
+        const nativeResponse = messageContent?.interactiveResponseMessage;
+        const nativeParamsJson = nativeResponse?.nativeFlowResponseMessage?.paramsJson;
+        let nativeButtonId;
+
+        if (nativeParamsJson) {
+            try {
+                nativeButtonId = JSON.parse(nativeParamsJson)?.id;
+            } catch (error) {
+                console.error('Invalid native button params:', error.message);
+            }
+        }
+
+        if (menuButtonIds.has(nativeButtonId)) {
+            await handleNativeMenuButton(sock, message.key.remoteJid, nativeButtonId, message);
             return;
         }
 
@@ -233,10 +307,6 @@ if (userData?.banned) {
 }
 
         // Read native-flow responses from the message that contains the click.
-        const messageContent = message.message?.ephemeralMessage?.message ||
-            message.message?.viewOnceMessageV2?.message ||
-            message.message?.viewOnceMessage?.message ||
-            message.message;
         let buttonId = messageContent?.buttonsResponseMessage?.selectedButtonId;
         const response = messageContent?.interactiveResponseMessage;
         const paramsJson = response?.nativeFlowResponseMessage?.paramsJson;
@@ -257,37 +327,6 @@ if (userData?.banned) {
                 await sock.sendMessage(chatId, {
                     text: '📢 *Join our Channel:*\nhttps://whatsapp.com/channel/0029Va90zAnIHphOuO8Msp3A'
                 }, { quoted: message });
-                return;
-            } else if (buttonId === 'owner') {
-                const ownerCommand = require('./commands/owner');
-                await ownerCommand(sock, chatId);
-                return;
-            } else if (buttonId === 'request_command') {
-                const ownerNumber = settings.ownerNumber.replace(/[^0-9]/g, '')
-                const requestMessage = 'Buenas tengo una solicitud de comando, puedes ayudarme?'
-                const requestUrl = `https://wa.me/${ownerNumber}?text=${encodeURIComponent(requestMessage)}`
-                await sock.sendMessage(chatId, {
-                    text: `📩 Para solicitar un comando, abre este enlace:\n${requestUrl}`
-                }, { quoted: message });
-                return;
-            } else if (buttonId === 'buy_bot') {
-                const ownerNumber = settings.ownerNumber.replace(/[^0-9]/g, '')
-                const buyMessage = 'Buenas deseo adquirir el bot, me puedes asesorar?'
-                const buyUrl = `https://wa.me/${ownerNumber}?text=${encodeURIComponent(buyMessage)}`
-                await sock.sendMessage(chatId, {
-                    text: `📩 Para adquirir el bot, abre este enlace:\n${buyUrl}`
-                }, { quoted: message });
-                return;
-            } else if (buttonId === 'report_error') {
-                const ownerNumber = settings.ownerNumber.replace(/[^0-9]/g, '')
-                const errorMessage = 'Buenas, deseo reportar un error en el bot ❗'
-                const errorUrl = `https://wa.me/${ownerNumber}?text=${encodeURIComponent(errorMessage)}`
-                await sock.sendMessage(chatId, {
-                    text: `🐞 Para reportar un error, abre este enlace:\n${errorUrl}`
-                }, { quoted: message });
-                return;
-            } else if (buttonId === 'view_full_menu') {
-                await helpCommand.handleMenuButton(sock, chatId, buttonId, message);
                 return;
             } else if (buttonId.startsWith('versus::')) {
                 await handleVersusButton(sock, senderId, buttonId, message);
