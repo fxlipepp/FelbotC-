@@ -57,8 +57,22 @@ async function muteCommand(sock, chatId, senderId, message) {
    const senderNumber = senderId.split('@')[0]
    const targetNumber = user.split('@')[0]
 
+   let userData = await User.findOne({ userId: user })
+
+   if (!userData && chatId.endsWith('@g.us')) {
+      const metadata = await sock.groupMetadata(chatId)
+      const participant = metadata.participants?.find(item =>
+         item.id === user || item.phoneNumber === user || item.lid === user
+      )
+      const targetLid = participant?.lid
+
+      if (targetLid) {
+         userData = await User.findOne({ userId: targetLid })
+      }
+   }
+
    // anti mute pro 😈
-   if (protectedIds.includes(targetNumber)) {
+   if (protectedIds.includes(targetNumber) || userData?.protected) {
 
       let senderData = await User.findOne({ userId: senderId })
 
@@ -76,8 +90,6 @@ async function muteCommand(sock, chatId, senderId, message) {
          mentions: [senderId]
       }, { quoted: message })
    }
-
-   let userData = await User.findOne({ userId: user })
 
    if (!userData) {
       userData = await User.create({
