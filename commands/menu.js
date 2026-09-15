@@ -1,6 +1,6 @@
 const fs = require('fs')
 const path = require('path')
-const { ButtonV2 } = require('../lib/airich')
+const { generateWAMessageFromContent, prepareWAMessageMedia } = require('@whiskeysockets/baileys')
 
 function formatUptime(seconds) {
 
@@ -463,7 +463,6 @@ async function handleMenuButton(sock, chatId, buttonId, message) {
 
 async function helpCommand(sock, chatId, message) {
 
-    const fullMenu = buildMenuText(process.uptime(), '2.0.0')
     const introCaption = `${buildIntroHeader(process.uptime(), '2.0.0')}
 
 Bienvenido a Felbot 夜.
@@ -473,30 +472,61 @@ Aquí encontrarás herramientas, administración, entretenimiento y mucho más.
 
     try {
         const imagePath = path.join(__dirname, '..', 'assets', 'imagenes', 'admin', 'admin.png')
-        const imageBuffer = fs.existsSync(imagePath) ? fs.readFileSync(imagePath) : null
+        if (!fs.existsSync(imagePath)) throw new Error('Menu image not found')
 
-        if (imageBuffer) {
-            await sock.sendMessage(chatId, {
-                image: imageBuffer,
-                mimetype: 'image/png',
-                caption: introCaption
-            }, { quoted: message })
-        }
+        const imageBuffer = fs.readFileSync(imagePath)
+        const preparedImage = await prepareWAMessageMedia(
+            { image: imageBuffer },
+            { upload: sock.waUploadToServer }
+        )
 
-        const buttonMenu = new ButtonV2(sock)
-            .setBody('Selecciona una opción para continuar.')
-            .setFooter('FelbotC - Menú interactivo')
-            .addButton('VER MENU COMPLETO', 'view_full_menu')
-            .addButton('CONTACTAME 夜', 'owner')
-            .addButton('REPORTAR ERROR ❗', 'report_error')
-            .addButton('SOLICITUD DE COMANDO 🕸️', 'request_command')
-            .addButton('ADQUIRIR BOT 💵', 'buy_bot')
+        const buttons = [
+            ['VER MENU COMPLETO', 'view_full_menu'],
+            ['CONTACTAME 夜', 'owner'],
+            ['REPORTAR ERROR ❗', 'report_error'],
+            ['SOLICITUD DE COMANDO 🕸️', 'request_command'],
+            ['ADQUIRIR BOT 💵', 'buy_bot']
+        ].map(([display_text, id]) => ({
+            name: 'quick_reply',
+            buttonParamsJson: JSON.stringify({ display_text, id })
+        }))
 
-        await buttonMenu.send(chatId, { quoted: message })
+        const menuMessage = generateWAMessageFromContent(chatId, {
+            interactiveMessage: {
+                header: {
+                    title: '𝕱𝖊𝖑𝖇𝖔𝖙 夜',
+                    subtitle: 'Menú interactivo',
+                    hasMediaAttachment: true,
+                    ...preparedImage
+                },
+                body: { text: introCaption },
+                footer: { text: '𝕱𝖊𝖑𝖇𝖔𝖙 夜 • Menú interactivo' },
+                nativeFlowMessage: {
+                    buttons,
+                    messageParamsJson: ''
+                }
+            }
+        }, { quoted: message })
+
+        await sock.relayMessage(menuMessage.key.remoteJid, menuMessage.message, {
+            messageId: menuMessage.key.id,
+            additionalNodes: [{
+                tag: 'biz',
+                attrs: {},
+                content: [{
+                    tag: 'interactive',
+                    attrs: { type: 'native_flow', v: '1' },
+                    content: [{
+                        tag: 'native_flow',
+                        attrs: { v: '9', name: 'mixed' }
+                    }]
+                }]
+            }]
+        })
     } catch (error) {
         console.error(error)
         await sock.sendMessage(chatId, {
-            text: fullMenu,
+            text: introCaption,
         }, { quoted: message })
     }
 }
