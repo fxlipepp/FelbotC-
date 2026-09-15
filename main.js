@@ -540,7 +540,8 @@ if (/^\d+$/.test(userMessage)) {
             return;
         }
         // In private mode, only owner/sudo can run commands
-        if (!isPublic && !isOwnerOrSudoCheck) {
+        const isMenuCommand = ['.menu', '.help', '.bot', '.list'].includes(userMessage.split(/\s+/)[0]);
+        if (!isPublic && !isOwnerOrSudoCheck && !isMenuCommand) {
             return;
         }
 
