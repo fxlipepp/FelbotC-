@@ -203,7 +203,7 @@ async function handleMessages(sock, messageUpdate, printLog) {
         }
 
         chatId = message.key.remoteJid;
-        senderId = message.key.participant || message.key.remoteJid;
+        senderId = message.key?.participant || message.participant || message.key?.remoteJid;
         isGroup = chatId.endsWith('@g.us');
 
 
@@ -235,10 +235,10 @@ if (userData?.banned) {
         const senderIsOwnerOrSudo = await isOwnerOrSudo(senderId, sock, chatId);
         const senderIsSudo = senderIsOwnerOrSudo || await isSudo(senderId);
 
-        // Handle classic and native flow button responses through the same actions
+        // Read native-flow responses from the message that contains the click.
         let buttonId = message.message?.buttonsResponseMessage?.selectedButtonId;
-        const nativeResponse = message.message?.interactiveResponseMessage;
-        const paramsJson = nativeResponse?.nativeFlowResponseMessage?.paramsJson;
+        const response = message?.message?.interactiveResponseMessage;
+        const paramsJson = response?.nativeFlowResponseMessage?.paramsJson;
 
         if (paramsJson) {
             try {
