@@ -183,6 +183,24 @@ const menuButtonIds = new Set([
     'buy_bot'
 ]);
 
+function getButtonId(messageContent) {
+    const nativeParamsJson = messageContent?.interactiveResponseMessage?.nativeFlowResponseMessage?.paramsJson;
+
+    if (nativeParamsJson) {
+        try {
+            const params = JSON.parse(nativeParamsJson);
+            return params?.id || params?.button_id || params?.selected_id || null;
+        } catch (error) {
+            console.error('❌ Error leyendo botón nativo:', error.message);
+        }
+    }
+
+    return messageContent?.buttonsResponseMessage?.selectedButtonId
+        || messageContent?.templateButtonReplyMessage?.selectedId
+        || messageContent?.listResponseMessage?.singleSelectReply?.selectedRowId
+        || null;
+}
+
 async function handleNativeMenuButton(sock, chatId, buttonId, message) {
     if (buttonId === 'owner') {
         const ownerCommand = require('./commands/owner');
@@ -273,18 +291,7 @@ async function handleMessages(sock, messageUpdate, printLog) {
             messageContent = messageContent.viewOnceMessageV2Extension.message;
         }
 
-        const nativeResponse = messageContent?.interactiveResponseMessage;
-        const nativeParamsJson = nativeResponse?.nativeFlowResponseMessage?.paramsJson;
-        let nativeButtonId;
-
-        if (nativeParamsJson) {
-            try {
-                const params = JSON.parse(nativeParamsJson);
-                nativeButtonId = params?.id || params?.button_id || null;
-            } catch (error) {
-                console.error('❌ Error leyendo botón nativo:', error.message);
-            }
-        }
+        const nativeButtonId = getButtonId(messageContent);
 
         if (menuButtonIds.has(nativeButtonId)) {
             console.log(`🔘 Botón del menú: ${nativeButtonId} | Usuario: ${senderId} | Chat: ${chatId}`);
@@ -318,18 +325,7 @@ if (userData?.banned) {
 }
 
         // Read native-flow responses from the message that contains the click.
-        let buttonId = messageContent?.buttonsResponseMessage?.selectedButtonId;
-        const response = messageContent?.interactiveResponseMessage;
-        const paramsJson = response?.nativeFlowResponseMessage?.paramsJson;
-
-        if (paramsJson) {
-            try {
-                const params = JSON.parse(paramsJson);
-                buttonId = params?.id || buttonId;
-            } catch (error) {
-                console.error('Invalid native button params:', error.message);
-            }
-        }
+        const buttonId = getButtonId(messageContent);
 
         if (buttonId) {
             const chatId = message.key.remoteJid;
