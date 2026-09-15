@@ -4,6 +4,7 @@ const { getMenuButtonAction } = require('../commands/menu');
 
 function getNativeMenuInteraction(message) {
   const messageContent = message?.message?.viewOnceMessageV2?.message ||
+    message?.message?.viewOnceMessageV2Extension?.message ||
     message?.message?.viewOnceMessage?.message ||
     message?.message;
   const response = messageContent?.interactiveResponseMessage;
@@ -14,7 +15,7 @@ function getNativeMenuInteraction(message) {
   return {
     chatId: message.key?.remoteJid,
     sender: message.key?.participant || message.participant || message.key?.remoteJid,
-    buttonId: params?.id,
+    buttonId: params?.id || params?.button_id || null,
   };
 }
 
@@ -70,4 +71,27 @@ test('native menu interaction is detected when wrapped as view once', () => {
 
   assert.equal(interaction.sender, 'user-c@c.us');
   assert.equal(interaction.buttonId, 'view_full_menu');
+});
+
+test('native menu interaction supports viewOnceMessageV2Extension and button_id', () => {
+  const interaction = getNativeMenuInteraction({
+    key: {
+      remoteJid: 'group@g.us',
+      participant: 'user-d@c.us',
+    },
+    message: {
+      viewOnceMessageV2Extension: {
+        message: {
+          interactiveResponseMessage: {
+            nativeFlowResponseMessage: {
+              paramsJson: JSON.stringify({ button_id: 'request_command' }),
+            },
+          },
+        },
+      },
+    },
+  });
+
+  assert.equal(interaction.sender, 'user-d@c.us');
+  assert.equal(interaction.buttonId, 'request_command');
 });
