@@ -46,6 +46,7 @@ setInterval(() => {
 
 function createBar(percent) {
    const total = 10
+
    const filled = Math.max(
       0,
       Math.min(
@@ -61,7 +62,7 @@ function createBar(percent) {
 }
 
 // ===============================
-// COOKIES YOUTUBE
+// COOKIES
 // ===============================
 
 const cookiesPath = path.join(
@@ -80,18 +81,20 @@ if (fs.existsSync(cookiesPath)) {
 }
 
 // ===============================
-// YT-DLP BASE OPTIONS
+// YT-DLP OPTIONS
 // ===============================
 
 const YTDLP_OPTIONS = {
    noWarnings: true,
    noPlaylist: true,
    ffmpegLocation: ffmpegPath,
+
    retries: 3,
+   fragmentRetries: 3,
+   extractorRetries: 3,
+
    socketTimeout: 30000,
 
-   // No limitar a un solo cliente.
-   // yt-dlp podrá elegir el extractor disponible.
    extractorArgs:
       'youtube:player_client=android,web,tv_embedded',
 
@@ -103,7 +106,7 @@ const YTDLP_OPTIONS = {
 }
 
 // ===============================
-// EXTRAER INFORMACIÓN
+// INFORMACIÓN DEL VIDEO
 // ===============================
 
 async function getVideoInfo(url) {
@@ -247,61 +250,154 @@ async function searchYouTube(query) {
 }
 
 // ===============================
-// DESCARGA CON YT-DLP
+// SELECCIONAR FORMATO REAL
 // ===============================
 
-async function runDownload(
-   url,
-   outputTemplate,
-   format
-) {
+function selectFormat(info) {
 
-   const options = {
-      ...YTDLP_OPTIONS,
+   if (
+      !info ||
+      !Array.isArray(
+         info.formats
+      )
+   ) {
+      throw new Error(
+         'YT-DLP no devolvió formatos disponibles'
+      )
+   }
 
-      format,
+   const formats =
+      info.formats.filter(
+         format =>
+            format &&
+            format.format_id
+      )
 
-      output:
-         outputTemplate,
-
-      quiet:
-         true,
-
-      noPlaylist:
-         true,
-
-      // Permitir que yt-dlp escoja
-      // cualquier extensión disponible.
-      mergeOutputFormat:
-         'mp4',
-
-      noPart:
-         true,
-
-      continuedl:
-         false,
-
-      retries:
-         3,
-
-      fragmentRetries:
-         3,
-
-      extractorRetries:
-         3
+   if (!formats.length) {
+      throw new Error(
+         'No hay formatos disponibles para este video'
+      )
    }
 
    console.log(
-      `🎧 YT-DLP FORMAT: ${format}`
+      `🎛️ FORMATOS DETECTADOS: ${formats.length}`
    )
 
-   return await youtubedl(
-      url,
-      options,
-      {
-         timeout:
-            180000
-      }
+   // ===============================
+   // AUDIO PURO
+   // ===============================
+
+   const audioFormats =
+      formats
+         .filter(format =>
+            format.vcodec === 'none' &&
+            format.acodec &&
+            format.acodec !== 'none'
+         )
+         .sort((a, b) => {
+
+            const abrA =
+               Number(
+                  a.abr ||
+                  a.tbr ||
+                  0
+               )
+
+            const abrB =
+               Number(
+                  b.abr ||
+                  b.tbr ||
+                  0
+               )
+
+            return abrB - abrA
+         })
+
+   if (
+      audioFormats.length
+   ) {
+
+      const selected =
+         audioFormats[0]
+
+      console.log(`
+╭──────────────────────⬣
+│ 🎧 AUDIO FORMAT
+├──────────────────────⬣
+│ ID: ${selected.format_id}
+│ EXT: ${selected.ext || 'unknown'}
+│ CODEC: ${selected.acodec || 'unknown'}
+│ ABR: ${selected.abr || selected.tbr || 'unknown'}
+╰──────────────────────⬣
+`)
+
+      return selected.format_id
+   }
+
+   // ===============================
+   // VIDEO + AUDIO
+   // ===============================
+
+   const combinedFormats =
+      formats
+         .filter(format =>
+            format.acodec &&
+            format.acodec !== 'none' &&
+            format.vcodec &&
+            format.vcodec !== 'none'
+         )
+         .sort((a, b) => {
+
+            const sizeA =
+               Number(
+                  a.filesize ||
+                  a.filesize_approx ||
+                  0
+               )
+
+            const sizeB =
+               Number(
+                  b.filesize ||
+                  b.filesize_approx ||
+                  0
+               )
+
+            if (
+               sizeA &&
+               sizeB
+            ) {
+               return sizeA - sizeB
+            }
+
+            return (
+               Number(b.height || 0) -
+               Number(a.height || 0)
+            )
+         })
+
+   if (
+      combinedFormats.length
+   ) {
+
+      const selected =
+         combinedFormats[0]
+
+      console.log(`
+╭──────────────────────⬣
+│ 🎬 VIDEO + AUDIO
+├──────────────────────⬣
+│ ID: ${selected.format_id}
+│ EXT: ${selected.ext || 'unknown'}
+│ RES: ${selected.resolution || 'unknown'}
+│ CODEC: ${selected.acodec || 'unknown'}
+╰──────────────────────⬣
+`)
+
+      return selected.format_id
+   }
+
+   throw new Error(
+      'No se encontró un formato compatible'
    )
 }
 
@@ -346,7 +442,7 @@ async function downloadAudio(url) {
 │ 🎵 YT-DLP LOCAL
 │ 🍪 COOKIES YOUTUBE
 │ 🎬 FFMPEG LOCAL
-│ 🎧 AUTO FORMAT
+│ 🎧 AUTO FORMAT ID
 ╰──────────────────────⬣
 `)
 
@@ -359,83 +455,253 @@ async function downloadAudio(url) {
       )
    }
 
+   let info
+
    // ===============================
-   // FORMATOS FALLBACK
+   // OBTENER FORMATOS
    // ===============================
 
-   const formats = [
-      'bestaudio',
-      'bestaudio/best',
-      'best',
-      'worstaudio/worst'
-   ]
+   try {
+
+      info =
+         await getVideoInfo(
+            url
+         )
+
+   } catch (error) {
+
+      console.error(
+         '❌ ERROR OBTENIENDO FORMATOS:',
+         error?.stderr ||
+         error?.message ||
+         error
+      )
+
+      throw error
+   }
+
+   // ===============================
+   // ELEGIR FORMAT ID REAL
+   // ===============================
+
+   const formatId =
+      selectFormat(
+         info
+      )
 
    let lastError = null
    let downloadedFile = null
 
-   for (
-      const format of formats
-   ) {
+   // ===============================
+   // PRIMER INTENTO
+   // ===============================
 
-      try {
+   try {
 
-         await runDownload(
-            url,
-            outputTemplate,
-            format
-         )
+      console.log(
+         `🎯 DESCARGANDO FORMAT ID: ${formatId}`
+      )
 
-         downloadedFile =
-            fs.readdirSync(
-               tempDir
-            ).find(file =>
-               file.startsWith(
-                  fileId
-               )
-            )
+      await youtubedl(
+         url,
+         {
+            ...YTDLP_OPTIONS,
 
-         if (
-            downloadedFile
-         ) {
-            console.log(
-               `✅ FORMATO FUNCIONAL: ${format}`
-            )
+            format:
+               formatId,
 
-            break
+            output:
+               outputTemplate,
+
+            quiet:
+               true,
+
+            noPlaylist:
+               true,
+
+            noPart:
+               true,
+
+            mergeOutputFormat:
+               'mp4'
+         },
+         {
+            timeout:
+               180000
          }
+      )
 
-      } catch (error) {
-
-         lastError =
-            error
-
-         console.log(
-            `⚠️ FORMATO FALLÓ: ${format}`
+      downloadedFile =
+         fs.readdirSync(
+            tempDir
+         ).find(file =>
+            file.startsWith(
+               fileId
+            )
          )
 
-         console.log(
-            error?.stderr ||
-            error?.message ||
-            ''
+   } catch (error) {
+
+      lastError =
+         error
+
+      console.log(
+         '⚠️ PRIMER FORMATO FALLÓ'
+      )
+
+      console.log(
+         error?.stderr ||
+         error?.message ||
+         ''
+      )
+   }
+
+   // ===============================
+   // FALLBACK: OTROS FORMATOS
+   // ===============================
+
+   if (!downloadedFile) {
+
+      const formats =
+         Array.isArray(
+            info.formats
          )
+            ? info.formats
+            : []
 
-         // Limpiar cualquier archivo
-         // parcial antes del siguiente intento.
-         try {
-
-            const files =
-               fs.readdirSync(
-                  tempDir
+      const alternatives =
+         formats
+            .filter(format =>
+               format &&
+               format.format_id &&
+               (
+                  (
+                     format.vcodec === 'none' &&
+                     format.acodec &&
+                     format.acodec !== 'none'
+                  ) ||
+                  (
+                     format.acodec &&
+                     format.acodec !== 'none' &&
+                     format.vcodec &&
+                     format.vcodec !== 'none'
+                  )
                )
+            )
+            .sort((a, b) => {
 
-            for (
-               const file of files
-            ) {
+               const audioA =
+                  a.vcodec === 'none'
+                     ? 1
+                     : 0
+
+               const audioB =
+                  b.vcodec === 'none'
+                     ? 1
+                     : 0
 
                if (
+                  audioA !== audioB
+               ) {
+                  return audioB - audioA
+               }
+
+               return (
+                  Number(
+                     b.abr ||
+                     b.tbr ||
+                     0
+                  ) -
+                  Number(
+                     a.abr ||
+                     a.tbr ||
+                     0
+                  )
+               )
+            })
+
+      for (
+         const alternative
+         of alternatives
+      ) {
+
+         if (
+            alternative.format_id ===
+            formatId
+         ) {
+            continue
+         }
+
+         try {
+
+            console.log(
+               `🔁 FALLBACK FORMAT: ${alternative.format_id}`
+            )
+
+            await youtubedl(
+               url,
+               {
+                  ...YTDLP_OPTIONS,
+
+                  format:
+                     alternative.format_id,
+
+                  output:
+                     outputTemplate,
+
+                  quiet:
+                     true,
+
+                  noPlaylist:
+                     true,
+
+                  noPart:
+                     true
+               },
+               {
+                  timeout:
+                     180000
+               }
+            )
+
+            downloadedFile =
+               fs.readdirSync(
+                  tempDir
+               ).find(file =>
                   file.startsWith(
                      fileId
                   )
+               )
+
+            if (
+               downloadedFile
+            ) {
+               break
+            }
+
+         } catch (error) {
+
+            lastError =
+               error
+
+            console.log(
+               `⚠️ FORMAT ${alternative.format_id} FALLÓ`
+            )
+
+            try {
+
+               const partial =
+                  fs.readdirSync(
+                     tempDir
+                  ).filter(file =>
+                     file.startsWith(
+                        fileId
+                     )
+                  )
+
+               for (
+                  const file
+                  of partial
                ) {
 
                   fs.unlinkSync(
@@ -445,9 +711,9 @@ async function downloadAudio(url) {
                      )
                   )
                }
-            }
 
-         } catch {}
+            } catch {}
+         }
       }
    }
 
@@ -455,10 +721,14 @@ async function downloadAudio(url) {
       throw (
          lastError ||
          new Error(
-            'YT-DLP no pudo descargar ningún formato disponible'
+            'No se pudo descargar ningún formato disponible'
          )
       )
    }
+
+   // ===============================
+   // LEER ARCHIVO
+   // ===============================
 
    const outputFile =
       path.join(
@@ -772,6 +1042,13 @@ async function songCommand(
          ) {
             inputExt =
                'mp4'
+         } else if (
+            firstBytes.startsWith(
+               '1a45dfa3'
+            )
+         ) {
+            inputExt =
+               'webm'
          }
 
          console.log(
