@@ -91,8 +91,7 @@ async function playCommand(sock, chatId, message) {
          [
             '--no-playlist',
             '--format',
-            'bestaudio[ext=m4a]/bestaudio/best',
-            '--extract-audio',
+            'bestaudio/best',
             '--output',
             tempFile,
             '--no-warnings',

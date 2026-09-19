@@ -273,8 +273,7 @@ async function downloadAudio(url) {
          url,
          {
             ...YTDLP_OPTIONS,
-            format: 'bestaudio[ext=m4a]/bestaudio/best',
-            extractAudio: true,
+            format: 'bestaudio/best',
             output: outputTemplate,
             quiet: true,
             noPlaylist: true
