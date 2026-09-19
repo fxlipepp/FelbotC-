@@ -81,7 +81,7 @@ async function playCommand(sock, chatId, message) {
          `${Date.now()}-` +
          `${Math.random().toString(36).slice(2)}`
 
-      tempFile = path.join(tempDir, `${fileId}.mp3`)
+      tempFile = path.join(tempDir, `${fileId}.%(ext)s`)
 
       // 📥 DESCARGAR CON YT-DLP
       console.log(`🎵 Descargando: ${video.title}`)
@@ -90,17 +90,17 @@ async function playCommand(sock, chatId, message) {
          'yt-dlp',
          [
             '--no-playlist',
+            '--format',
+            'bestaudio/best',
             '--extract-audio',
-            '--audio-format',
-            'mp3',
-            '--audio-quality',
-            '128K',
             '--output',
             tempFile,
             '--no-warnings',
             '--quiet',
             '--ffmpeg-location',
             process.env.FFMPEG_PATH || 'ffmpeg',
+            '--extractor-args',
+            'youtube:player_client=android,web',
             video.url
          ],
          {
@@ -109,15 +109,25 @@ async function playCommand(sock, chatId, message) {
          }
       )
 
+      const actualFile =
+         fs.readdirSync(tempDir)
+            .find(file => file.startsWith(fileId))
+
+      if (!actualFile) {
+         throw new Error('yt-dlp no generó un archivo de audio')
+      }
+
+      tempFile = path.join(tempDir, actualFile)
+
       // 🔍 VERIFICAR ARCHIVO
       if (!fs.existsSync(tempFile)) {
-         throw new Error('yt-dlp no generó el archivo MP3')
+         throw new Error('yt-dlp no generó el archivo de audio')
       }
 
       const stats = fs.statSync(tempFile)
 
       if (!stats.size) {
-         throw new Error('El archivo MP3 está vacío')
+         throw new Error('El archivo de audio está vacío')
       }
 
       console.log(

@@ -77,12 +77,11 @@ if (fs.existsSync(cookiesPath)) {
 const YTDLP_OPTIONS = {
    noWarnings: true,
    noPlaylist: true,
-
-   ffmpegLocation:
-      ffmpegPath,
-
-   cookies:
-      cookiesPath
+   ffmpegLocation: ffmpegPath,
+   extractorArgs: 'youtube:player_client=android,web',
+   ...(fs.existsSync(cookiesPath)
+      ? { cookies: cookiesPath }
+      : {})
 }
 
 // ===============================
@@ -247,10 +246,10 @@ async function downloadAudio(url) {
          .toString(36)
          .slice(2)}`
 
-   const outputFile =
+   const outputTemplate =
       path.join(
          tempDir,
-         `${fileId}.mp3`
+         `${fileId}.%(ext)s`
       )
 
    console.log(`
@@ -273,71 +272,43 @@ async function downloadAudio(url) {
          url,
          {
             ...YTDLP_OPTIONS,
-
-            // ===============================
-            // FORMATO
-            // ===============================
-
-            format:
-               'bestaudio/best',
-
-            // ===============================
-            // AUDIO
-            // ===============================
-
-            extractAudio:
-               true,
-
-            audioFormat:
-               'mp3',
-
-            audioQuality:
-               '128K',
-
-            // ===============================
-            // OUTPUT
-            // ===============================
-
-            output:
-               outputFile,
-
-            quiet:
-               true,
-
-            noPlaylist:
-               true
+            format: 'bestaudio/best',
+            extractAudio: true,
+            output: outputTemplate,
+            quiet: true,
+            noPlaylist: true
          },
          {
-            timeout:
-               120000
+            timeout: 120000
          }
       )
 
-      // ===============================
-      // VERIFICAR ARCHIVO
-      // ===============================
+      const downloadedFile =
+         fs.readdirSync(tempDir)
+            .find(file =>
+               file.startsWith(fileId)
+            )
 
-      if (!fs.existsSync(outputFile)) {
+      if (!downloadedFile) {
          throw new Error(
-            'No se generó el MP3'
+            'No se descargó ningún archivo de audio'
          )
       }
 
+      const outputFile =
+         path.join(tempDir, downloadedFile)
+
       const stats =
-         fs.statSync(
-            outputFile
-         )
+         fs.statSync(outputFile)
 
       if (!stats.size) {
          throw new Error(
-            'El MP3 está vacío'
+            'El audio descargado está vacío'
          )
       }
 
       const buffer =
-         fs.readFileSync(
-            outputFile
-         )
+         fs.readFileSync(outputFile)
 
       console.log(`
 ╭──────────────────────⬣
@@ -351,14 +322,8 @@ async function downloadAudio(url) {
 ╰──────────────────────⬣
 `)
 
-      // ===============================
-      // LIMPIAR TEMPORAL
-      // ===============================
-
       try {
-         fs.unlinkSync(
-            outputFile
-         )
+         fs.unlinkSync(outputFile)
       } catch {}
 
       return buffer
@@ -366,13 +331,15 @@ async function downloadAudio(url) {
    } catch (error) {
 
       try {
-         if (
-            fs.existsSync(
-               outputFile
-            )
-         ) {
+         const staleFile =
+            fs.readdirSync(tempDir)
+               .find(file =>
+                  file.startsWith(fileId)
+               )
+
+         if (staleFile) {
             fs.unlinkSync(
-               outputFile
+               path.join(tempDir, staleFile)
             )
          }
       } catch {}
