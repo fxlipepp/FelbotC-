@@ -1,4 +1,4 @@
-```javascript
+
 const youtubedl = require('youtube-dl-exec')
 const ffmpegPath = require('ffmpeg-static')
 const fs = require('fs')
@@ -6,46 +6,66 @@ const path = require('path')
 const os = require('os')
 const { toAudio } = require('../lib/converter')
 
-// ===============================
+// ======================================================
 // CACHE
-// ===============================
+// ======================================================
 
 const searchCache = new Map()
 
 function limitMapSize(map, max = 100) {
    while (map.size > max) {
       const firstKey = map.keys().next().value
+
+      if (!firstKey) {
+         break
+      }
+
       map.delete(firstKey)
    }
 }
 
-// ===============================
-// RAM CLEANER
-// ===============================
+// ======================================================
+// LIMPIEZA DE MEMORIA
+// ======================================================
 
 function cleanMemory() {
    try {
+
       if (searchCache.size > 70) {
          searchCache.clear()
       }
 
-      if (global.gc) {
+      if (
+         global.gc &&
+         typeof global.gc === 'function'
+      ) {
          global.gc()
       }
+
    } catch {}
 }
 
-setInterval(() => {
-   cleanMemory()
-}, 1000 * 60 * 20)
+setInterval(
+   cleanMemory,
+   1000 * 60 * 20
+)
 
-// ===============================
-// HELPERS
-// ===============================
+// ======================================================
+// BARRA
+// ======================================================
 
 function createBar(percent) {
+
    const total = 10
-   const filled = Math.round(percent / 10)
+
+   const filled =
+      Math.max(
+         0,
+         Math.min(
+            total,
+            Math.round(percent / 10)
+         )
+      )
 
    return (
       '▰'.repeat(filled) +
@@ -53,17 +73,20 @@ function createBar(percent) {
    )
 }
 
-// ===============================
+// ======================================================
 // COOKIES
-// ===============================
+// ======================================================
 
-const cookiesPath = path.join(
-   process.cwd(),
-   'cookies.txt'
-)
+const cookiesPath =
+   path.join(
+      process.cwd(),
+      'cookies.txt'
+   )
 
 const hasCookies =
-   fs.existsSync(cookiesPath)
+   fs.existsSync(
+      cookiesPath
+   )
 
 console.log(
    hasCookies
@@ -71,13 +94,17 @@ console.log(
       : '⚠️ YOUTUBE COOKIES: NO ENCONTRADAS'
 )
 
-// ===============================
-// BASE OPTIONS
-// ===============================
+// ======================================================
+// OPCIONES BASE
+// ======================================================
 
 const BASE_OPTIONS = {
-   noWarnings: true,
-   noPlaylist: true,
+
+   noWarnings:
+      true,
+
+   noPlaylist:
+      true,
 
    ffmpegLocation:
       ffmpegPath,
@@ -92,9 +119,9 @@ const BASE_OPTIONS = {
       'node'
 }
 
-// ===============================
+// ======================================================
 // OPCIONES YT-DLP
-// ===============================
+// ======================================================
 
 function youtubeOptions({
    client = null,
@@ -107,19 +134,23 @@ function youtubeOptions({
    }
 
    if (client) {
+
       options.extractorArgs =
-         `youtube:player_client=${client}`
+         'youtube:player_client=' +
+         client
    }
 
    if (
       cookies &&
       hasCookies
    ) {
+
       options.cookies =
          cookiesPath
    }
 
    if (format) {
+
       options.format =
          format
    }
@@ -127,43 +158,95 @@ function youtubeOptions({
    return options
 }
 
-// ===============================
-// OBTENER INFO
-// ===============================
+// ======================================================
+// FORMATO DURACIÓN
+// ======================================================
+
+function formatDuration(seconds) {
+
+   if (
+      seconds === undefined ||
+      seconds === null ||
+      Number.isNaN(
+         Number(seconds)
+      )
+   ) {
+      return 'Unknown'
+   }
+
+   const total =
+      Math.floor(
+         Number(seconds)
+      )
+
+   const minutes =
+      Math.floor(
+         total / 60
+      )
+
+   const remaining =
+      total % 60
+
+   return (
+      String(minutes) +
+      ':' +
+      String(
+         remaining
+      ).padStart(
+         2,
+         '0'
+      )
+   )
+}
+
+// ======================================================
+// INFORMACIÓN DEL VIDEO
+// ======================================================
 //
 // IMPORTANTE:
-// Ya no hacemos:
+// Se usa directamente cookies.
+// No hacemos:
+//
 // default OFF
 // android OFF
 // web OFF
 // tv_embedded OFF
 //
-// Usamos cookies directamente porque
-// tus logs demostraron que ese método funciona.
-// ===============================
+// Tus logs demostraron que:
+//
+// default + cookies = FUNCIONA
+// ======================================================
 
 async function getVideoInfo(url) {
 
    console.log(
-      `🔎 INFO YOUTUBE | 🍪 COOKIES: ${hasCookies ? 'ON' : 'OFF'}`
+      '🔎 INFO YOUTUBE | 🍪 COOKIES: ' +
+      (
+         hasCookies
+            ? 'ON'
+            : 'OFF'
+      )
    )
 
    try {
+
+      const options =
+         youtubeOptions({
+            client:
+               'default',
+
+            cookies:
+               hasCookies,
+
+            format:
+               'bestaudio/best'
+         })
 
       const info =
          await youtubedl(
             url,
             {
-               ...youtubeOptions({
-                  client:
-                     'default',
-
-                  cookies:
-                     hasCookies,
-
-                  format:
-                     'bestaudio/best'
-               }),
+               ...options,
 
                dumpSingleJson:
                   true,
@@ -205,9 +288,9 @@ async function getVideoInfo(url) {
    }
 }
 
-// ===============================
+// ======================================================
 // BUSCAR YOUTUBE
-// ===============================
+// ======================================================
 
 async function searchYouTube(query) {
 
@@ -227,7 +310,8 @@ async function searchYouTube(query) {
 
       const results =
          await youtubedl(
-            `ytsearch5:${query}`,
+            'ytsearch5:' +
+            query,
             {
                ...youtubeOptions({
                   client:
@@ -250,9 +334,12 @@ async function searchYouTube(query) {
 
       if (
          !results ||
-         !results.entries ||
+         !Array.isArray(
+            results.entries
+         ) ||
          !results.entries.length
       ) {
+
          throw new Error(
             'No se encontraron resultados'
          )
@@ -263,25 +350,36 @@ async function searchYouTube(query) {
       )
 
       const selected =
-         results.entries.find(video =>
-            video.title &&
-            !video.title
-               .toLowerCase()
-               .includes('playlist') &&
-            (
-               !video.duration ||
+         results.entries.find(
+            video =>
+               video &&
+               video.title &&
+               !video.title
+                  .toLowerCase()
+                  .includes(
+                     'playlist'
+                  ) &&
                (
-                  video.duration > 30 &&
-                  video.duration < 1800
+                  !video.duration ||
+                  (
+                     Number(
+                        video.duration
+                     ) > 30 &&
+                     Number(
+                        video.duration
+                     ) < 1800
+                  )
                )
-            )
          ) ||
-         results.entries.find(video =>
-            video.title
+         results.entries.find(
+            video =>
+               video &&
+               video.title
          ) ||
          results.entries[0]
 
       if (!selected) {
+
          throw new Error(
             'No se encontró una canción'
          )
@@ -291,47 +389,32 @@ async function searchYouTube(query) {
          selected.webpage_url ||
          (
             selected.id
-               ? `https://www.youtube.com/watch?v=${selected.id}`
+               ? 'https://www.youtube.com/watch?v=' +
+                 selected.id
                : null
          )
 
       if (!videoUrl) {
+
          throw new Error(
             'No se pudo obtener la URL del video'
          )
       }
 
       console.log(
-         `🎯 VIDEO SELECCIONADO: ${videoUrl}`
+         '🎯 VIDEO SELECCIONADO: ' +
+         videoUrl
       )
 
-      // ===============================
-      // INFO
-      // ===============================
+      // ==================================================
+      // USAR INFORMACIÓN DEL SEARCH
+      // ==================================================
       //
-      // Intentamos obtener información completa
-      // solamente cuando realmente la necesitamos.
-      // Si falla, usamos la información del search.
-      // ===============================
-
-      let info = selected
-
-      try {
-
-         info =
-            await getVideoInfo(
-               videoUrl
-            )
-
-      } catch {
-
-         console.log(
-            '⚡ USANDO INFO DEL SEARCH'
-         )
-
-         info =
-            selected
-      }
+      // Primero devolvemos lo que ya tenemos.
+      // Esto evita una consulta adicional lenta.
+      //
+      // La descarga posteriormente usa cookies.
+      // ==================================================
 
       return {
 
@@ -339,37 +422,39 @@ async function searchYouTube(query) {
             videoUrl,
 
          title:
-            info.title ||
             selected.title ||
             'YouTube Audio',
 
          thumbnail:
-            info.thumbnail ||
             selected.thumbnail ||
-            'https://i.imgur.com/AfFp7pu.png',
+            (
+               selected.thumbnails &&
+               selected.thumbnails.length
+                  ? selected.thumbnails[
+                       selected.thumbnails.length - 1
+                    ].url
+                  : 'https://i.imgur.com/AfFp7pu.png'
+            ),
 
          timestamp:
-            info.duration_string ||
             selected.duration_string ||
             (
-               info.duration
+               selected.duration
                   ? formatDuration(
-                       info.duration
+                       selected.duration
                     )
                   : 'Unknown'
             ),
 
          author: {
+
             name:
-               info.uploader ||
-               info.channel ||
                selected.uploader ||
                selected.channel ||
                'Unknown'
          },
 
          views:
-            info.view_count ||
             selected.view_count ||
             0
       }
@@ -387,49 +472,20 @@ async function searchYouTube(query) {
    }
 }
 
-// ===============================
-// DURACIÓN
-// ===============================
-
-function formatDuration(seconds) {
-
-   if (!seconds) {
-      return 'Unknown'
-   }
-
-   seconds =
-      Math.floor(
-         Number(seconds)
-      )
-
-   const minutes =
-      Math.floor(
-         seconds / 60
-      )
-
-   const remaining =
-      seconds % 60
-
-   return (
-      `${minutes}:` +
-      `${String(
-         remaining
-      ).padStart(2, '0')}`
-   )
-}
-
-// ===============================
+// ======================================================
 // DESCARGAR AUDIO
-// ===============================
+// ======================================================
 //
-// DIRECTO CON COOKIES
+// MÉTODO RÁPIDO:
 //
-// Ya no hacemos:
-// OFF → OFF → OFF → OFF → ON
+// SEARCH
+//    ↓
+// DOWNLOAD CON COOKIES
+//    ↓
+// FFMPEG
 //
-// Ahora:
-// ON → descarga
-// ===============================
+// No hacemos múltiples clientes.
+// ======================================================
 
 async function downloadAudio(url) {
 
@@ -439,7 +495,12 @@ async function downloadAudio(url) {
          'felbot-play'
       )
 
-   if (!fs.existsSync(tempDir)) {
+   if (
+      !fs.existsSync(
+         tempDir
+      )
+   ) {
+
       fs.mkdirSync(
          tempDir,
          {
@@ -450,15 +511,17 @@ async function downloadAudio(url) {
    }
 
    const fileId =
-      `${Date.now()}-` +
-      `${Math.random()
+      Date.now() +
+      '-' +
+      Math.random()
          .toString(36)
-         .slice(2)}`
+         .slice(2)
 
    const outputTemplate =
       path.join(
          tempDir,
-         `${fileId}.%(ext)s`
+         fileId +
+         '.%(ext)s'
       )
 
    console.log(`
@@ -476,7 +539,12 @@ async function downloadAudio(url) {
    try {
 
       console.log(
-         `🎯 DOWNLOAD CLIENT: default | COOKIES: ${hasCookies ? 'ON' : 'OFF'}`
+         '🎯 DOWNLOAD CLIENT: default | COOKIES: ' +
+         (
+            hasCookies
+               ? 'ON'
+               : 'OFF'
+         )
       )
 
       const options =
@@ -509,23 +577,25 @@ async function downloadAudio(url) {
          }
       )
 
-      const downloadedFiles =
+      const files =
          fs.readdirSync(
             tempDir
-         ).filter(file =>
-            file.startsWith(
-               fileId
-            )
+         ).filter(
+            file =>
+               file.startsWith(
+                  fileId
+               )
          )
 
-      if (!downloadedFiles.length) {
+      if (!files.length) {
+
          throw new Error(
             'No se descargó ningún archivo'
          )
       }
 
       const downloadedFile =
-         downloadedFiles[0]
+         files[0]
 
       const outputFile =
          path.join(
@@ -533,12 +603,26 @@ async function downloadAudio(url) {
             downloadedFile
          )
 
+      if (
+         !fs.existsSync(
+            outputFile
+         )
+      ) {
+
+         throw new Error(
+            'El archivo descargado no existe'
+         )
+      }
+
       const stats =
          fs.statSync(
             outputFile
          )
 
-      if (!stats.size) {
+      if (
+         !stats.size
+      ) {
+
          throw new Error(
             'El archivo descargado está vacío'
          )
@@ -576,27 +660,35 @@ async function downloadAudio(url) {
          error
       )
 
-      // Limpiar archivos temporales
+      // ================================================
+      // LIMPIAR TEMPORALES
+      // ================================================
+
       try {
 
          const files =
             fs.readdirSync(
                tempDir
-            ).filter(file =>
-               file.startsWith(
-                  fileId
-               )
+            ).filter(
+               file =>
+                  file.startsWith(
+                     fileId
+                  )
             )
 
-         for (const file of files) {
+         for (
+            const file of files
+         ) {
 
             try {
+
                fs.unlinkSync(
                   path.join(
                      tempDir,
                      file
                   )
                )
+
             } catch {}
          }
 
@@ -606,9 +698,9 @@ async function downloadAudio(url) {
    }
 }
 
-// ===============================
+// ======================================================
 // COMMAND
-// ===============================
+// ======================================================
 
 async function songCommand(
    sock,
@@ -627,9 +719,13 @@ async function songCommand(
 ╰──────────────────────⬣
 `)
 
+      // ==================================================
+      // TEXTO
+      // ==================================================
+
       const text =
-         message.message?.conversation ||
-         message.message?.extendedTextMessage?.text ||
+         message?.message?.conversation ||
+         message?.message?.extendedTextMessage?.text ||
          ''
 
       const query =
@@ -658,20 +754,24 @@ async function songCommand(
 
       let video
 
-      // ===============================
+      // ==================================================
       // URL DIRECTA
-      // ===============================
+      // ==================================================
 
       if (
-         query.includes('youtube.com') ||
-         query.includes('youtu.be')
+         query.includes(
+            'youtube.com'
+         ) ||
+         query.includes(
+            'youtu.be'
+         )
       ) {
 
          console.log(
             '🔗 URL DIRECTA DE YOUTUBE'
          )
 
-         let directInfo = {}
+         let directInfo = null
 
          try {
 
@@ -693,17 +793,17 @@ async function songCommand(
                query,
 
             title:
-               directInfo.title ||
+               directInfo?.title ||
                'YouTube Audio',
 
             thumbnail:
-               directInfo.thumbnail ||
+               directInfo?.thumbnail ||
                'https://i.imgur.com/AfFp7pu.png',
 
             timestamp:
-               directInfo.duration_string ||
+               directInfo?.duration_string ||
                (
-                  directInfo.duration
+                  directInfo?.duration
                      ? formatDuration(
                           directInfo.duration
                        )
@@ -711,26 +811,32 @@ async function songCommand(
                ),
 
             author: {
+
                name:
-                  directInfo.uploader ||
-                  directInfo.channel ||
+                  directInfo?.uploader ||
+                  directInfo?.channel ||
                   'Unknown'
             },
 
             views:
-               directInfo.view_count ||
+               directInfo?.view_count ||
                0
          }
 
       } else {
 
-         // ===============================
+         // ==================================================
          // CACHE
-         // ===============================
+         // ==================================================
+
+         const cacheKey =
+            query
+               .toLowerCase()
+               .trim()
 
          if (
             searchCache.has(
-               query
+               cacheKey
             )
          ) {
 
@@ -740,7 +846,7 @@ async function songCommand(
 
             video =
                searchCache.get(
-                  query
+                  cacheKey
                )
 
          } else {
@@ -751,7 +857,7 @@ async function songCommand(
                )
 
             searchCache.set(
-               query,
+               cacheKey,
                video
             )
 
@@ -759,19 +865,22 @@ async function songCommand(
                searchCache
             )
 
-            setTimeout(() => {
+            setTimeout(
+               () => {
 
-               searchCache.delete(
-                  query
-               )
+                  searchCache.delete(
+                     cacheKey
+                  )
 
-            }, 1000 * 60 * 5)
+               },
+               1000 * 60 * 5
+            )
          }
       }
 
-      // ===============================
+      // ==================================================
       // LOADING
-      // ===============================
+      // ==================================================
 
       const loading =
          await sock.sendMessage(
@@ -788,7 +897,9 @@ async function songCommand(
 > ❀ Título: ${video.title}
 > ❀ Autor: ${video.author?.name || 'Unknown'}
 > ❀ Duración: ${video.timestamp || 'Unknown'}
-> ❀ Vistas: ${video.views?.toLocaleString() || '0'}
+> ❀ Vistas: ${Number(
+   video.views || 0
+).toLocaleString()}
 
 > 🚀 Buscando canción...
 > ${createBar(10)} 10%`
@@ -799,9 +910,9 @@ async function songCommand(
             }
          )
 
-      // ===============================
-      // DOWNLOAD
-      // ===============================
+      // ==================================================
+      // DESCARGA
+      // ==================================================
 
       const audioBuffer =
          await downloadAudio(
@@ -812,6 +923,7 @@ async function songCommand(
          !audioBuffer ||
          audioBuffer.length < 50000
       ) {
+
          throw new Error(
             'Audio inválido'
          )
@@ -824,33 +936,39 @@ async function songCommand(
                0,
                32
             )
-            .toString('hex')
+            .toString(
+               'hex'
+            )
       )
 
-      // ===============================
-      // PROCESS
-      // ===============================
+      // ==================================================
+      // PROCESAR
+      // ==================================================
 
-      await sock.sendMessage(
-         chatId,
-         {
-            edit:
-               loading.key,
+      try {
 
-            image: {
-               url:
-                  video.thumbnail
-            },
+         await sock.sendMessage(
+            chatId,
+            {
+               edit:
+                  loading.key,
 
-            caption:
+               image: {
+                  url:
+                     video.thumbnail
+               },
+
+               caption:
 `🔄 *PROCESANDO AUDIO*
 
 > ❀ Título: ${video.title}
 
 > ⚡ Convirtiendo audio...
 > ${createBar(90)} 90%`
-         }
-      )
+            }
+         )
+
+      } catch {}
 
       let finalBuffer
 
@@ -862,23 +980,27 @@ async function songCommand(
                   0,
                   64
                )
-               .toString('hex')
+               .toString(
+                  'hex'
+               )
 
          let inputExt =
             'mp3'
 
-         // MP4 / M4A
+         // ftyp = MP4 / M4A
          if (
             firstBytes.includes(
                '66747970'
             )
          ) {
+
             inputExt =
                'mp4'
          }
 
          console.log(
-            `🔍 INPUT EXT: ${inputExt}`
+            '🔍 INPUT EXT: ' +
+            inputExt
          )
 
          finalBuffer =
@@ -887,12 +1009,12 @@ async function songCommand(
                inputExt
             )
 
-      } catch (err) {
+      } catch (error) {
 
          console.log(
             '⚠️ Conversión no necesaria:',
-            err?.message ||
-            err
+            error?.message ||
+            error
          )
 
          finalBuffer =
@@ -903,17 +1025,21 @@ async function songCommand(
          !finalBuffer ||
          finalBuffer.length < 50000
       ) {
+
          throw new Error(
             'Conversion failed'
          )
       }
 
-      // ===============================
-      // SAFE TITLE
-      // ===============================
+      // ==================================================
+      // NOMBRE SEGURO
+      // ==================================================
 
       const safeTitle =
-         (video.title || 'song')
+         (
+            video.title ||
+            'song'
+         )
             .replace(
                /[^\w\s-]/g,
                ''
@@ -925,9 +1051,9 @@ async function songCommand(
             ) ||
          'song'
 
-      // ===============================
-      // SEND AUDIO
-      // ===============================
+      // ==================================================
+      // ENVIAR AUDIO
+      // ==================================================
 
       await sock.sendMessage(
          chatId,
@@ -939,7 +1065,8 @@ async function songCommand(
                'audio/mpeg',
 
             fileName:
-               `${safeTitle}.mp3`,
+               safeTitle +
+               '.mp3',
 
             ptt:
                false
@@ -950,22 +1077,24 @@ async function songCommand(
          }
       )
 
-      // ===============================
-      // FINISHED
-      // ===============================
+      // ==================================================
+      // FINALIZADO
+      // ==================================================
 
-      await sock.sendMessage(
-         chatId,
-         {
-            edit:
-               loading.key,
+      try {
 
-            image: {
-               url:
-                  video.thumbnail
-            },
+         await sock.sendMessage(
+            chatId,
+            {
+               edit:
+                  loading.key,
 
-            caption:
+               image: {
+                  url:
+                     video.thumbnail
+               },
+
+               caption:
 `✅ *AUDIO ENVIADO*
 
 > ❀ Título: ${safeTitle}
@@ -973,13 +1102,17 @@ async function songCommand(
 > ❀ Duración: ${video.timestamp || 'Unknown'}
 
 > 🚀 Completado en ${(
-   (Date.now() -
-      startTime) /
+   (
+      Date.now() -
+      startTime
+   ) /
    1000
 ).toFixed(1)}s
 > ${createBar(100)} 100%`
-         }
-      )
+            }
+         )
+
+      } catch {}
 
       console.log(`
 ╭──────────────────────⬣
@@ -987,8 +1120,10 @@ async function songCommand(
 ├──────────────────────⬣
 │ 🎧 ${safeTitle}
 │ ⏱️ ${(
-   (Date.now() -
-      startTime) /
+   (
+      Date.now() -
+      startTime
+   ) /
    1000
 ).toFixed(1)}s
 ╰──────────────────────⬣
@@ -996,13 +1131,13 @@ async function songCommand(
 
       cleanMemory()
 
-   } catch (err) {
+   } catch (error) {
 
       console.error(
          '❌ SONG ERROR:',
-         err?.stderr ||
-         err?.message ||
-         err
+         error?.stderr ||
+         error?.message ||
+         error
       )
 
       try {
@@ -1025,5 +1160,9 @@ async function songCommand(
    }
 }
 
-module.exports = songCommand
-```
+// ======================================================
+// EXPORT
+// ======================================================
+
+module.exports =
+   songCommand
