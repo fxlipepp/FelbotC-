@@ -53,7 +53,7 @@ function createBar(percent) {
 }
 
 // ===============================
-// COOKIES YOUTUBE
+// COOKIES
 // ===============================
 
 const cookiesPath = path.join(
@@ -61,83 +61,162 @@ const cookiesPath = path.join(
    'cookies.txt'
 )
 
-if (fs.existsSync(cookiesPath)) {
-   console.log('🍪 YOUTUBE COOKIES: ENCONTRADAS')
-} else {
-   console.log('⚠️ YOUTUBE COOKIES: NO ENCONTRADAS')
-}
+const hasCookies =
+   fs.existsSync(cookiesPath)
+
+console.log(
+   hasCookies
+      ? '🍪 YOUTUBE COOKIES: ENCONTRADAS'
+      : '⚠️ YOUTUBE COOKIES: NO ENCONTRADAS'
+)
 
 // ===============================
-// YT-DLP OPTIONS BASE
+// BASE OPTIONS
 // ===============================
 
-const YTDLP_OPTIONS = {
+const BASE_OPTIONS = {
    noWarnings: true,
    noPlaylist: true,
-   ffmpegLocation: ffmpegPath,
-   retries: 3,
 
-   ...(fs.existsSync(cookiesPath)
-      ? { cookies: cookiesPath }
-      : {})
+   ffmpegLocation:
+      ffmpegPath,
+
+   retries:
+      2,
+
+   noCheckCertificates:
+      true,
+
+   // Importante para YouTube moderno
+   jsRuntimes:
+      'node'
 }
 
 // ===============================
-// OBTENER INFORMACIÓN DE YOUTUBE
+// CREAR OPCIONES
+// ===============================
+
+function youtubeOptions({
+   client = null,
+   cookies = false,
+   format = null
+} = {}) {
+
+   const options = {
+      ...BASE_OPTIONS
+   }
+
+   if (client) {
+      options.extractorArgs =
+         `youtube:player_client=${client}`
+   }
+
+   if (
+      cookies &&
+      hasCookies
+   ) {
+      options.cookies =
+         cookiesPath
+   }
+
+   if (format) {
+      options.format =
+         format
+   }
+
+   return options
+}
+
+// ===============================
+// CLIENTES
+// ===============================
+
+// Primero intentamos sin cookies.
+// Si falla, probamos con cookies.
+// Esto evita que unas cookies incompatibles
+// bloqueen todos los formatos.
+
+const CLIENTS = [
+   {
+      name: 'default',
+      cookies: false
+   },
+   {
+      name: 'android',
+      cookies: false
+   },
+   {
+      name: 'web',
+      cookies: false
+   },
+   {
+      name: 'tv_embedded',
+      cookies: false
+   },
+   {
+      name: 'default',
+      cookies: true
+   },
+   {
+      name: 'web_safari',
+      cookies: true
+   },
+   {
+      name: 'android',
+      cookies: true
+   },
+   {
+      name: 'web',
+      cookies: true
+   }
+]
+
+// ===============================
+// OBTENER INFO
 // ===============================
 
 async function getVideoInfo(url) {
 
-   const clients = [
-      'android',
-      'web',
-      'tv_embedded',
-      'ios'
-   ]
-
    let lastError = null
 
-   for (const client of clients) {
+   for (const config of CLIENTS) {
 
       try {
 
          console.log(
-            `🔎 YOUTUBE CLIENT: ${client}`
+            `🔎 INFO CLIENT: ${config.name} | COOKIES: ${config.cookies ? 'ON' : 'OFF'}`
          )
 
          const info =
             await youtubedl(
                url,
                {
-                  ...YTDLP_OPTIONS,
+                  ...youtubeOptions({
+                     client:
+                        config.name,
 
-                  extractorArgs:
-                     `youtube:player_client=${client}`,
+                     cookies:
+                        config.cookies,
+
+                     format:
+                        'bestaudio/best'
+                  }),
 
                   dumpSingleJson:
                      true,
 
                   skipDownload:
-                     true,
-
-                  noWarnings:
-                     true,
-
-                  noCheckCertificates:
                      true
                }
             )
 
          if (
             info &&
-            (
-               info.formats ||
-               info.title
-            )
+            info.title
          ) {
 
             console.log(
-               `✅ CLIENT FUNCIONAL: ${client}`
+               `✅ INFO FUNCIONAL: ${config.name} | COOKIES: ${config.cookies ? 'ON' : 'OFF'}`
             )
 
             return info
@@ -145,10 +224,11 @@ async function getVideoInfo(url) {
 
       } catch (error) {
 
-         lastError = error
+         lastError =
+            error
 
          console.log(
-            `⚠️ CLIENT ${client} FALLÓ`
+            `⚠️ INFO FALLÓ: ${config.name} | COOKIES: ${config.cookies ? 'ON' : 'OFF'}`
          )
 
          console.log(
@@ -162,7 +242,7 @@ async function getVideoInfo(url) {
    throw (
       lastError ||
       new Error(
-         'Ningún cliente de YouTube pudo obtener información'
+         'No se pudo obtener información de YouTube'
       )
    )
 }
@@ -181,31 +261,47 @@ async function searchYouTube(query) {
 ╰──────────────────────⬣
 `)
 
-   const clients = [
-      'android',
-      'web',
-      'tv_embedded'
-   ]
-
    let results = null
    let lastError = null
 
-   for (const client of clients) {
+   const searchClients = [
+      {
+         name: 'default',
+         cookies: false
+      },
+      {
+         name: 'android',
+         cookies: false
+      },
+      {
+         name: 'web',
+         cookies: false
+      },
+      {
+         name: 'default',
+         cookies: true
+      }
+   ]
+
+   for (const config of searchClients) {
 
       try {
 
          console.log(
-            `🔎 SEARCH CLIENT: ${client}`
+            `🔎 SEARCH CLIENT: ${config.name} | COOKIES: ${config.cookies ? 'ON' : 'OFF'}`
          )
 
          results =
             await youtubedl(
                `ytsearch5:${query}`,
                {
-                  ...YTDLP_OPTIONS,
+                  ...youtubeOptions({
+                     client:
+                        config.name,
 
-                  extractorArgs:
-                     `youtube:player_client=${client}`,
+                     cookies:
+                        config.cookies
+                  }),
 
                   flatPlaylist:
                      true,
@@ -223,8 +319,9 @@ async function searchYouTube(query) {
             results.entries &&
             results.entries.length
          ) {
+
             console.log(
-               `✅ SEARCH CLIENT FUNCIONAL: ${client}`
+               `✅ SEARCH FUNCIONAL: ${config.name}`
             )
 
             break
@@ -232,10 +329,11 @@ async function searchYouTube(query) {
 
       } catch (error) {
 
-         lastError = error
+         lastError =
+            error
 
          console.log(
-            `⚠️ SEARCH CLIENT ${client} FALLÓ`
+            `⚠️ SEARCH FALLÓ: ${config.name}`
          )
 
          console.log(
@@ -286,7 +384,6 @@ async function searchYouTube(query) {
 
    const videoUrl =
       selected.webpage_url ||
-      selected.url ||
       (
          selected.id
             ? `https://www.youtube.com/watch?v=${selected.id}`
@@ -303,7 +400,7 @@ async function searchYouTube(query) {
       `🎯 VIDEO SELECCIONADO: ${videoUrl}`
    )
 
-   let info
+   let info = {}
 
    try {
 
@@ -315,7 +412,7 @@ async function searchYouTube(query) {
    } catch (error) {
 
       console.log(
-         '⚠️ NO SE PUDO OBTENER INFO COMPLETA'
+         '⚠️ INFO COMPLETA NO DISPONIBLE'
       )
 
       console.log(
@@ -324,12 +421,12 @@ async function searchYouTube(query) {
          ''
       )
 
-      // Si no conseguimos la información completa,
-      // usamos los datos de búsqueda.
-      info = selected
+      info =
+         selected
    }
 
    return {
+
       url:
          videoUrl,
 
@@ -403,66 +500,46 @@ async function downloadAudio(url) {
 │ 🚀 DESCARGANDO AUDIO
 ├──────────────────────⬣
 │ 🎵 YT-DLP LOCAL
-│ 🍪 COOKIES YOUTUBE
 │ 🎬 FFMPEG LOCAL
+│ 🧠 NODE JS RUNTIME
 │ 🎧 BEST AUDIO
 ╰──────────────────────⬣
 `)
 
-   const start =
-      Date.now()
-
-   if (!fs.existsSync(cookiesPath)) {
-      throw new Error(
-         'Se requiere cookies.txt de YouTube para extraer audio. Exporta las cookies del navegador y colócalas en la raíz del proyecto.'
-      )
-   }
-
-   const clients = [
-      'android',
-      'web',
-      'tv_embedded',
-      'ios'
-   ]
-
    let lastError = null
 
-   for (const client of clients) {
+   for (const config of CLIENTS) {
 
       try {
 
          console.log(
-            `🎯 DOWNLOAD CLIENT: ${client}`
+            `🎯 DOWNLOAD CLIENT: ${config.name} | COOKIES: ${config.cookies ? 'ON' : 'OFF'}`
          )
 
-         const ytOptions = {
-            ...YTDLP_OPTIONS,
+         const options =
+            youtubeOptions({
+               client:
+                  config.name,
 
-            extractorArgs:
-               `youtube:player_client=${client}`,
+               cookies:
+                  config.cookies,
 
-            format:
-               'bestaudio/best',
+               format:
+                  'bestaudio[ext=m4a]/bestaudio/best'
+            })
 
-            output:
-               outputTemplate,
+         options.output =
+            outputTemplate
 
-            quiet:
-               true,
+         options.quiet =
+            true
 
-            noPlaylist:
-               true,
-
-            noWarnings:
-               true,
-
-            noCheckCertificates:
-               true
-         }
+         options.noPlaylist =
+            true
 
          await youtubedl(
             url,
-            ytOptions,
+            options,
             {
                timeout:
                   120000
@@ -470,14 +547,17 @@ async function downloadAudio(url) {
          )
 
          const downloadedFile =
-            fs.readdirSync(tempDir)
-               .find(file =>
-                  file.startsWith(fileId)
+            fs.readdirSync(
+               tempDir
+            ).find(file =>
+               file.startsWith(
+                  fileId
                )
+            )
 
          if (!downloadedFile) {
             throw new Error(
-               'No se descargó ningún archivo de audio'
+               'No se descargó ningún archivo'
             )
          }
 
@@ -494,7 +574,7 @@ async function downloadAudio(url) {
 
          if (!stats.size) {
             throw new Error(
-               'El audio descargado está vacío'
+               'El archivo descargado está vacío'
             )
          }
 
@@ -507,12 +587,9 @@ async function downloadAudio(url) {
 ╭──────────────────────⬣
 │ ✅ AUDIO DESCARGADO
 ├──────────────────────⬣
+│ 🎯 CLIENT: ${config.name}
+│ 🍪 COOKIES: ${config.cookies ? 'ON' : 'OFF'}
 │ 📦 ${(stats.size / 1024 / 1024).toFixed(2)} MB
-│ 🎯 CLIENT: ${client}
-│ ⚡ ${(
-   (Date.now() - start) /
-   1000
-).toFixed(1)}s
 ╰──────────────────────⬣
 `)
 
@@ -526,10 +603,11 @@ async function downloadAudio(url) {
 
       } catch (error) {
 
-         lastError = error
+         lastError =
+            error
 
          console.log(
-            `⚠️ DOWNLOAD CLIENT ${client} FALLÓ`
+            `⚠️ DOWNLOAD FALLÓ: ${config.name} | COOKIES: ${config.cookies ? 'ON' : 'OFF'}`
          )
 
          console.log(
@@ -540,15 +618,17 @@ async function downloadAudio(url) {
 
          try {
 
-            const staleFiles =
+            const files =
                fs.readdirSync(
                   tempDir
-               )
-                  .filter(file =>
-                     file.startsWith(fileId)
+               ).filter(file =>
+                  file.startsWith(
+                     fileId
                   )
+               )
 
-            for (const file of staleFiles) {
+            for (const file of files) {
+
                try {
                   fs.unlinkSync(
                      path.join(
@@ -563,17 +643,10 @@ async function downloadAudio(url) {
       }
    }
 
-   console.error(
-      '❌ YT-DLP ERROR:',
-      lastError?.stderr ||
-      lastError?.message ||
-      lastError
-   )
-
    throw (
       lastError ||
       new Error(
-         'No se pudo descargar el audio con ningún cliente de YouTube'
+         'Todos los métodos de descarga fallaron'
       )
    )
 }
@@ -643,7 +716,7 @@ async function songCommand(
             '🔗 URL DIRECTA DE YOUTUBE'
          )
 
-         let directInfo
+         let directInfo = {}
 
          try {
 
@@ -655,7 +728,7 @@ async function songCommand(
          } catch (error) {
 
             console.log(
-               '⚠️ INFO DIRECTA FALLÓ, INTENTANDO DESCARGA DIRECTA'
+               '⚠️ INFO DIRECTA FALLÓ'
             )
 
             console.log(
@@ -663,8 +736,6 @@ async function songCommand(
                error?.message ||
                ''
             )
-
-            directInfo = {}
          }
 
          video = {
@@ -702,7 +773,11 @@ async function songCommand(
          // CACHE
          // ===============================
 
-         if (searchCache.has(query)) {
+         if (
+            searchCache.has(
+               query
+            )
+         ) {
 
             console.log(
                '⚡ USANDO SEARCH CACHE'
@@ -730,17 +805,15 @@ async function songCommand(
             )
 
             setTimeout(() => {
-
                searchCache.delete(
                   query
                )
-
             }, 1000 * 60 * 5)
          }
       }
 
       // ===============================
-      // MENSAJE DE CARGA
+      // LOADING
       // ===============================
 
       const loading =
@@ -770,7 +843,7 @@ async function songCommand(
          )
 
       // ===============================
-      // DESCARGA
+      // DOWNLOAD
       // ===============================
 
       const audioBuffer =
@@ -795,7 +868,7 @@ async function songCommand(
       )
 
       // ===============================
-      // PROCESANDO
+      // PROCESS
       // ===============================
 
       await sock.sendMessage(
@@ -825,7 +898,10 @@ async function songCommand(
 
          const firstBytes =
             audioBuffer
-               .slice(0, 64)
+               .slice(
+                  0,
+                  64
+               )
                .toString('hex')
 
          let inputExt =
@@ -872,7 +948,7 @@ async function songCommand(
       }
 
       // ===============================
-      // NOMBRE
+      // SAFE TITLE
       // ===============================
 
       const safeTitle =
@@ -889,7 +965,7 @@ async function songCommand(
          'song'
 
       // ===============================
-      // ENVIAR AUDIO
+      // SEND AUDIO
       // ===============================
 
       await sock.sendMessage(
@@ -914,7 +990,7 @@ async function songCommand(
       )
 
       // ===============================
-      // FINALIZADO
+      // FINISHED
       // ===============================
 
       await sock.sendMessage(
