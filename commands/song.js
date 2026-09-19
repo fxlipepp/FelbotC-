@@ -51,7 +51,7 @@ function createBar(percent) {
 }
 
 // ===============================
-// COOKIES YT-DLP
+// COOKIES YOUTUBE
 // ===============================
 
 const cookiesPath =
@@ -77,7 +77,9 @@ if (fs.existsSync(cookiesPath)) {
 const YTDLP_OPTIONS = {
    noWarnings: true,
    noPlaylist: true,
-   ffmpegLocation: ffmpegPath,
+
+   ffmpegLocation:
+      ffmpegPath,
 
    cookies:
       cookiesPath
@@ -103,9 +105,14 @@ async function searchYouTube(query) {
          {
             ...YTDLP_OPTIONS,
 
-            flatPlaylist: true,
-            dumpSingleJson: true,
-            skipDownload: true
+            flatPlaylist:
+               true,
+
+            dumpSingleJson:
+               true,
+
+            skipDownload:
+               true
          }
       )
 
@@ -159,19 +166,31 @@ async function searchYouTube(query) {
       )
    }
 
+   console.log(
+      `🎯 VIDEO SELECCIONADO: ${videoUrl}`
+   )
+
+   // ===============================
+   // INFORMACIÓN COMPLETA
+   // ===============================
+
    const info =
       await youtubedl(
          videoUrl,
          {
             ...YTDLP_OPTIONS,
 
-            dumpSingleJson: true,
-            skipDownload: true
+            dumpSingleJson:
+               true,
+
+            skipDownload:
+               true
          }
       )
 
    return {
-      url: videoUrl,
+      url:
+         videoUrl,
 
       title:
          info.title ||
@@ -195,7 +214,8 @@ async function searchYouTube(query) {
       },
 
       views:
-         info.view_count || 0
+         info.view_count ||
+         0
    }
 }
 
@@ -215,7 +235,8 @@ async function downloadAudio(url) {
       fs.mkdirSync(
          tempDir,
          {
-            recursive: true
+            recursive:
+               true
          }
       )
    }
@@ -239,6 +260,7 @@ async function downloadAudio(url) {
 │ 🎵 YT-DLP LOCAL
 │ 🍪 COOKIES YOUTUBE
 │ 🎬 FFMPEG LOCAL
+│ 🎧 BEST AUDIO
 ╰──────────────────────⬣
 `)
 
@@ -252,20 +274,48 @@ async function downloadAudio(url) {
          {
             ...YTDLP_OPTIONS,
 
-            extractAudio: true,
+            // ===============================
+            // FORMATO
+            // ===============================
 
-            audioFormat: 'mp3',
+            format:
+               'bestaudio/best',
 
-            audioQuality: '128K',
+            // ===============================
+            // AUDIO
+            // ===============================
 
-            output: outputFile,
+            extractAudio:
+               true,
 
-            quiet: true
+            audioFormat:
+               'mp3',
+
+            audioQuality:
+               '128K',
+
+            // ===============================
+            // OUTPUT
+            // ===============================
+
+            output:
+               outputFile,
+
+            quiet:
+               true,
+
+            noPlaylist:
+               true
          },
          {
-            timeout: 120000
+            timeout:
+               120000
          }
       )
+
+      // ===============================
+      // VERIFICAR ARCHIVO
+      // ===============================
 
       if (!fs.existsSync(outputFile)) {
          throw new Error(
@@ -300,6 +350,10 @@ async function downloadAudio(url) {
 ).toFixed(1)}s
 ╰──────────────────────⬣
 `)
+
+      // ===============================
+      // LIMPIAR TEMPORAL
+      // ===============================
 
       try {
          fs.unlinkSync(
@@ -382,7 +436,8 @@ async function songCommand(
                   '.play Canserbero - Es épico'
             },
             {
-               quoted: message
+               quoted:
+                  message
             }
          )
       }
@@ -402,42 +457,50 @@ async function songCommand(
          )
       ) {
 
-         video =
+         console.log(
+            '🔗 URL DIRECTA DE YOUTUBE'
+         )
+
+         const directInfo =
             await youtubedl(
                query,
                {
                   ...YTDLP_OPTIONS,
 
-                  dumpSingleJson: true,
+                  dumpSingleJson:
+                     true,
 
-                  skipDownload: true
+                  skipDownload:
+                     true
                }
             )
 
          video = {
-            url: query,
+            url:
+               query,
 
             title:
-               video.title ||
+               directInfo.title ||
                'YouTube Audio',
 
             thumbnail:
-               video.thumbnail ||
+               directInfo.thumbnail ||
                'https://i.imgur.com/AfFp7pu.png',
 
             timestamp:
-               video.duration_string ||
+               directInfo.duration_string ||
                'Unknown',
 
             author: {
                name:
-                  video.uploader ||
-                  video.channel ||
+                  directInfo.uploader ||
+                  directInfo.channel ||
                   'Unknown'
             },
 
             views:
-               video.view_count || 0
+               directInfo.view_count ||
+               0
          }
 
       } else {
@@ -451,7 +514,7 @@ async function songCommand(
          ) {
 
             console.log(
-               '⚡ Usando search cache'
+               '⚡ USANDO SEARCH CACHE'
             )
 
             video =
@@ -476,9 +539,11 @@ async function songCommand(
             )
 
             setTimeout(() => {
+
                searchCache.delete(
                   query
                )
+
             }, 1000 * 60 * 5)
          }
       }
@@ -508,7 +573,8 @@ async function songCommand(
 > ${createBar(10)} 10%`
             },
             {
-               quoted: message
+               quoted:
+                  message
             }
          )
 
