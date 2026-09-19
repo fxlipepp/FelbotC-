@@ -1,3 +1,4 @@
+```javascript
 const youtubedl = require('youtube-dl-exec')
 const ffmpegPath = require('ffmpeg-static')
 const fs = require('fs')
@@ -12,7 +13,7 @@ const { toAudio } = require('../lib/converter')
 const searchCache = new Map()
 
 function limitMapSize(map, max = 100) {
-   if (map.size > max) {
+   while (map.size > max) {
       const firstKey = map.keys().next().value
       map.delete(firstKey)
    }
@@ -82,18 +83,17 @@ const BASE_OPTIONS = {
       ffmpegPath,
 
    retries:
-      2,
+      1,
 
    noCheckCertificates:
       true,
 
-   // Importante para YouTube moderno
    jsRuntimes:
       'node'
 }
 
 // ===============================
-// CREAR OPCIONES
+// OPCIONES YT-DLP
 // ===============================
 
 function youtubeOptions({
@@ -128,123 +128,81 @@ function youtubeOptions({
 }
 
 // ===============================
-// CLIENTES
-// ===============================
-
-// Primero intentamos sin cookies.
-// Si falla, probamos con cookies.
-// Esto evita que unas cookies incompatibles
-// bloqueen todos los formatos.
-
-const CLIENTS = [
-   {
-      name: 'default',
-      cookies: false
-   },
-   {
-      name: 'android',
-      cookies: false
-   },
-   {
-      name: 'web',
-      cookies: false
-   },
-   {
-      name: 'tv_embedded',
-      cookies: false
-   },
-   {
-      name: 'default',
-      cookies: true
-   },
-   {
-      name: 'web_safari',
-      cookies: true
-   },
-   {
-      name: 'android',
-      cookies: true
-   },
-   {
-      name: 'web',
-      cookies: true
-   }
-]
-
-// ===============================
 // OBTENER INFO
+// ===============================
+//
+// IMPORTANTE:
+// Ya no hacemos:
+// default OFF
+// android OFF
+// web OFF
+// tv_embedded OFF
+//
+// Usamos cookies directamente porque
+// tus logs demostraron que ese método funciona.
 // ===============================
 
 async function getVideoInfo(url) {
 
-   let lastError = null
-
-   for (const config of CLIENTS) {
-
-      try {
-
-         console.log(
-            `🔎 INFO CLIENT: ${config.name} | COOKIES: ${config.cookies ? 'ON' : 'OFF'}`
-         )
-
-         const info =
-            await youtubedl(
-               url,
-               {
-                  ...youtubeOptions({
-                     client:
-                        config.name,
-
-                     cookies:
-                        config.cookies,
-
-                     format:
-                        'bestaudio/best'
-                  }),
-
-                  dumpSingleJson:
-                     true,
-
-                  skipDownload:
-                     true
-               }
-            )
-
-         if (
-            info &&
-            info.title
-         ) {
-
-            console.log(
-               `✅ INFO FUNCIONAL: ${config.name} | COOKIES: ${config.cookies ? 'ON' : 'OFF'}`
-            )
-
-            return info
-         }
-
-      } catch (error) {
-
-         lastError =
-            error
-
-         console.log(
-            `⚠️ INFO FALLÓ: ${config.name} | COOKIES: ${config.cookies ? 'ON' : 'OFF'}`
-         )
-
-         console.log(
-            error?.stderr ||
-            error?.message ||
-            ''
-         )
-      }
-   }
-
-   throw (
-      lastError ||
-      new Error(
-         'No se pudo obtener información de YouTube'
-      )
+   console.log(
+      `🔎 INFO YOUTUBE | 🍪 COOKIES: ${hasCookies ? 'ON' : 'OFF'}`
    )
+
+   try {
+
+      const info =
+         await youtubedl(
+            url,
+            {
+               ...youtubeOptions({
+                  client:
+                     'default',
+
+                  cookies:
+                     hasCookies,
+
+                  format:
+                     'bestaudio/best'
+               }),
+
+               dumpSingleJson:
+                  true,
+
+               skipDownload:
+                  true
+            }
+         )
+
+      if (
+         info &&
+         info.title
+      ) {
+
+         console.log(
+            '✅ INFO FUNCIONAL'
+         )
+
+         return info
+      }
+
+      throw new Error(
+         'Información de YouTube vacía'
+      )
+
+   } catch (error) {
+
+      console.log(
+         '⚠️ INFO YOUTUBE FALLÓ'
+      )
+
+      console.log(
+         error?.stderr ||
+         error?.message ||
+         ''
+      )
+
+      throw error
+   }
 }
 
 // ===============================
@@ -261,208 +219,216 @@ async function searchYouTube(query) {
 ╰──────────────────────⬣
 `)
 
-   let results = null
-   let lastError = null
+   try {
 
-   const searchClients = [
-      {
-         name: 'default',
-         cookies: false
-      },
-      {
-         name: 'android',
-         cookies: false
-      },
-      {
-         name: 'web',
-         cookies: false
-      },
-      {
-         name: 'default',
-         cookies: true
+      console.log(
+         '🔎 SEARCH CLIENT: default'
+      )
+
+      const results =
+         await youtubedl(
+            `ytsearch5:${query}`,
+            {
+               ...youtubeOptions({
+                  client:
+                     'default',
+
+                  cookies:
+                     false
+               }),
+
+               flatPlaylist:
+                  true,
+
+               dumpSingleJson:
+                  true,
+
+               skipDownload:
+                  true
+            }
+         )
+
+      if (
+         !results ||
+         !results.entries ||
+         !results.entries.length
+      ) {
+         throw new Error(
+            'No se encontraron resultados'
+         )
       }
-   ]
 
-   for (const config of searchClients) {
+      console.log(
+         '✅ SEARCH FUNCIONAL'
+      )
+
+      const selected =
+         results.entries.find(video =>
+            video.title &&
+            !video.title
+               .toLowerCase()
+               .includes('playlist') &&
+            (
+               !video.duration ||
+               (
+                  video.duration > 30 &&
+                  video.duration < 1800
+               )
+            )
+         ) ||
+         results.entries.find(video =>
+            video.title
+         ) ||
+         results.entries[0]
+
+      if (!selected) {
+         throw new Error(
+            'No se encontró una canción'
+         )
+      }
+
+      const videoUrl =
+         selected.webpage_url ||
+         (
+            selected.id
+               ? `https://www.youtube.com/watch?v=${selected.id}`
+               : null
+         )
+
+      if (!videoUrl) {
+         throw new Error(
+            'No se pudo obtener la URL del video'
+         )
+      }
+
+      console.log(
+         `🎯 VIDEO SELECCIONADO: ${videoUrl}`
+      )
+
+      // ===============================
+      // INFO
+      // ===============================
+      //
+      // Intentamos obtener información completa
+      // solamente cuando realmente la necesitamos.
+      // Si falla, usamos la información del search.
+      // ===============================
+
+      let info = selected
 
       try {
 
-         console.log(
-            `🔎 SEARCH CLIENT: ${config.name} | COOKIES: ${config.cookies ? 'ON' : 'OFF'}`
-         )
-
-         results =
-            await youtubedl(
-               `ytsearch5:${query}`,
-               {
-                  ...youtubeOptions({
-                     client:
-                        config.name,
-
-                     cookies:
-                        config.cookies
-                  }),
-
-                  flatPlaylist:
-                     true,
-
-                  dumpSingleJson:
-                     true,
-
-                  skipDownload:
-                     true
-               }
+         info =
+            await getVideoInfo(
+               videoUrl
             )
 
-         if (
-            results &&
-            results.entries &&
-            results.entries.length
-         ) {
-
-            console.log(
-               `✅ SEARCH FUNCIONAL: ${config.name}`
-            )
-
-            break
-         }
-
-      } catch (error) {
-
-         lastError =
-            error
+      } catch {
 
          console.log(
-            `⚠️ SEARCH FALLÓ: ${config.name}`
+            '⚡ USANDO INFO DEL SEARCH'
          )
 
-         console.log(
-            error?.stderr ||
-            error?.message ||
-            ''
-         )
+         info =
+            selected
       }
-   }
 
-   if (
-      !results ||
-      !results.entries ||
-      !results.entries.length
-   ) {
-      throw (
-         lastError ||
-         new Error(
-            'No se encontraron resultados'
-         )
-      )
-   }
+      return {
 
-   const selected =
-      results.entries.find(video =>
-         video.title &&
-         !video.title
-            .toLowerCase()
-            .includes('playlist') &&
-         (
-            !video.duration ||
+         url:
+            videoUrl,
+
+         title:
+            info.title ||
+            selected.title ||
+            'YouTube Audio',
+
+         thumbnail:
+            info.thumbnail ||
+            selected.thumbnail ||
+            'https://i.imgur.com/AfFp7pu.png',
+
+         timestamp:
+            info.duration_string ||
+            selected.duration_string ||
             (
-               video.duration > 30 &&
-               video.duration < 1800
-            )
-         )
-      ) ||
-      results.entries.find(video =>
-         video.title
-      ) ||
-      results.entries[0]
+               info.duration
+                  ? formatDuration(
+                       info.duration
+                    )
+                  : 'Unknown'
+            ),
 
-   if (!selected) {
-      throw new Error(
-         'No se encontró una canción'
-      )
-   }
+         author: {
+            name:
+               info.uploader ||
+               info.channel ||
+               selected.uploader ||
+               selected.channel ||
+               'Unknown'
+         },
 
-   const videoUrl =
-      selected.webpage_url ||
-      (
-         selected.id
-            ? `https://www.youtube.com/watch?v=${selected.id}`
-            : null
-      )
-
-   if (!videoUrl) {
-      throw new Error(
-         'No se pudo obtener la URL del video'
-      )
-   }
-
-   console.log(
-      `🎯 VIDEO SELECCIONADO: ${videoUrl}`
-   )
-
-   let info = {}
-
-   try {
-
-      info =
-         await getVideoInfo(
-            videoUrl
-         )
+         views:
+            info.view_count ||
+            selected.view_count ||
+            0
+      }
 
    } catch (error) {
 
       console.log(
-         '⚠️ INFO COMPLETA NO DISPONIBLE'
-      )
-
-      console.log(
+         '❌ SEARCH ERROR:',
          error?.stderr ||
          error?.message ||
-         ''
+         error
       )
 
-      info =
-         selected
-   }
-
-   return {
-
-      url:
-         videoUrl,
-
-      title:
-         info.title ||
-         selected.title ||
-         'YouTube Audio',
-
-      thumbnail:
-         info.thumbnail ||
-         selected.thumbnail ||
-         'https://i.imgur.com/AfFp7pu.png',
-
-      timestamp:
-         info.duration_string ||
-         selected.duration_string ||
-         'Unknown',
-
-      author: {
-         name:
-            info.uploader ||
-            info.channel ||
-            selected.uploader ||
-            selected.channel ||
-            'Unknown'
-      },
-
-      views:
-         info.view_count ||
-         selected.view_count ||
-         0
+      throw error
    }
 }
 
 // ===============================
+// DURACIÓN
+// ===============================
+
+function formatDuration(seconds) {
+
+   if (!seconds) {
+      return 'Unknown'
+   }
+
+   seconds =
+      Math.floor(
+         Number(seconds)
+      )
+
+   const minutes =
+      Math.floor(
+         seconds / 60
+      )
+
+   const remaining =
+      seconds % 60
+
+   return (
+      `${minutes}:` +
+      `${String(
+         remaining
+      ).padStart(2, '0')}`
+   )
+}
+
+// ===============================
 // DESCARGAR AUDIO
+// ===============================
+//
+// DIRECTO CON COOKIES
+//
+// Ya no hacemos:
+// OFF → OFF → OFF → OFF → ON
+//
+// Ahora:
+// ON → descarga
 // ===============================
 
 async function downloadAudio(url) {
@@ -502,153 +468,142 @@ async function downloadAudio(url) {
 │ 🎵 YT-DLP LOCAL
 │ 🎬 FFMPEG LOCAL
 │ 🧠 NODE JS RUNTIME
+│ 🍪 COOKIES DIRECTAS
 │ 🎧 BEST AUDIO
 ╰──────────────────────⬣
 `)
 
-   let lastError = null
+   try {
 
-   for (const config of CLIENTS) {
+      console.log(
+         `🎯 DOWNLOAD CLIENT: default | COOKIES: ${hasCookies ? 'ON' : 'OFF'}`
+      )
+
+      const options =
+         youtubeOptions({
+            client:
+               'default',
+
+            cookies:
+               hasCookies,
+
+            format:
+               'bestaudio[ext=m4a]/bestaudio/best'
+         })
+
+      options.output =
+         outputTemplate
+
+      options.quiet =
+         true
+
+      options.noPlaylist =
+         true
+
+      await youtubedl(
+         url,
+         options,
+         {
+            timeout:
+               120000
+         }
+      )
+
+      const downloadedFiles =
+         fs.readdirSync(
+            tempDir
+         ).filter(file =>
+            file.startsWith(
+               fileId
+            )
+         )
+
+      if (!downloadedFiles.length) {
+         throw new Error(
+            'No se descargó ningún archivo'
+         )
+      }
+
+      const downloadedFile =
+         downloadedFiles[0]
+
+      const outputFile =
+         path.join(
+            tempDir,
+            downloadedFile
+         )
+
+      const stats =
+         fs.statSync(
+            outputFile
+         )
+
+      if (!stats.size) {
+         throw new Error(
+            'El archivo descargado está vacío'
+         )
+      }
+
+      const buffer =
+         fs.readFileSync(
+            outputFile
+         )
+
+      console.log(`
+╭──────────────────────⬣
+│ ✅ AUDIO DESCARGADO
+├──────────────────────⬣
+│ 🎯 CLIENT: default
+│ 🍪 COOKIES: ${hasCookies ? 'ON' : 'OFF'}
+│ 📦 ${(stats.size / 1024 / 1024).toFixed(2)} MB
+╰──────────────────────⬣
+`)
 
       try {
-
-         console.log(
-            `🎯 DOWNLOAD CLIENT: ${config.name} | COOKIES: ${config.cookies ? 'ON' : 'OFF'}`
+         fs.unlinkSync(
+            outputFile
          )
+      } catch {}
 
-         const options =
-            youtubeOptions({
-               client:
-                  config.name,
+      return buffer
 
-               cookies:
-                  config.cookies,
+   } catch (error) {
 
-               format:
-                  'bestaudio[ext=m4a]/bestaudio/best'
-            })
+      console.log(
+         '❌ DOWNLOAD ERROR:',
+         error?.stderr ||
+         error?.message ||
+         error
+      )
 
-         options.output =
-            outputTemplate
+      // Limpiar archivos temporales
+      try {
 
-         options.quiet =
-            true
-
-         options.noPlaylist =
-            true
-
-         await youtubedl(
-            url,
-            options,
-            {
-               timeout:
-                  120000
-            }
-         )
-
-         const downloadedFile =
+         const files =
             fs.readdirSync(
                tempDir
-            ).find(file =>
+            ).filter(file =>
                file.startsWith(
                   fileId
                )
             )
 
-         if (!downloadedFile) {
-            throw new Error(
-               'No se descargó ningún archivo'
-            )
-         }
+         for (const file of files) {
 
-         const outputFile =
-            path.join(
-               tempDir,
-               downloadedFile
-            )
-
-         const stats =
-            fs.statSync(
-               outputFile
-            )
-
-         if (!stats.size) {
-            throw new Error(
-               'El archivo descargado está vacío'
-            )
-         }
-
-         const buffer =
-            fs.readFileSync(
-               outputFile
-            )
-
-         console.log(`
-╭──────────────────────⬣
-│ ✅ AUDIO DESCARGADO
-├──────────────────────⬣
-│ 🎯 CLIENT: ${config.name}
-│ 🍪 COOKIES: ${config.cookies ? 'ON' : 'OFF'}
-│ 📦 ${(stats.size / 1024 / 1024).toFixed(2)} MB
-╰──────────────────────⬣
-`)
-
-         try {
-            fs.unlinkSync(
-               outputFile
-            )
-         } catch {}
-
-         return buffer
-
-      } catch (error) {
-
-         lastError =
-            error
-
-         console.log(
-            `⚠️ DOWNLOAD FALLÓ: ${config.name} | COOKIES: ${config.cookies ? 'ON' : 'OFF'}`
-         )
-
-         console.log(
-            error?.stderr ||
-            error?.message ||
-            ''
-         )
-
-         try {
-
-            const files =
-               fs.readdirSync(
-                  tempDir
-               ).filter(file =>
-                  file.startsWith(
-                     fileId
+            try {
+               fs.unlinkSync(
+                  path.join(
+                     tempDir,
+                     file
                   )
                )
+            } catch {}
+         }
 
-            for (const file of files) {
+      } catch {}
 
-               try {
-                  fs.unlinkSync(
-                     path.join(
-                        tempDir,
-                        file
-                     )
-                  )
-               } catch {}
-            }
-
-         } catch {}
-      }
+      throw error
    }
-
-   throw (
-      lastError ||
-      new Error(
-         'Todos los métodos de descarga fallaron'
-      )
-   )
 }
 
 // ===============================
@@ -725,16 +680,10 @@ async function songCommand(
                   query
                )
 
-         } catch (error) {
+         } catch {
 
             console.log(
-               '⚠️ INFO DIRECTA FALLÓ'
-            )
-
-            console.log(
-               error?.stderr ||
-               error?.message ||
-               ''
+               '⚡ INFO DIRECTA NO DISPONIBLE'
             )
          }
 
@@ -753,7 +702,13 @@ async function songCommand(
 
             timestamp:
                directInfo.duration_string ||
-               'Unknown',
+               (
+                  directInfo.duration
+                     ? formatDuration(
+                          directInfo.duration
+                       )
+                     : 'Unknown'
+               ),
 
             author: {
                name:
@@ -805,9 +760,11 @@ async function songCommand(
             )
 
             setTimeout(() => {
+
                searchCache.delete(
                   query
                )
+
             }, 1000 * 60 * 5)
          }
       }
@@ -863,7 +820,10 @@ async function songCommand(
       console.log(
          'FIRST BYTES:',
          audioBuffer
-            .slice(0, 32)
+            .slice(
+               0,
+               32
+            )
             .toString('hex')
       )
 
@@ -907,6 +867,7 @@ async function songCommand(
          let inputExt =
             'mp3'
 
+         // MP4 / M4A
          if (
             firstBytes.includes(
                '66747970'
@@ -1065,3 +1026,4 @@ async function songCommand(
 }
 
 module.exports = songCommand
+```
