@@ -51,13 +51,36 @@ function createBar(percent) {
 }
 
 // ===============================
+// COOKIES YT-DLP
+// ===============================
+
+const cookiesPath =
+   path.join(
+      process.cwd(),
+      'cookies.txt'
+   )
+
+if (fs.existsSync(cookiesPath)) {
+   console.log(
+      '🍪 YOUTUBE COOKIES: ENCONTRADAS'
+   )
+} else {
+   console.log(
+      '⚠️ YOUTUBE COOKIES: NO ENCONTRADAS'
+   )
+}
+
+// ===============================
 // YT-DLP OPTIONS
 // ===============================
 
 const YTDLP_OPTIONS = {
    noWarnings: true,
    noPlaylist: true,
-   ffmpegLocation: ffmpegPath
+   ffmpegLocation: ffmpegPath,
+
+   cookies:
+      cookiesPath
 }
 
 // ===============================
@@ -96,18 +119,19 @@ async function searchYouTube(query) {
       )
    }
 
-   // Buscar el resultado más apropiado
    const selected =
       results.entries.find(video =>
          video.title &&
          !video.title
             .toLowerCase()
             .includes('playlist') &&
-         (!video.duration ||
+         (
+            !video.duration ||
             (
                video.duration > 30 &&
                video.duration < 1800
-            ))
+            )
+         )
       ) ||
       results.entries.find(video =>
          video.title
@@ -135,7 +159,6 @@ async function searchYouTube(query) {
       )
    }
 
-   // Obtener información completa
    const info =
       await youtubedl(
          videoUrl,
@@ -214,6 +237,7 @@ async function downloadAudio(url) {
 │ 🚀 DESCARGANDO AUDIO
 ├──────────────────────⬣
 │ 🎵 YT-DLP LOCAL
+│ 🍪 COOKIES YOUTUBE
 │ 🎬 FFMPEG LOCAL
 ╰──────────────────────⬣
 `)
@@ -250,7 +274,9 @@ async function downloadAudio(url) {
       }
 
       const stats =
-         fs.statSync(outputFile)
+         fs.statSync(
+            outputFile
+         )
 
       if (!stats.size) {
          throw new Error(
@@ -275,7 +301,6 @@ async function downloadAudio(url) {
 ╰──────────────────────⬣
 `)
 
-      // 🧹 LIMPIAR ARCHIVO
       try {
          fs.unlinkSync(
             outputFile
