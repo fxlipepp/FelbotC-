@@ -86,6 +86,16 @@ async function playCommand(sock, chatId, message) {
       // 📥 DESCARGAR CON YT-DLP
       console.log(`🎵 Descargando: ${video.title}`)
 
+      const cookieArg = fs.existsSync(path.join(process.cwd(), 'cookies.txt'))
+         ? ['--cookies', path.join(process.cwd(), 'cookies.txt')]
+         : []
+
+      if (!cookieArg.length) {
+         throw new Error(
+            'Se requiere cookies.txt de YouTube para extraer audio. Exporta las cookies del navegador y colócalas en la raíz del proyecto.'
+         )
+      }
+
       await execFileAsync(
          'yt-dlp',
          [
@@ -102,6 +112,7 @@ async function playCommand(sock, chatId, message) {
             process.env.FFMPEG_PATH || 'ffmpeg',
             '--extractor-args',
             'youtube:player_client=android,web;player_skip=webpage',
+            ...cookieArg,
             video.url
          ],
          {

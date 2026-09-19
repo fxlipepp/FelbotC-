@@ -269,15 +269,23 @@ async function downloadAudio(url) {
 
    try {
 
+      const ytOptions = {
+         ...YTDLP_OPTIONS,
+         format: 'bestaudio/best',
+         output: outputTemplate,
+         quiet: true,
+         noPlaylist: true
+      }
+
+      if (!fs.existsSync(cookiesPath)) {
+         throw new Error(
+            'Se requiere cookies.txt de YouTube para extraer audio. Exporta las cookies del navegador y colócalas en la raíz del proyecto.'
+         )
+      }
+
       await youtubedl(
          url,
-         {
-            ...YTDLP_OPTIONS,
-            format: 'bestaudio/best',
-            output: outputTemplate,
-            quiet: true,
-            noPlaylist: true
-         },
+         ytOptions,
          {
             timeout: 120000
          }
