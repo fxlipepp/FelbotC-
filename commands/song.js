@@ -1,3 +1,4 @@
+
 const youtubedl = require('youtube-dl-exec')
 const ffmpegPath = require('ffmpeg-static')
 const fs = require('fs')
@@ -12,8 +13,9 @@ const { toAudio } = require('../lib/converter')
 const searchCache = new Map()
 
 function limitMapSize(map, max = 100) {
-   if (map.size > max) {
+   while (map.size > max) {
       const firstKey = map.keys().next().value
+      if (!firstKey) break
       map.delete(firstKey)
    }
 }
@@ -44,21 +46,28 @@ setInterval(() => {
 
 function createBar(percent) {
    const total = 10
-   const filled = Math.round(percent / 10)
+   const filled = Math.max(
+      0,
+      Math.min(
+         total,
+         Math.round(percent / 10)
+      )
+   )
 
-   return '▰'.repeat(filled) +
+   return (
+      '▰'.repeat(filled) +
       '▱'.repeat(total - filled)
+   )
 }
 
 // ===============================
 // COOKIES YOUTUBE
 // ===============================
 
-const cookiesPath =
-   path.join(
-      process.cwd(),
-      'cookies.txt'
-   )
+const cookiesPath = path.join(
+   process.cwd(),
+   'cookies.txt'
+)
 
 if (fs.existsSync(cookiesPath)) {
    console.log(
@@ -71,18 +80,49 @@ if (fs.existsSync(cookiesPath)) {
 }
 
 // ===============================
-// YT-DLP OPTIONS
+// YT-DLP BASE OPTIONS
 // ===============================
 
 const YTDLP_OPTIONS = {
    noWarnings: true,
    noPlaylist: true,
    ffmpegLocation: ffmpegPath,
-   extractorArgs: 'youtube:player_client=android,web;player_skip=webpage',
    retries: 3,
+   socketTimeout: 30000,
+
+   // No limitar a un solo cliente.
+   // yt-dlp podrá elegir el extractor disponible.
+   extractorArgs:
+      'youtube:player_client=android,web,tv_embedded',
+
    ...(fs.existsSync(cookiesPath)
-      ? { cookies: cookiesPath }
+      ? {
+           cookies: cookiesPath
+        }
       : {})
+}
+
+// ===============================
+// EXTRAER INFORMACIÓN
+// ===============================
+
+async function getVideoInfo(url) {
+
+   return await youtubedl(
+      url,
+      {
+         ...YTDLP_OPTIONS,
+
+         dumpSingleJson:
+            true,
+
+         skipDownload:
+            true,
+
+         noCheckCertificates:
+            true
+      }
+   )
 }
 
 // ===============================
@@ -170,22 +210,9 @@ async function searchYouTube(query) {
       `🎯 VIDEO SELECCIONADO: ${videoUrl}`
    )
 
-   // ===============================
-   // INFORMACIÓN COMPLETA
-   // ===============================
-
    const info =
-      await youtubedl(
-         videoUrl,
-         {
-            ...YTDLP_OPTIONS,
-
-            dumpSingleJson:
-               true,
-
-            skipDownload:
-               true
-         }
+      await getVideoInfo(
+         videoUrl
       )
 
    return {
@@ -217,6 +244,65 @@ async function searchYouTube(query) {
          info.view_count ||
          0
    }
+}
+
+// ===============================
+// DESCARGA CON YT-DLP
+// ===============================
+
+async function runDownload(
+   url,
+   outputTemplate,
+   format
+) {
+
+   const options = {
+      ...YTDLP_OPTIONS,
+
+      format,
+
+      output:
+         outputTemplate,
+
+      quiet:
+         true,
+
+      noPlaylist:
+         true,
+
+      // Permitir que yt-dlp escoja
+      // cualquier extensión disponible.
+      mergeOutputFormat:
+         'mp4',
+
+      noPart:
+         true,
+
+      continuedl:
+         false,
+
+      retries:
+         3,
+
+      fragmentRetries:
+         3,
+
+      extractorRetries:
+         3
+   }
+
+   console.log(
+      `🎧 YT-DLP FORMAT: ${format}`
+   )
+
+   return await youtubedl(
+      url,
+      options,
+      {
+         timeout:
+            180000
+      }
+   )
 }
 
 // ===============================
@@ -260,65 +346,150 @@ async function downloadAudio(url) {
 │ 🎵 YT-DLP LOCAL
 │ 🍪 COOKIES YOUTUBE
 │ 🎬 FFMPEG LOCAL
-│ 🎧 BEST AUDIO
+│ 🎧 AUTO FORMAT
 ╰──────────────────────⬣
 `)
 
    const start =
       Date.now()
 
-   try {
-
-      const ytOptions = {
-         ...YTDLP_OPTIONS,
-         format: 'bestaudio/best',
-         output: outputTemplate,
-         quiet: true,
-         noPlaylist: true
-      }
-
-      if (!fs.existsSync(cookiesPath)) {
-         throw new Error(
-            'Se requiere cookies.txt de YouTube para extraer audio. Exporta las cookies del navegador y colócalas en la raíz del proyecto.'
-         )
-      }
-
-      await youtubedl(
-         url,
-         ytOptions,
-         {
-            timeout: 120000
-         }
+   if (!fs.existsSync(cookiesPath)) {
+      throw new Error(
+         'Se requiere cookies.txt de YouTube para extraer audio.'
       )
+   }
 
-      const downloadedFile =
-         fs.readdirSync(tempDir)
-            .find(file =>
-               file.startsWith(fileId)
+   // ===============================
+   // FORMATOS FALLBACK
+   // ===============================
+
+   const formats = [
+      'bestaudio',
+      'bestaudio/best',
+      'best',
+      'worstaudio/worst'
+   ]
+
+   let lastError = null
+   let downloadedFile = null
+
+   for (
+      const format of formats
+   ) {
+
+      try {
+
+         await runDownload(
+            url,
+            outputTemplate,
+            format
+         )
+
+         downloadedFile =
+            fs.readdirSync(
+               tempDir
+            ).find(file =>
+               file.startsWith(
+                  fileId
+               )
             )
 
-      if (!downloadedFile) {
-         throw new Error(
-            'No se descargó ningún archivo de audio'
+         if (
+            downloadedFile
+         ) {
+            console.log(
+               `✅ FORMATO FUNCIONAL: ${format}`
+            )
+
+            break
+         }
+
+      } catch (error) {
+
+         lastError =
+            error
+
+         console.log(
+            `⚠️ FORMATO FALLÓ: ${format}`
          )
-      }
 
-      const outputFile =
-         path.join(tempDir, downloadedFile)
-
-      const stats =
-         fs.statSync(outputFile)
-
-      if (!stats.size) {
-         throw new Error(
-            'El audio descargado está vacío'
+         console.log(
+            error?.stderr ||
+            error?.message ||
+            ''
          )
+
+         // Limpiar cualquier archivo
+         // parcial antes del siguiente intento.
+         try {
+
+            const files =
+               fs.readdirSync(
+                  tempDir
+               )
+
+            for (
+               const file of files
+            ) {
+
+               if (
+                  file.startsWith(
+                     fileId
+                  )
+               ) {
+
+                  fs.unlinkSync(
+                     path.join(
+                        tempDir,
+                        file
+                     )
+                  )
+               }
+            }
+
+         } catch {}
       }
+   }
 
-      const buffer =
-         fs.readFileSync(outputFile)
+   if (!downloadedFile) {
+      throw (
+         lastError ||
+         new Error(
+            'YT-DLP no pudo descargar ningún formato disponible'
+         )
+      )
+   }
 
-      console.log(`
+   const outputFile =
+      path.join(
+         tempDir,
+         downloadedFile
+      )
+
+   const stats =
+      fs.statSync(
+         outputFile
+      )
+
+   if (!stats.size) {
+
+      try {
+         fs.unlinkSync(
+            outputFile
+         )
+      } catch {}
+
+      throw new Error(
+         'El audio descargado está vacío'
+      )
+   }
+
+   const buffer =
+      fs.readFileSync(
+         outputFile
+      )
+
+   console.log(`
 ╭──────────────────────⬣
 │ ✅ AUDIO DESCARGADO
 ├──────────────────────⬣
@@ -330,37 +501,13 @@ async function downloadAudio(url) {
 ╰──────────────────────⬣
 `)
 
-      try {
-         fs.unlinkSync(outputFile)
-      } catch {}
-
-      return buffer
-
-   } catch (error) {
-
-      try {
-         const staleFile =
-            fs.readdirSync(tempDir)
-               .find(file =>
-                  file.startsWith(fileId)
-               )
-
-         if (staleFile) {
-            fs.unlinkSync(
-               path.join(tempDir, staleFile)
-            )
-         }
-      } catch {}
-
-      console.error(
-         '❌ YT-DLP ERROR:',
-         error?.stderr ||
-         error?.message ||
-         error
+   try {
+      fs.unlinkSync(
+         outputFile
       )
+   } catch {}
 
-      throw error
-   }
+   return buffer
 }
 
 // ===============================
@@ -437,17 +584,8 @@ async function songCommand(
          )
 
          const directInfo =
-            await youtubedl(
-               query,
-               {
-                  ...YTDLP_OPTIONS,
-
-                  dumpSingleJson:
-                     true,
-
-                  skipDownload:
-                     true
-               }
+            await getVideoInfo(
+               query
             )
 
          video = {
@@ -485,7 +623,9 @@ async function songCommand(
          // ===============================
 
          if (
-            searchCache.has(query)
+            searchCache.has(
+               query
+            )
          ) {
 
             console.log(
@@ -557,7 +697,7 @@ async function songCommand(
       // DOWNLOAD
       // ===============================
 
-      let audioBuffer =
+      const audioBuffer =
          await downloadAudio(
             video.url
          )
@@ -574,8 +714,13 @@ async function songCommand(
       console.log(
          'FIRST BYTES:',
          audioBuffer
-            .slice(0, 32)
-            .toString('hex')
+            .slice(
+               0,
+               32
+            )
+            .toString(
+               'hex'
+            )
       )
 
       // ===============================
@@ -609,8 +754,13 @@ async function songCommand(
 
          const firstBytes =
             audioBuffer
-               .slice(0, 64)
-               .toString('hex')
+               .slice(
+                  0,
+                  64
+               )
+               .toString(
+                  'hex'
+               )
 
          let inputExt =
             'mp3'
