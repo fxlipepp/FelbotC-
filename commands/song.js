@@ -54,10 +54,59 @@ function createBar(percent) {
 // YT-DLP OPTIONS
 // ===============================
 
-const YTDLP_OPTIONS = {
-   noWarnings: true,
-   noPlaylist: true,
-   ffmpegLocation: ffmpegPath
+const YOUTUBE_CLIENTS = [
+   ['player_client=android', 'player_skip=webpage'],
+   ['player_client=tv_embedded', 'player_skip=webpage'],
+   ['player_client=ios', 'player_skip=webpage']
+]
+
+function getYtDlpBaseOptions(extra = {}) {
+   const cookiesPath = process.env.YOUTUBE_COOKIES || path.join(process.cwd(), 'cookies.txt')
+   const cookies = fs.existsSync(cookiesPath)
+      ? { cookies: cookiesPath }
+      : {}
+
+   return {
+      noWarnings: true,
+      noPlaylist: true,
+      ffmpegLocation: ffmpegPath,
+      preferFreeFormats: true,
+      addHeader: [
+         'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36',
+         'Accept-Language: es-ES,es;q=0.9,en;q=0.8'
+      ],
+      ...cookies,
+      ...extra
+   }
+}
+
+async function runYtDlpWithFallback(input, options = {}, execOptions = {}) {
+   let lastError
+
+   for (const clientArgs of YOUTUBE_CLIENTS) {
+      try {
+         return await youtubedl(
+            input,
+            {
+               ...getYtDlpBaseOptions(),
+               ...options,
+               extractorArgs: {
+                  youtube: clientArgs
+               }
+            },
+            execOptions
+         )
+      } catch (error) {
+         lastError = error
+         const rawError = error?.stderr || error?.message || ''
+
+         if (!/sign in to confirm|not a bot|cookies-from-browser|cookies/i.test(rawError)) {
+            throw error
+         }
+      }
+   }
+
+   throw lastError
 }
 
 // ===============================
@@ -75,11 +124,9 @@ async function searchYouTube(query) {
 `)
 
    const results =
-      await youtubedl(
+      await runYtDlpWithFallback(
          `ytsearch5:${query}`,
          {
-            ...YTDLP_OPTIONS,
-
             flatPlaylist: true,
             dumpSingleJson: true,
             skipDownload: true
@@ -137,11 +184,9 @@ async function searchYouTube(query) {
 
    // Obtener información completa
    const info =
-      await youtubedl(
+      await runYtDlpWithFallback(
          videoUrl,
          {
-            ...YTDLP_OPTIONS,
-
             dumpSingleJson: true,
             skipDownload: true
          }
@@ -223,19 +268,13 @@ async function downloadAudio(url) {
 
    try {
 
-      await youtubedl(
+      await runYtDlpWithFallback(
          url,
          {
-            ...YTDLP_OPTIONS,
-
             extractAudio: true,
-
             audioFormat: 'mp3',
-
             audioQuality: '128K',
-
             output: outputFile,
-
             quiet: true
          },
          {
@@ -378,13 +417,10 @@ async function songCommand(
       ) {
 
          video =
-            await youtubedl(
+            await runYtDlpWithFallback(
                query,
                {
-                  ...YTDLP_OPTIONS,
-
                   dumpSingleJson: true,
-
                   skipDownload: true
                }
             )

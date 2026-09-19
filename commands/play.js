@@ -9,6 +9,70 @@ const execFileAsync = promisify(execFile)
 
 const searchCache = new Map()
 
+const YOUTUBE_CLIENTS = [
+   ['player_client=android', 'player_skip=webpage'],
+   ['player_client=tv_embedded', 'player_skip=webpage'],
+   ['player_client=ios', 'player_skip=webpage']
+]
+
+function getYtDlpBaseOptions(extra = {}) {
+   const cookiesPath = process.env.YOUTUBE_COOKIES || path.join(process.cwd(), 'cookies.txt')
+   const cookies = fs.existsSync(cookiesPath)
+      ? { cookies: cookiesPath }
+      : {}
+
+   return {
+      noWarnings: true,
+      noPlaylist: true,
+      ffmpegLocation: process.env.FFMPEG_PATH || 'ffmpeg',
+      preferFreeFormats: true,
+      addHeader: [
+         'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36',
+         'Accept-Language: es-ES,es;q=0.9,en;q=0.8'
+      ],
+      ...cookies,
+      ...extra
+   }
+}
+
+async function runYtDlpWithFallback(input, args = [], options = {}) {
+   let lastError
+
+   for (const clientArgs of YOUTUBE_CLIENTS) {
+      try {
+         return await execFileAsync(
+            'yt-dlp',
+            [
+               ...args,
+               '--extractor-args',
+               `youtube:${clientArgs.join(',')}`,
+               '--ffmpeg-location',
+               process.env.FFMPEG_PATH || 'ffmpeg',
+               input
+            ],
+            {
+               ...options,
+               env: {
+                  ...process.env,
+                  ...(fs.existsSync(process.env.YOUTUBE_COOKIES || path.join(process.cwd(), 'cookies.txt'))
+                     ? { YT_DLP_COOKIES: process.env.YOUTUBE_COOKIES || path.join(process.cwd(), 'cookies.txt') }
+                     : {})
+               }
+            }
+         )
+      } catch (error) {
+         lastError = error
+         const rawError = error?.stderr || error?.message || ''
+
+         if (!/sign in to confirm|not a bot|cookies-from-browser|cookies/i.test(rawError)) {
+            throw error
+         }
+      }
+   }
+
+   throw lastError
+}
+
 async function playCommand(sock, chatId, message) {
    let tempFile = null
 
@@ -86,8 +150,8 @@ async function playCommand(sock, chatId, message) {
       // 📥 DESCARGAR CON YT-DLP
       console.log(`🎵 Descargando: ${video.title}`)
 
-      await execFileAsync(
-         'yt-dlp',
+      await runYtDlpWithFallback(
+         video.url,
          [
             '--no-playlist',
             '--extract-audio',
@@ -98,10 +162,7 @@ async function playCommand(sock, chatId, message) {
             '--output',
             tempFile,
             '--no-warnings',
-            '--quiet',
-            '--ffmpeg-location',
-            process.env.FFMPEG_PATH || 'ffmpeg',
-            video.url
+            '--quiet'
          ],
          {
             timeout: 120000,
