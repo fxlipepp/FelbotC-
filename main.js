@@ -69,7 +69,7 @@ const ttsCommand = require('./commands/tts');
 const { tictactoeCommand, handleTicTacToeMove } = require('./commands/tictactoe');
 const { incrementMessageCount, topMembers } = require('./commands/topmembers');
 const { versusCommand, handleVersusReaction, handleVersusButton, upVersusCommand} = require('./commands/versus');
-const {propuestaCommand,aceptarPropuesta,rechazarPropuesta} = require('./commands/propuesta')
+const {propuestaCommand,aceptarPropuesta,rechazarPropuesta,handleProposalButton,divorcioCommand,divortioCommand} = require('./commands/propuesta')
 const ownerCommand = require('./commands/owner');
 const deleteCommand = require('./commands/delete');
 const { scheduleCommand, deleteScheduleCommand, deleteAllSchedulesCommand } = require('./commands/schedule');
@@ -334,6 +334,10 @@ if (userData?.banned) {
                 await sock.sendMessage(chatId, {
                     text: '📢 *Join our Channel:*\nhttps://whatsapp.com/channel/0029Va90zAnIHphOuO8Msp3A'
                 }, { quoted: message });
+                return;
+            } else if (buttonId.startsWith('propuesta::')) {
+                const handled = await handleProposalButton(sock, chatId, senderId, buttonId);
+                if (handled) return;
                 return;
             } else if (buttonId.startsWith('versus::')) {
                 await handleVersusButton(sock, senderId, buttonId, message);
@@ -695,6 +699,15 @@ const command = rawText.split(' ')[0].toLowerCase()
 
     case userMessage.startsWith('.propuesta'):
     await propuestaCommand(
+        sock,
+        chatId,
+        senderId,
+        message
+    )
+    break;
+
+    case userMessage === '.divorcio' || userMessage === '.credoe' || userMessage.startsWith('.divorcio') || userMessage.startsWith('.credoe'):
+    await divorcioCommand(
         sock,
         chatId,
         senderId,

@@ -382,6 +382,9 @@ function buildMenuText(uptimeSeconds, version = '2.0.0') {
 ❀ \`.propuesta\` + <@usuario>
 > Envia propuesta de matrimonio.
 
+❀ \`.divorcio\` + <@usuario>
+> Finaliza un matrimonio activo en el grupo.
+
 ❀ \`.top\` + <texto>
 > Top 5 (categoria).
 
