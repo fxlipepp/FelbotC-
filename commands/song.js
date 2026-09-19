@@ -1,3 +1,4 @@
+
 const youtubedl = require('youtube-dl-exec')
 const ffmpegPath = require('ffmpeg-static')
 const fs = require('fs')
@@ -61,46 +62,84 @@ const YOUTUBE_CLIENTS = [
 ]
 
 function getYtDlpBaseOptions(extra = {}) {
-   const cookiesPath = process.env.YOUTUBE_COOKIES || path.join(process.cwd(), 'cookies.txt')
-   const cookies = fs.existsSync(cookiesPath)
-      ? { cookies: cookiesPath }
-      : {}
+
+   const cookiesPath =
+      process.env.YOUTUBE_COOKIES ||
+      path.join(process.cwd(), 'cookies.txt')
+
+   const cookiesExists =
+      fs.existsSync(cookiesPath)
+
+   console.log(`
+╭──────────────────────⬣
+│ 🍪 YOUTUBE COOKIES
+├──────────────────────⬣
+│ 📁 Ruta: ${cookiesPath}
+│ ${cookiesExists
+      ? '✅ Archivo encontrado'
+      : '❌ Archivo NO encontrado'}
+╰──────────────────────⬣
+`)
+
+   const cookies =
+      cookiesExists
+         ? { cookies: cookiesPath }
+         : {}
 
    return {
       noWarnings: true,
       noPlaylist: true,
       ffmpegLocation: ffmpegPath,
       preferFreeFormats: true,
+
       addHeader: [
          'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36',
          'Accept-Language: es-ES,es;q=0.9,en;q=0.8'
       ],
+
       ...cookies,
       ...extra
    }
 }
 
-async function runYtDlpWithFallback(input, options = {}, execOptions = {}) {
+async function runYtDlpWithFallback(
+   input,
+   options = {},
+   execOptions = {}
+) {
+
    let lastError
 
    for (const clientArgs of YOUTUBE_CLIENTS) {
+
       try {
+
          return await youtubedl(
             input,
             {
                ...getYtDlpBaseOptions(),
                ...options,
+
                extractorArgs: {
                   youtube: clientArgs
                }
             },
             execOptions
          )
-      } catch (error) {
-         lastError = error
-         const rawError = error?.stderr || error?.message || ''
 
-         if (!/sign in to confirm|not a bot|cookies-from-browser|cookies/i.test(rawError)) {
+      } catch (error) {
+
+         lastError = error
+
+         const rawError =
+            error?.stderr ||
+            error?.message ||
+            ''
+
+         if (
+            !/sign in to confirm|not a bot|cookies-from-browser|cookies/i
+               .test(rawError)
+         ) {
             throw error
          }
       }
@@ -143,18 +182,19 @@ async function searchYouTube(query) {
       )
    }
 
-   // Buscar el resultado más apropiado
    const selected =
       results.entries.find(video =>
          video.title &&
          !video.title
             .toLowerCase()
             .includes('playlist') &&
-         (!video.duration ||
+         (
+            !video.duration ||
             (
                video.duration > 30 &&
                video.duration < 1800
-            ))
+            )
+         )
       ) ||
       results.entries.find(video =>
          video.title
@@ -182,7 +222,6 @@ async function searchYouTube(query) {
       )
    }
 
-   // Obtener información completa
    const info =
       await runYtDlpWithFallback(
          videoUrl,
@@ -234,6 +273,7 @@ async function downloadAudio(url) {
       )
 
    if (!fs.existsSync(tempDir)) {
+
       fs.mkdirSync(
          tempDir,
          {
@@ -283,15 +323,19 @@ async function downloadAudio(url) {
       )
 
       if (!fs.existsSync(outputFile)) {
+
          throw new Error(
             'No se generó el MP3'
          )
       }
 
       const stats =
-         fs.statSync(outputFile)
+         fs.statSync(
+            outputFile
+         )
 
       if (!stats.size) {
+
          throw new Error(
             'El MP3 está vacío'
          )
@@ -314,7 +358,6 @@ async function downloadAudio(url) {
 ╰──────────────────────⬣
 `)
 
-      // 🧹 LIMPIAR ARCHIVO
       try {
          fs.unlinkSync(
             outputFile
@@ -326,6 +369,7 @@ async function downloadAudio(url) {
    } catch (error) {
 
       try {
+
          if (
             fs.existsSync(
                outputFile
@@ -335,6 +379,7 @@ async function downloadAudio(url) {
                outputFile
             )
          }
+
       } catch {}
 
       console.error(
@@ -426,6 +471,7 @@ async function songCommand(
             )
 
          video = {
+
             url: query,
 
             title:
@@ -487,9 +533,11 @@ async function songCommand(
             )
 
             setTimeout(() => {
+
                searchCache.delete(
                   query
                )
+
             }, 1000 * 60 * 5)
          }
       }
@@ -536,6 +584,7 @@ async function songCommand(
          !audioBuffer ||
          audioBuffer.length < 50000
       ) {
+
          throw new Error(
             'Audio inválido'
          )
@@ -620,6 +669,7 @@ async function songCommand(
          !finalBuffer ||
          finalBuffer.length < 50000
       ) {
+
          throw new Error(
             'Conversion failed'
          )
@@ -741,4 +791,3 @@ async function songCommand(
    }
 }
 
-module.exports = songCommand
