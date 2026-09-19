@@ -78,7 +78,8 @@ const YTDLP_OPTIONS = {
    noWarnings: true,
    noPlaylist: true,
    ffmpegLocation: ffmpegPath,
-   extractorArgs: 'youtube:player_client=android,web',
+   extractorArgs: 'youtube:player_client=android,web;player_skip=webpage',
+   retries: 3,
    ...(fs.existsSync(cookiesPath)
       ? { cookies: cookiesPath }
       : {})
@@ -272,7 +273,7 @@ async function downloadAudio(url) {
          url,
          {
             ...YTDLP_OPTIONS,
-            format: 'bestaudio/best',
+            format: 'bestaudio[ext=m4a]/bestaudio/best',
             extractAudio: true,
             output: outputTemplate,
             quiet: true,

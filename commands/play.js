@@ -91,16 +91,18 @@ async function playCommand(sock, chatId, message) {
          [
             '--no-playlist',
             '--format',
-            'bestaudio/best',
+            'bestaudio[ext=m4a]/bestaudio/best',
             '--extract-audio',
             '--output',
             tempFile,
             '--no-warnings',
             '--quiet',
+            '--retries',
+            '3',
             '--ffmpeg-location',
             process.env.FFMPEG_PATH || 'ffmpeg',
             '--extractor-args',
-            'youtube:player_client=android,web',
+            'youtube:player_client=android,web;player_skip=webpage',
             video.url
          ],
          {
