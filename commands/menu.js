@@ -29,6 +29,7 @@ function buildIntroHeader(uptimeSeconds, version = '2.0.0') {
 }
 
 function buildMenuText(uptimeSeconds, version = '2.0.0') {
+
     const helpMessage = `
 ╭━━〔 👑 OWNER 〕━━⬣
 > ✦ Comandos de administracion.
@@ -447,38 +448,54 @@ function buildMenuText(uptimeSeconds, version = '2.0.0') {
 }
 
 function getMenuButtonAction(buttonId) {
+
     switch (buttonId) {
+
         case 'view_full_menu':
-            return { type: 'send_full_menu' }
+            return {
+                type: 'send_full_menu'
+            }
 
         default:
             return null
     }
 }
 
-async function handleMenuButton(sock, chatId, buttonId, message) {
-    const action = getMenuButtonAction(buttonId)
+async function handleMenuButton(
+    sock,
+    chatId,
+    buttonId,
+    message
+) {
+
+    const action =
+        getMenuButtonAction(buttonId)
 
     if (!action) return false
 
     if (action.type === 'send_full_menu') {
-        try {
-            const fullMenu = buildMenuText(
-                process.uptime(),
-                '2.0.0'
-            )
 
-            const imagePath = path.join(
-                __dirname,
-                '..',
-                'assets',
-                'menucompleto',
-                'menu.png'
-            )
+        try {
+
+            const fullMenu =
+                buildMenuText(
+                    process.uptime(),
+                    '2.0.0'
+                )
+
+            const imagePath =
+                path.join(
+                    __dirname,
+                    '..',
+                    'assets',
+                    'menucompleto',
+                    'menu.png'
+                )
 
             if (!fs.existsSync(imagePath)) {
+
                 console.error(
-                    '❌ No se encontró la imagen del menú:',
+                    '❌ No se encontró la imagen:',
                     imagePath
                 )
 
@@ -495,7 +512,8 @@ async function handleMenuButton(sock, chatId, buttonId, message) {
                 return true
             }
 
-            const imageBuffer = fs.readFileSync(imagePath)
+            const imageBuffer =
+                fs.readFileSync(imagePath)
 
             await sock.sendMessage(
                 chatId,
@@ -509,21 +527,23 @@ async function handleMenuButton(sock, chatId, buttonId, message) {
             )
 
             console.log(
-                '✅ Menú completo enviado correctamente'
+                '✅ MENÚ COMPLETO ENVIADO'
             )
 
             return true
 
         } catch (error) {
+
             console.error(
                 '❌ ERROR AL ENVIAR MENÚ COMPLETO:',
                 error
             )
 
-            const fullMenu = buildMenuText(
-                process.uptime(),
-                '2.0.0'
-            )
+            const fullMenu =
+                buildMenuText(
+                    process.uptime(),
+                    '2.0.0'
+                )
 
             await sock.sendMessage(
                 chatId,
@@ -542,12 +562,17 @@ async function handleMenuButton(sock, chatId, buttonId, message) {
     return false
 }
 
-async function helpCommand(sock, chatId, message) {
+async function helpCommand(
+    sock,
+    chatId,
+    message
+) {
 
-    const introCaption = `${buildIntroHeader(
-        process.uptime(),
-        '2.0.0'
-    )}
+    const introCaption =
+        `${buildIntroHeader(
+            process.uptime(),
+            '2.0.0'
+        )}
 
 Bienvenido a Felbot 夜.
 Aquí encontrarás herramientas, administración, entretenimiento y mucho más.
@@ -556,24 +581,26 @@ Aquí encontrarás herramientas, administración, entretenimiento y mucho más.
 
     try {
 
-        const imagePath = path.join(
-            __dirname,
-            '..',
-            'assets',
-            'imagenes',
-            'admin',
-            'admin.png'
-        )
+        const imagePath =
+            path.join(
+                __dirname,
+                '..',
+                'assets',
+                'imagenes',
+                'admin',
+                'admin.png'
+            )
 
         if (!fs.existsSync(imagePath)) {
+
             throw new Error(
-                'Menu image not found: ' + imagePath
+                'Menu image not found: ' +
+                imagePath
             )
         }
 
-        const imageBuffer = fs.readFileSync(
-            imagePath
-        )
+        const imageBuffer =
+            fs.readFileSync(imagePath)
 
         const preparedImage =
             await prepareWAMessageMedia(
@@ -581,124 +608,253 @@ Aquí encontrarás herramientas, administración, entretenimiento y mucho más.
                     image: imageBuffer
                 },
                 {
-                    upload: sock.waUploadToServer
+                    upload:
+                        sock.waUploadToServer
                 }
             )
 
         const buttons = [
+
             [
                 'VER MENU COMPLETO',
                 'view_full_menu'
             ],
+
             [
                 'CONTACTAME 夜',
                 'owner'
             ],
+
             [
                 'REPORTAR ERROR ❗',
                 'report_error'
             ],
+
             [
                 'SOLICITUD DE COMANDO 🕸️',
                 'request_command'
             ],
+
             [
                 'ADQUIRIR BOT 💵',
                 'buy_bot'
             ]
+
         ].map(
             ([display_text, id]) => ({
+
                 name: 'quick_reply',
+
                 buttonParamsJson:
                     JSON.stringify({
                         display_text,
                         id
                     })
+
             })
         )
+
+        /*
+         * =====================================================
+         * MENSAJE PRINCIPAL
+         * =====================================================
+         */
 
         const menuMessage =
             generateWAMessageFromContent(
                 chatId,
                 {
+
                     interactiveMessage: {
 
+                        /*
+                         * ENCABEZADO ORIGINAL
+                         */
+
                         header: {
-                            title: '𝕱𝖊𝖑𝖇𝖔𝖙 夜',
-                            subtitle: 'Menú interactivo',
-                            hasMediaAttachment: true,
+
+                            title:
+                                '𝕱𝖊𝖑𝖇𝖔𝖙 夜',
+
+                            subtitle:
+                                'Menú interactivo',
+
+                            hasMediaAttachment:
+                                true,
+
                             ...preparedImage
                         },
 
+                        /*
+                         * CUERPO ORIGINAL
+                         */
+
                         body: {
-                            text: introCaption
+
+                            text:
+                                introCaption
                         },
 
+                        /*
+                         * PIE ORIGINAL
+                         */
+
                         footer: {
+
                             text:
                                 '𝕱𝖊𝖑𝖇𝖔𝖙 夜 • Menú interactivo'
                         },
 
-                        nativeFlowMessage: {
-                            buttons,
+                        /*
+                         * BOTONES + ENLACE DEL ENCABEZADO
+                         */
 
-                            messageParamsJson: ''
+                        nativeFlowMessage: {
+
+                            /*
+                             * Esta configuración hace que
+                             * WhatsApp tenga un destino URL
+                             * asociado al tap target.
+                             */
+
+                            messageParamsJson:
+                                JSON.stringify({
+
+                                    tap_target_configuration: {
+
+                                        title:
+                                            '𝕱𝖊𝖑𝖇𝖔𝖙 夜',
+
+                                        description:
+                                            'Menú interactivo',
+
+                                        canonical_url:
+                                            FELBOT_WEB,
+
+                                        domain:
+                                            'fxlipe.skyultraplus.online',
+
+                                        /*
+                                         * Índice del elemento
+                                         * asociado al tap target.
+                                         */
+
+                                        button_index:
+                                            0
+                                    }
+                                }),
+
+                            buttons
                         }
                     }
+
                 },
                 {
-                    quoted: message
+                    quoted:
+                        message
                 }
             )
 
         /*
-         * Vista previa enlazada.
+         * =====================================================
+         * CONTEXT INFO
+         * =====================================================
          *
-         * Esto intenta añadir el enlace de la web
-         * mediante externalAdReply sin poner la URL
-         * dentro del texto visible del menú.
+         * Dejamos externalAdReply como respaldo visual.
+         * El enlace real del tap target está arriba.
          */
 
         if (
             menuMessage.message &&
             menuMessage.message.interactiveMessage
         ) {
-            menuMessage.message.interactiveMessage.contextInfo = {
+
+            menuMessage
+                .message
+                .interactiveMessage
+                .contextInfo = {
+
                 externalAdReply: {
-                    title: '𝕱𝖊𝖑𝖇𝖔𝖙 夜',
-                    body: 'Menú interactivo',
-                    mediaType: 1,
-                    sourceUrl: FELBOT_WEB,
-                    renderLargerThumbnail: false,
-                    showAdAttribution: false
+
+                    title:
+                        '𝕱𝖊𝖑𝖇𝖔𝖙 夜',
+
+                    body:
+                        'Menú interactivo',
+
+                    mediaType:
+                        1,
+
+                    sourceUrl:
+                        FELBOT_WEB,
+
+                    renderLargerThumbnail:
+                        false,
+
+                    showAdAttribution:
+                        false
                 }
             }
         }
 
+        /*
+         * =====================================================
+         * ENVIAR MENÚ
+         * =====================================================
+         */
+
         await sock.relayMessage(
-            menuMessage.key.remoteJid,
+
+            menuMessage
+                .key
+                .remoteJid,
+
             menuMessage.message,
+
             {
-                messageId: menuMessage.key.id,
+
+                messageId:
+                    menuMessage.key.id,
 
                 additionalNodes: [
+
                     {
-                        tag: 'biz',
+
+                        tag:
+                            'biz',
+
                         attrs: {},
+
                         content: [
+
                             {
-                                tag: 'interactive',
+
+                                tag:
+                                    'interactive',
+
                                 attrs: {
-                                    type: 'native_flow',
-                                    v: '1'
+
+                                    type:
+                                        'native_flow',
+
+                                    v:
+                                        '1'
                                 },
 
                                 content: [
+
                                     {
-                                        tag: 'native_flow',
+
+                                        tag:
+                                            'native_flow',
+
                                         attrs: {
-                                            v: '9',
-                                            name: 'mixed'
+
+                                            v:
+                                                '9',
+
+                                            name:
+                                                'mixed'
                                         }
                                     }
                                 ]
@@ -716,13 +872,20 @@ Aquí encontrarás herramientas, administración, entretenimiento y mucho más.
             error
         )
 
+        /*
+         * Si WhatsApp rechaza el mensaje interactivo,
+         * se conserva el fallback original.
+         */
+
         await sock.sendMessage(
             chatId,
             {
-                text: introCaption
+                text:
+                    introCaption
             },
             {
-                quoted: message
+                quoted:
+                    message
             }
         )
     }
