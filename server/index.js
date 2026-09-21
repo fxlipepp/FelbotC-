@@ -13,114 +13,90 @@ const PREFIX = '.'
 
 app.use(express.json({ limit: '50kb' }))
 
-// ═══════════════════════════════════════════════
-// COMANDOS
-// ═══════════════════════════════════════════════
+/* =========================================================
+   COMANDOS REALES DE FELBOT
+========================================================= */
 
 const COMMANDS = [
-
     {
         category: 'OWNER',
         icon: '👑',
         commands: [
-            ['owner', 'Información del propietario'],
-            ['menu', 'Muestra el menú principal'],
-            ['ping', 'Comprueba la respuesta del bot'],
-            ['speed', 'Muestra la velocidad del bot'],
-            ['runtime', 'Muestra el tiempo activo'],
-            ['restart', 'Reinicia el bot'],
-            ['update', 'Actualiza el bot'],
-            ['shutdown', 'Apaga el bot'],
-            ['broadcast', 'Envía mensajes globales'],
-            ['clearsession', 'Limpia la sesión']
+            ['.felbot on', 'Activar Felbot en el grupo.'],
+            ['.felbot off', 'Desactivar Felbot en el grupo.']
         ]
     },
 
     {
         category: 'GENERAL',
-        icon: '✦',
+        icon: '🌐',
         commands: [
-            ['menu', 'Muestra todos los comandos'],
-            ['help', 'Ayuda del bot'],
-            ['info', 'Información de Felbot'],
-            ['botinfo', 'Información del sistema'],
-            ['perfil', 'Muestra un perfil'],
-            ['sticker', 'Convierte una imagen en sticker'],
-            ['s', 'Crea un sticker'],
-            ['toimg', 'Convierte sticker a imagen'],
-            ['tts', 'Convierte texto a voz'],
-            ['translate', 'Traduce textos'],
-            ['weather', 'Consulta el clima'],
-            ['qr', 'Genera un código QR'],
-            ['readqr', 'Lee un código QR'],
-            ['short', 'Acorta un enlace'],
-            ['github', 'Consulta información de GitHub']
+            ['.menu', 'Mostrar el menú completo del bot.'],
+            ['.help', 'Mostrar el menú completo del bot.'],
+            ['.ping', 'Ver la velocidad y respuesta del bot.'],
+            ['.alive', 'Comprobar si el bot está activo.'],
+            ['.info', 'Ver la información de los creadores.'],
+            ['.owner', 'Ver el contacto del creador del bot.'],
+            ['.jid', 'Obtener tu ID de WhatsApp.'],
+            ['.groupinfo', 'Mostrar información del grupo.'],
+            ['.staff', 'Ver la lista de administradores.'],
+            ['.admins', 'Ver la lista de administradores.']
         ]
     },
 
     {
         category: 'UTILIDADES',
-        icon: '⚙️',
+        icon: '🛠️',
         commands: [
-            ['calculator', 'Calculadora'],
-            ['calc', 'Realiza operaciones matemáticas'],
-            ['google', 'Realiza una búsqueda'],
-            ['search', 'Busca información'],
-            ['wikipedia', 'Busca en Wikipedia'],
-            ['define', 'Busca definiciones'],
-            ['time', 'Consulta la hora'],
-            ['date', 'Consulta la fecha'],
-            ['country', 'Información de países'],
-            ['ip', 'Información de una dirección IP'],
-            ['url', 'Información de una URL'],
-            ['ss', 'Captura una página web'],
-            ['ocr', 'Reconoce texto de una imagen'],
-            ['removebg', 'Elimina el fondo de una imagen']
+            ['.tts', 'Convertir texto a voz.'],
+            ['.trt', 'Traducir texto automáticamente.'],
+            ['.vv', 'Ver mensajes de visualización única.'],
+            ['.8ball', 'Respuestas aleatorias tipo bola mágica.']
         ]
     },
 
     {
         category: 'ADMIN',
-        icon: '🛡️',
+        icon: '👮',
         commands: [
-            ['antilink', 'Activa o desactiva el antienlace'],
-            ['welcome', 'Configura el mensaje de bienvenida'],
-            ['setwelcome', 'Establece el mensaje de bienvenida'],
-            ['bye', 'Configura el mensaje de despedida'],
-            ['setbye', 'Establece el mensaje de despedida'],
-            ['tagall', 'Menciona a todos los miembros'],
-            ['hidetag', 'Menciona a todos sin mostrar etiquetas'],
-            ['tag', 'Menciona usuarios'],
-            ['promote', 'Promueve a administrador'],
-            ['demote', 'Quita administrador'],
-            ['add', 'Agrega un usuario'],
-            ['kick', 'Expulsa un usuario'],
-            ['mute', 'Silencia el grupo'],
-            ['unmute', 'Activa nuevamente el grupo'],
-            ['open', 'Abre el grupo'],
-            ['close', 'Cierra el grupo'],
-            ['groupinfo', 'Información del grupo'],
-            ['admins', 'Muestra los administradores'],
-            ['link', 'Obtiene el enlace del grupo'],
-            ['resetlink', 'Restablece el enlace'],
-            ['setname', 'Cambia el nombre del grupo'],
-            ['setdesc', 'Cambia la descripción'],
-            ['setpp', 'Cambia la foto del grupo']
+            ['.ban', 'Banear un usuario del bot.'],
+            ['.unban', 'Desbanear un usuario del bot.'],
+            ['.kick', 'Expulsar un miembro del grupo.'],
+            ['.warn', 'Dar advertencias a un usuario.'],
+            ['.warnings', 'Ver advertencias acumuladas.'],
+            ['.mute', 'Silenciar el grupo temporalmente.'],
+            ['.unmute', 'Volver a activar mensajes del grupo.'],
+            ['.promote', 'Dar administrador a un usuario.'],
+            ['.demote', 'Quitar administrador a un usuario.'],
+            ['.delete', 'Eliminar mensajes enviados.'],
+            ['.del', 'Eliminar mensajes enviados.'],
+            ['.antilink', 'Activar o desactivar anti enlaces.'],
+            ['.modoadmin', 'Activar o desactivar modo admin.'],
+            ['.welcome', 'Activar o desactivar bienvenidas.'],
+            ['.setwelcome', 'Configurar audio personalizado de bienvenida.'],
+            ['.resetwelcome', 'Eliminar audio de bienvenida.'],
+            ['.setbye', 'Configurar audio personalizado de despedida.'],
+            ['.resetbye', 'Eliminar audio de despedida.'],
+            ['.n', 'Mencionar a todos los miembros.'],
+            ['.todos', 'Etiquetar a todos los participantes.'],
+            ['.setgname', 'Cambiar nombre del grupo.'],
+            ['.setgpp', 'Cambiar foto del grupo.'],
+            ['.setgdesc', 'Cambiar descripción del grupo.'],
+            ['.abrir', 'Abrir el grupo.'],
+            ['.cerrar', 'Cerrar el grupo.']
         ]
     },
 
     {
         category: 'FREE FIRE',
-        icon: '🔥',
+        icon: '🔫',
         commands: [
-            ['ff', 'Información de Free Fire'],
-            ['ffid', 'Consulta información de un jugador'],
-            ['ffstats', 'Estadísticas de Free Fire'],
-            ['ffprofile', 'Perfil de Free Fire'],
-            ['ffrank', 'Consulta rango'],
-            ['ffregion', 'Consulta región'],
-            ['ffguild', 'Consulta información de gremio'],
-            ['ffuid', 'Consulta datos mediante UID']
+            ['.2vs2', 'Lista de 2vs2.'],
+            ['.4vs4', 'Lista de 4vs4.'],
+            ['.6vs6', 'Lista de 6vs6.'],
+            ['.int2', 'Lista de 2vs2 interna.'],
+            ['.int4', 'Lista de 4vs4 interna.'],
+            ['.int6', 'Lista de 6vs6 interna.']
         ]
     },
 
@@ -128,47 +104,53 @@ const COMMANDS = [
         category: 'STICKERS',
         icon: '🎨',
         commands: [
-            ['sticker', 'Crea un sticker'],
-            ['s', 'Crea un sticker'],
-            ['stickerwm', 'Sticker con marca de agua'],
-            ['toimg', 'Convierte sticker a imagen'],
-            ['tovideo', 'Convierte sticker a video'],
-            ['gif', 'Convierte contenido a GIF'],
-            ['emojimix', 'Combina emojis'],
-            ['steal', 'Obtiene un sticker']
+            ['.s', 'Convertir imagen o video en sticker.'],
+            ['.crop', 'Convertir imagen o video en sticker centrado.'],
+            ['.brat', 'Convertir texto en sticker.'],
+            ['.wm', 'Cambiar packname de un sticker.'],
+            ['.attp', 'Crear sticker animado con texto.'],
+            ['.emojimix', 'Combinar emojis en stickers.'],
+            ['.removebg', 'Eliminar fondo de imágenes.']
         ]
     },
 
     {
         category: 'TEXTMAKER',
-        icon: '✍️',
+        icon: '🔤',
         commands: [
-            ['textpro', 'Genera texto con efectos'],
-            ['neon', 'Texto con efecto neón'],
-            ['glitch', 'Texto con efecto glitch'],
-            ['metal', 'Texto estilo metal'],
-            ['fire', 'Texto con efecto fuego'],
-            ['ice', 'Texto con efecto hielo'],
-            ['gold', 'Texto dorado'],
-            ['blackpink', 'Texto estilo Blackpink'],
-            ['matrix', 'Texto estilo Matrix'],
-            ['graffiti', 'Texto estilo graffiti'],
-            ['typography', 'Genera tipografías']
+            ['.metallic', 'Texto metálico brillante.'],
+            ['.ice', 'Texto congelado estilo hielo.'],
+            ['.snow', 'Texto cubierto de nieve.'],
+            ['.impressive', 'Texto impresionante decorado.'],
+            ['.matrix', 'Texto estilo Matrix hacker.'],
+            ['.light', 'Texto iluminado.'],
+            ['.neon', 'Texto con efecto neón.'],
+            ['.devil', 'Texto estilo demoníaco.'],
+            ['.purple', 'Texto morado brillante.'],
+            ['.thunder', 'Texto con rayos eléctricos.'],
+            ['.parejas', 'Texto decorado con hojas.'],
+            ['.1917', 'Texto estilo película 1917.'],
+            ['.arena', 'Texto arena/desierto.'],
+            ['.hacker', 'Texto hacker oscuro.'],
+            ['.sand', 'Texto de arena caliente.'],
+            ['.blackpink', 'Texto estilo BLACKPINK.'],
+            ['.glitch', 'Texto con efecto glitch.'],
+            ['.fire', 'Texto en llamas.']
         ]
     },
 
     {
         category: 'ANIME',
-        icon: '🌸',
+        icon: '🖼️',
         commands: [
-            ['anime', 'Información de anime'],
-            ['waifu', 'Obtiene una waifu aleatoria'],
-            ['neko', 'Obtiene una imagen neko'],
-            ['maid', 'Obtiene una imagen maid'],
-            ['megumin', 'Contenido de Megumin'],
-            ['akira', 'Contenido anime'],
-            ['shinobu', 'Contenido de Shinobu'],
-            ['cosplay', 'Obtiene contenido cosplay']
+            ['.nom', 'Comer cariñosamente a alguien.'],
+            ['.poke', 'Picar o molestar a alguien.'],
+            ['.cry', 'Llorar estilo anime.'],
+            ['.besar', 'Besar a un usuario.'],
+            ['.pat', 'Dar palmadas en la cabeza.'],
+            ['.hug', 'Abrazar a alguien.'],
+            ['.wink', 'Guiñar el ojo.'],
+            ['.facepalm', 'Hacer facepalm anime.']
         ]
     },
 
@@ -176,129 +158,139 @@ const COMMANDS = [
         category: 'JUEGOS',
         icon: '🎮',
         commands: [
-            ['ppt', 'Piedra, papel o tijera'],
-            ['trivia', 'Juego de preguntas'],
-            ['quiz', 'Preguntas aleatorias'],
-            ['adivina', 'Adivina la palabra'],
-            ['matematicas', 'Reto matemático'],
-            ['memoria', 'Juego de memoria'],
-            ['dado', 'Lanza un dado'],
-            ['moneda', 'Lanza una moneda'],
-            ['8ball', 'Bola mágica'],
-            ['verdad', 'Verdad'],
-            ['reto', 'Reto']
+            ['.ppt', 'Piedra, papel o tijera.'],
+            ['.dados', 'Lanzar dos dados.'],
+            ['.moneda', 'Cara o cruz.'],
+            ['.ruleta', 'Ruleta aleatoria recreativa.'],
+            ['.8ball', 'Consultar la bola mágica.'],
+            ['.adivina', 'Adivinar una palabra.'],
+            ['.quiz', 'Preguntas y respuestas.'],
+            ['.duelo', 'Duelo entre usuarios.'],
+            ['.blackjack', 'Jugar blackjack.'],
+            ['.slots', 'Máquina tragamonedas recreativa.'],
+            ['.memoria', 'Juego de memoria.'],
+            ['.tictactoe', 'Jugar tres en raya.'],
+            ['.hangman', 'Jugar ahorcado.'],
+            ['.guess', 'Juego de adivinar palabras.'],
+            ['.trivia', 'Responder preguntas de trivia.'],
+            ['.truth', 'Preguntas de verdad.'],
+            ['.dare', 'Retos aleatorios.'],
+            ['.perfil', 'Ver tus estadísticas.'],
+            ['.rank', 'Ranking de jugadores.']
         ]
     },
 
     {
         category: 'DIVERSIÓN',
-        icon: '🎭',
+        icon: '🎯',
         commands: [
-            ['ship', 'Calcula compatibilidad'],
-            ['love', 'Calcula porcentaje de amor'],
-            ['rate', 'Califica algo'],
-            ['meme', 'Genera un meme'],
-            ['joke', 'Cuenta un chiste'],
-            ['fact', 'Dato curioso'],
-            ['quote', 'Frase aleatoria'],
-            ['motivacion', 'Frase motivacional']
+            ['.Parejas', 'Top 5 parejas del grupo.'],
+            ['.compliment', 'Enviar cumplidos a alguien.'],
+            ['.propuesta', 'Enviar propuesta de matrimonio.'],
+            ['.divorcio', 'Finalizar un matrimonio activo en el grupo.'],
+            ['.top', 'Mostrar un top 5 de una categoría.'],
+            ['.piropo', 'Enviar piropos a alguien.'],
+            ['.insult', 'Insultar amistosamente a alguien.'],
+            ['.flirt', 'Coquetear con un usuario.'],
+            ['.ship', 'Ver porcentaje de compatibilidad.'],
+            ['.simp', 'Mostrar tarjeta Simp.'],
+            ['.stupid', 'Mostrar al estúpido del grupo.']
         ]
     },
 
     {
         category: 'DESCARGAS',
-        icon: '↓',
+        icon: '📥',
         commands: [
-            ['play', 'Busca y descarga contenido'],
-            ['instagram', 'Descarga contenido de Instagram'],
-            ['facebook', 'Descarga contenido de Facebook'],
-            ['tiktok', 'Descarga videos de TikTok'],
-            ['mediafire', 'Descarga archivos de MediaFire'],
-            ['twitter', 'Descarga contenido de X/Twitter'],
-            ['pinterest', 'Descarga imágenes de Pinterest']
+            ['.play', 'Buscar y descargar música.'],
+            ['.video', 'Buscar y descargar videos.'],
+            ['.song', 'Descargar canciones en MP3.'],
+            ['.spotify', 'Descargar audio de Spotify.'],
+            ['.tiktok', 'Descargar videos de TikTok.'],
+            ['.facebook', 'Descargar videos de Facebook.'],
+            ['.instagram', 'Descargar reels y publicaciones.'],
+            ['.ytmp4', 'Descargar videos.']
         ]
     }
 ]
 
-const TOTAL_COMMANDS = COMMANDS.reduce(
-    (total, category) =>
-        total + category.commands.length,
-    0
-)
+/* =========================================================
+   PREPARAR COMANDOS
+========================================================= */
 
+const ALL_COMMANDS = []
+
+for (const section of COMMANDS) {
+    for (const command of section.commands) {
+        ALL_COMMANDS.push({
+            command: command[0],
+            description: command[1],
+            category: section.category,
+            icon: section.icon
+        })
+    }
+}
+
+const TOTAL_COMMANDS = ALL_COMMANDS.length
 const TOTAL_CATEGORIES = COMMANDS.length
 
-// ═══════════════════════════════════════════════
-// UTILIDADES
-// ═══════════════════════════════════════════════
+/* =========================================================
+   UTILIDADES
+========================================================= */
 
-function formatUptime(ms) {
+function formatUptime(seconds) {
+    const days = Math.floor(seconds / 86400)
+    const hours = Math.floor((seconds % 86400) / 3600)
+    const minutes = Math.floor((seconds % 3600) / 60)
+    const secs = Math.floor(seconds % 60)
 
-    const totalSeconds =
-        Math.floor(ms / 1000)
-
-    const days =
-        Math.floor(totalSeconds / 86400)
-
-    const hours =
-        Math.floor(
-            (totalSeconds % 86400) / 3600
-        )
-
-    const minutes =
-        Math.floor(
-            (totalSeconds % 3600) / 60
-        )
-
-    const seconds =
-        totalSeconds % 60
-
-    const parts = []
-
-    if (days) parts.push(`${days}d`)
-    if (hours) parts.push(`${hours}h`)
-    if (minutes) parts.push(`${minutes}m`)
-
-    if (
-        seconds ||
-        !parts.length
-    ) {
-        parts.push(`${seconds}s`)
+    if (days > 0) {
+        return `${days}d ${hours}h ${minutes}m`
     }
 
-    return parts.join(' ')
+    return `${hours}h ${minutes}m ${secs}s`
 }
 
-function safeJson(value) {
-
-    return JSON.stringify(value)
-        .replace(/</g, '\\u003c')
-        .replace(/>/g, '\\u003e')
-        .replace(/&/g, '\\u0026')
-
+function escapeHtml(value) {
+    return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;')
 }
 
-// ═══════════════════════════════════════════════
-// BROWSER
-// ═══════════════════════════════════════════════
+/* =========================================================
+   API
+========================================================= */
+
+app.get('/api/commands', (req, res) => {
+    res.json({
+        bot: BOT_NAME,
+        creator: CREATOR,
+        version: VERSION,
+        prefix: PREFIX,
+        total: TOTAL_COMMANDS,
+        categories: TOTAL_CATEGORIES,
+        data: COMMANDS
+    })
+})
+
+/* =========================================================
+   BROWSER
+========================================================= */
 
 let browser = null
 let browserPage = null
 
-async function startBrowser() {
-
-    try {
-
+async function getBrowserPage() {
+    if (!browser) {
         browser = await puppeteer.launch({
-
             headless: true,
-
-            userDataDir:
-                '/home/container/chrome-profile',
+            userDataDir: '/home/container/chrome-profile',
 
             executablePath:
-                process.env.PUPPETEER_EXECUTABLE_PATH ||
-                undefined,
+                process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
 
             args: [
                 '--no-sandbox',
@@ -309,826 +301,526 @@ async function startBrowser() {
                 '--no-default-browser-check',
                 '--window-size=1280,900'
             ]
-
         })
+    }
 
-        browserPage =
-            await browser.newPage()
+    if (!browserPage || browserPage.isClosed()) {
+        browserPage = await browser.newPage()
 
         await browserPage.setViewport({
             width: 1280,
             height: 900
         })
 
-        await browserPage.goto(
-            'about:blank',
-            {
-                waitUntil:
-                    'domcontentloaded'
-            }
-        )
-
-        console.log(
-            '🌐 Browser remoto iniciado'
-        )
-
-    } catch (error) {
-
-        console.error(
-            '❌ Error iniciando browser:',
-            error.message
-        )
-
+        await browserPage.goto('about:blank', {
+            waitUntil: 'domcontentloaded'
+        })
     }
 
+    return browserPage
 }
 
-// ═══════════════════════════════════════════════
-// API
-// ═══════════════════════════════════════════════
+/* =========================================================
+   STATUS
+========================================================= */
 
-app.get('/api/commands', (req, res) => {
+app.get('/status', async (req, res) => {
+    let browserStatus = 'offline'
 
-    res.json({
-
-        bot: BOT_NAME,
-
-        creator: CREATOR,
-
-        version: VERSION,
-
-        prefix: PREFIX,
-
-        total: TOTAL_COMMANDS,
-
-        categories: TOTAL_CATEGORIES,
-
-        data: COMMANDS
-
-    })
-
-})
-
-app.get('/status', (req, res) => {
-
-    const browserOnline =
-        browserPage &&
-        !browserPage.isClosed()
-
-    res.json({
-
-        status: 'online',
-
-        bot: BOT_NAME,
-
-        creator: CREATOR,
-
-        version: VERSION,
-
-        uptime:
-            Date.now() - START_TIME,
-
-        uptimeFormatted:
-            formatUptime(
-                Date.now() - START_TIME
-            ),
-
-        commands:
-            TOTAL_COMMANDS,
-
-        categories:
-            TOTAL_CATEGORIES,
-
-        browser:
-            browserOnline
+    try {
+        browserStatus =
+            browserPage && !browserPage.isClosed()
                 ? 'online'
-                : 'offline',
+                : 'offline'
+    } catch {
+        browserStatus = 'offline'
+    }
 
-        time:
-            new Date().toISOString()
-
+    res.json({
+        status: 'online',
+        bot: BOT_NAME,
+        creator: CREATOR,
+        version: VERSION,
+        uptime: Math.floor((Date.now() - START_TIME) / 1000),
+        uptimeFormatted: formatUptime(
+            Math.floor((Date.now() - START_TIME) / 1000)
+        ),
+        commands: TOTAL_COMMANDS,
+        categories: TOTAL_CATEGORIES,
+        browser: browserStatus,
+        time: new Date().toISOString()
     })
-
 })
 
-// ═══════════════════════════════════════════════
-// BROWSER
-// ═══════════════════════════════════════════════
+/* =========================================================
+   BROWSER - SCREENSHOT
+========================================================= */
+
+app.get('/browser/screenshot', async (req, res) => {
+    try {
+        const page = await getBrowserPage()
+
+        const image = await page.screenshot({
+            type: 'jpeg',
+            quality: 82,
+            fullPage: false
+        })
+
+        res.setHeader('Content-Type', 'image/jpeg')
+        res.send(image)
+    } catch (error) {
+        console.error('BROWSER SCREENSHOT:', error)
+        res.status(500).json({
+            error: error.message
+        })
+    }
+})
+
+/* =========================================================
+   BROWSER - NAVIGATE
+========================================================= */
+
+app.post('/browser/navigate', async (req, res) => {
+    try {
+        const page = await getBrowserPage()
+
+        let url = String(req.body.url || '').trim()
+
+        if (!url) {
+            return res.status(400).json({
+                error: 'URL requerida'
+            })
+        }
+
+        if (!/^https?:\/\//i.test(url)) {
+            url = `https://${url}`
+        }
+
+        await page.goto(url, {
+            waitUntil: 'domcontentloaded',
+            timeout: 30000
+        })
+
+        res.json({
+            ok: true,
+            url: page.url()
+        })
+    } catch (error) {
+        console.error('BROWSER NAVIGATE:', error)
+
+        res.status(500).json({
+            error: error.message
+        })
+    }
+})
+
+/* =========================================================
+   BROWSER - CLICK
+========================================================= */
+
+app.post('/browser/click', async (req, res) => {
+    try {
+        const page = await getBrowserPage()
+
+        const x = Number(req.body.x)
+        const y = Number(req.body.y)
+
+        if (!Number.isFinite(x) || !Number.isFinite(y)) {
+            return res.status(400).json({
+                error: 'Coordenadas inválidas'
+            })
+        }
+
+        await page.mouse.click(x, y)
+
+        res.json({
+            ok: true
+        })
+    } catch (error) {
+        console.error('BROWSER CLICK:', error)
+
+        res.status(500).json({
+            error: error.message
+        })
+    }
+})
+
+/* =========================================================
+   BROWSER - TYPE
+========================================================= */
+
+app.post('/browser/type', async (req, res) => {
+    try {
+        const page = await getBrowserPage()
+
+        const text = String(req.body.text || '')
+
+        await page.keyboard.type(text, {
+            delay: 10
+        })
+
+        res.json({
+            ok: true
+        })
+    } catch (error) {
+        console.error('BROWSER TYPE:', error)
+
+        res.status(500).json({
+            error: error.message
+        })
+    }
+})
+
+/* =========================================================
+   BROWSER - KEY
+========================================================= */
+
+app.post('/browser/key', async (req, res) => {
+    try {
+        const page = await getBrowserPage()
+
+        const key = String(req.body.key || '')
+
+        if (!key) {
+            return res.status(400).json({
+                error: 'Tecla requerida'
+            })
+        }
+
+        await page.keyboard.press(key)
+
+        res.json({
+            ok: true
+        })
+    } catch (error) {
+        console.error('BROWSER KEY:', error)
+
+        res.status(500).json({
+            error: error.message
+        })
+    }
+})
+
+/* =========================================================
+   BROWSER - RELOAD
+========================================================= */
+
+app.post('/browser/reload', async (req, res) => {
+    try {
+        const page = await getBrowserPage()
+
+        await page.reload({
+            waitUntil: 'domcontentloaded',
+            timeout: 30000
+        })
+
+        res.json({
+            ok: true,
+            url: page.url()
+        })
+    } catch (error) {
+        console.error('BROWSER RELOAD:', error)
+
+        res.status(500).json({
+            error: error.message
+        })
+    }
+})
+
+/* =========================================================
+   BROWSER - BACK
+========================================================= */
+
+app.post('/browser/back', async (req, res) => {
+    try {
+        const page = await getBrowserPage()
+
+        await page.goBack({
+            waitUntil: 'domcontentloaded',
+            timeout: 30000
+        }).catch(() => {})
+
+        res.json({
+            ok: true,
+            url: page.url()
+        })
+    } catch (error) {
+        console.error('BROWSER BACK:', error)
+
+        res.status(500).json({
+            error: error.message
+        })
+    }
+})
+
+/* =========================================================
+   BROWSER - FORWARD
+========================================================= */
+
+app.post('/browser/forward', async (req, res) => {
+    try {
+        const page = await getBrowserPage()
+
+        await page.goForward({
+            waitUntil: 'domcontentloaded',
+            timeout: 30000
+        }).catch(() => {})
+
+        res.json({
+            ok: true,
+            url: page.url()
+        })
+    } catch (error) {
+        console.error('BROWSER FORWARD:', error)
+
+        res.status(500).json({
+            error: error.message
+        })
+    }
+})
+
+/* =========================================================
+   PÁGINA BROWSER
+========================================================= */
 
 app.get('/browser', (req, res) => {
-
     res.send(`<!DOCTYPE html>
-
 <html lang="es">
-
 <head>
-
 <meta charset="UTF-8">
-
-<meta
-    name="viewport"
-    content="width=device-width,initial-scale=1.0"
->
-
-<title>Felbot Browser</title>
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>${BOT_NAME} — Browser</title>
 
 <style>
-
 * {
     box-sizing: border-box;
 }
 
+html,
 body {
-
     margin: 0;
-
+    padding: 0;
     background: #080808;
-
-    color: white;
-
-    font-family:
-        Arial,
-        sans-serif;
-
+    color: #fff;
+    font-family: Arial, Helvetica, sans-serif;
 }
 
-.toolbar {
+body {
+    min-height: 100vh;
+}
 
-    height: 62px;
+.browser-top {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    padding: 14px;
+    background: rgba(8,8,8,.92);
+    backdrop-filter: blur(18px);
+    border-bottom: 1px solid rgba(255,255,255,.08);
+}
 
+.browser-bar {
     display: flex;
-
-    align-items: center;
-
     gap: 8px;
+    max-width: 1400px;
+    margin: auto;
+}
 
-    padding: 10px 14px;
-
+.browser-bar button,
+.browser-bar input {
+    border: 1px solid rgba(255,255,255,.12);
     background: #111;
-
-    border-bottom:
-        1px solid #292929;
-
+    color: white;
+    border-radius: 10px;
+    height: 42px;
 }
 
-button {
-
-    background: #181818;
-
-    color: #eee;
-
-    border:
-        1px solid #303030;
-
-    border-radius: 8px;
-
-    padding:
-        10px 13px;
-
+.browser-bar button {
+    width: 44px;
     cursor: pointer;
-
 }
 
-button:hover {
-    background: #222;
+.browser-bar button:hover {
+    background: #1b1b1b;
 }
 
-.address {
-
+.browser-bar input {
     flex: 1;
-
-    background: #0d0d0d;
-
-    border:
-        1px solid #2a2a2a;
-
-    color: #aaa;
-
-    border-radius: 8px;
-
-    padding:
-        11px 13px;
-
+    padding: 0 14px;
     outline: none;
-
 }
 
-#screen {
+.browser-frame {
+    max-width: 1400px;
+    margin: 20px auto;
+    padding: 0 14px 40px;
+}
 
-    display: block;
-
+.browser-screen {
     width: 100%;
-
-    min-height:
-        calc(100vh - 62px);
-
+    min-height: 70vh;
     object-fit: contain;
-
-    background: #050505;
-
+    display: block;
+    background: #111;
+    border: 1px solid rgba(255,255,255,.1);
+    border-radius: 16px;
 }
-
 </style>
-
 </head>
 
 <body>
 
-<div class="toolbar">
+<div class="browser-top">
+    <div class="browser-bar">
+        <button onclick="goBack()">‹</button>
+        <button onclick="goForward()">›</button>
+        <button onclick="reloadPage()">↻</button>
 
-<button onclick="goBack()">←</button>
+        <input
+            id="url"
+            placeholder="https://..."
+            onkeydown="if(event.key==='Enter') navigate()"
+        >
 
-<button onclick="goForward()">→</button>
-
-<button onclick="reloadPage()">↻</button>
-
-<input
-    id="address"
-    class="address"
-    value="about:blank"
-    onkeydown="handleAddress(event)"
->
-
-<button onclick="goAddress()">
-    Ir
-</button>
-
+        <button onclick="navigate()">GO</button>
+    </div>
 </div>
 
-<img
-    id="screen"
-    src="/browser/screenshot"
->
+<div class="browser-frame">
+    <img
+        id="screen"
+        class="browser-screen"
+        src="/browser/screenshot"
+        alt="Browser"
+    >
+</div>
 
 <script>
-
-const screen =
-    document.getElementById('screen')
-
-const address =
-    document.getElementById('address')
+const screen = document.getElementById('screen')
+const urlInput = document.getElementById('url')
 
 function refreshScreen() {
-
-    screen.src =
-        '/browser/screenshot?t=' +
-        Date.now()
-
+    screen.src = '/browser/screenshot?t=' + Date.now()
 }
 
-async function reloadPage() {
-
-    await fetch(
-        '/browser/reload',
-        {
-            method: 'POST'
-        }
-    )
-
-    setTimeout(
-        refreshScreen,
-        1000
-    )
-
-}
-
-async function goBack() {
-
-    await fetch(
-        '/browser/back',
-        {
-            method: 'POST'
-        }
-    )
-
-    setTimeout(
-        refreshScreen,
-        1000
-    )
-
-}
-
-async function goForward() {
-
-    await fetch(
-        '/browser/forward',
-        {
-            method: 'POST'
-        }
-    )
-
-    setTimeout(
-        refreshScreen,
-        1000
-    )
-
-}
-
-async function goAddress() {
-
-    const url =
-        address.value.trim()
+async function navigate() {
+    const url = urlInput.value.trim()
 
     if (!url) return
 
-    await fetch(
-        '/browser/navigate',
-        {
+    await fetch('/browser/navigate', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ url })
+    })
 
-            method: 'POST',
-
-            headers: {
-                'Content-Type':
-                    'application/json'
-            },
-
-            body:
-                JSON.stringify({
-                    url
-                })
-
-        }
-    )
-
-    setTimeout(
-        refreshScreen,
-        1800
-    )
-
+    refreshScreen()
 }
 
-function handleAddress(event) {
+async function goBack() {
+    await fetch('/browser/back', {
+        method: 'POST'
+    })
 
-    if (
-        event.key === 'Enter'
-    ) {
-        goAddress()
-    }
-
+    refreshScreen()
 }
 
-setInterval(
-    refreshScreen,
-    2500
-)
+async function goForward() {
+    await fetch('/browser/forward', {
+        method: 'POST'
+    })
 
+    refreshScreen()
+}
+
+async function reloadPage() {
+    await fetch('/browser/reload', {
+        method: 'POST'
+    })
+
+    refreshScreen()
+}
+
+setInterval(refreshScreen, 5000)
 </script>
 
 </body>
-
 </html>`)
-
 })
 
-// ═══════════════════════════════════════════════
-// BROWSER SCREENSHOT
-// ═══════════════════════════════════════════════
-
-app.get(
-    '/browser/screenshot',
-    async (req, res) => {
-
-        try {
-
-            if (
-                !browserPage ||
-                browserPage.isClosed()
-            ) {
-
-                return res
-                    .status(503)
-                    .send(
-                        'Browser offline'
-                    )
-
-            }
-
-            const image =
-                await browserPage.screenshot({
-                    type: 'png',
-                    fullPage: false
-                })
-
-            res.setHeader(
-                'Content-Type',
-                'image/png'
-            )
-
-            res.send(image)
-
-        } catch (error) {
-
-            res.status(500).send(
-                'Error capturando pantalla'
-            )
-
-        }
-
-    }
-)
-
-// ═══════════════════════════════════════════════
-// BROWSER NAVIGATE
-// ═══════════════════════════════════════════════
-
-app.post(
-    '/browser/navigate',
-    async (req, res) => {
-
-        try {
-
-            if (
-                !browserPage ||
-                browserPage.isClosed()
-            ) {
-
-                return res
-                    .status(503)
-                    .json({
-                        error:
-                            'Browser offline'
-                    })
-
-            }
-
-            let url =
-                String(
-                    req.body.url || ''
-                ).trim()
-
-            if (!url) {
-
-                return res
-                    .status(400)
-                    .json({
-                        error:
-                            'URL requerida'
-                    })
-
-            }
-
-            if (
-                !url.startsWith('http://') &&
-                !url.startsWith('https://')
-            ) {
-
-                url =
-                    'https://' + url
-
-            }
-
-            await browserPage.goto(
-                url,
-                {
-                    waitUntil:
-                        'domcontentloaded',
-                    timeout: 30000
-                }
-            )
-
-            res.json({
-                ok: true,
-                url:
-                    browserPage.url()
-            })
-
-        } catch (error) {
-
-            res.status(500).json({
-                error:
-                    error.message
-            })
-
-        }
-
-    }
-)
-
-// ═══════════════════════════════════════════════
-// BROWSER CLICK
-// ═══════════════════════════════════════════════
-
-app.post(
-    '/browser/click',
-    async (req, res) => {
-
-        try {
-
-            if (
-                !browserPage ||
-                browserPage.isClosed()
-            ) {
-
-                return res
-                    .status(503)
-                    .json({
-                        error:
-                            'Browser offline'
-                    })
-
-            }
-
-            const {
-                x,
-                y
-            } = req.body
-
-            await browserPage.mouse.click(
-                Number(x),
-                Number(y)
-            )
-
-            res.json({
-                ok: true
-            })
-
-        } catch (error) {
-
-            res.status(500).json({
-                error:
-                    error.message
-            })
-
-        }
-
-    }
-)
-
-// ═══════════════════════════════════════════════
-// BROWSER TYPE
-// ═══════════════════════════════════════════════
-
-app.post(
-    '/browser/type',
-    async (req, res) => {
-
-        try {
-
-            if (
-                !browserPage ||
-                browserPage.isClosed()
-            ) {
-
-                return res
-                    .status(503)
-                    .json({
-                        error:
-                            'Browser offline'
-                    })
-
-            }
-
-            await browserPage.keyboard.type(
-                String(
-                    req.body.text || ''
-                )
-            )
-
-            res.json({
-                ok: true
-            })
-
-        } catch (error) {
-
-            res.status(500).json({
-                error:
-                    error.message
-            })
-
-        }
-
-    }
-)
-
-// ═══════════════════════════════════════════════
-// BROWSER KEY
-// ═══════════════════════════════════════════════
-
-app.post(
-    '/browser/key',
-    async (req, res) => {
-
-        try {
-
-            if (
-                !browserPage ||
-                browserPage.isClosed()
-            ) {
-
-                return res
-                    .status(503)
-                    .json({
-                        error:
-                            'Browser offline'
-                    })
-
-            }
-
-            await browserPage.keyboard.press(
-                String(
-                    req.body.key || ''
-                )
-            )
-
-            res.json({
-                ok: true
-            })
-
-        } catch (error) {
-
-            res.status(500).json({
-                error:
-                    error.message
-            })
-
-        }
-
-    }
-)
-
-// ═══════════════════════════════════════════════
-// BROWSER RELOAD
-// ═══════════════════════════════════════════════
-
-app.post(
-    '/browser/reload',
-    async (req, res) => {
-
-        try {
-
-            if (
-                !browserPage ||
-                browserPage.isClosed()
-            ) {
-
-                return res
-                    .status(503)
-                    .json({
-                        error:
-                            'Browser offline'
-                    })
-
-            }
-
-            await browserPage.reload({
-                waitUntil:
-                    'domcontentloaded',
-                timeout: 30000
-            })
-
-            res.json({
-                ok: true,
-                url:
-                    browserPage.url()
-            })
-
-        } catch (error) {
-
-            res.status(500).json({
-                error:
-                    error.message
-            })
-
-        }
-
-    }
-)
-
-// ═══════════════════════════════════════════════
-// BROWSER BACK
-// ═══════════════════════════════════════════════
-
-app.post(
-    '/browser/back',
-    async (req, res) => {
-
-        try {
-
-            if (
-                !browserPage ||
-                browserPage.isClosed()
-            ) {
-
-                return res
-                    .status(503)
-                    .json({
-                        error:
-                            'Browser offline'
-                    })
-
-            }
-
-            await browserPage.goBack({
-                waitUntil:
-                    'domcontentloaded',
-                timeout: 30000
-            })
-
-            res.json({
-                ok: true,
-                url:
-                    browserPage.url()
-            })
-
-        } catch (error) {
-
-            res.status(500).json({
-                error:
-                    error.message
-            })
-
-        }
-
-    }
-)
-
-// ═══════════════════════════════════════════════
-// BROWSER FORWARD
-// ═══════════════════════════════════════════════
-
-app.post(
-    '/browser/forward',
-    async (req, res) => {
-
-        try {
-
-            if (
-                !browserPage ||
-                browserPage.isClosed()
-            ) {
-
-                return res
-                    .status(503)
-                    .json({
-                        error:
-                            'Browser offline'
-                    })
-
-            }
-
-            await browserPage.goForward({
-                waitUntil:
-                    'domcontentloaded',
-                timeout: 30000
-            })
-
-            res.json({
-                ok: true,
-                url:
-                    browserPage.url()
-            })
-
-        } catch (error) {
-
-            res.status(500).json({
-                error:
-                    error.message
-            })
-
-        }
-
-    }
-)
-
-// ═══════════════════════════════════════════════
-// WEB PRINCIPAL
-// ═══════════════════════════════════════════════
+/* =========================================================
+   SITIO PRINCIPAL
+========================================================= */
 
 app.get('/', (req, res) => {
 
+    const categoryButtons = COMMANDS.map(section => `
+        <button
+            class="category-filter"
+            data-category="${escapeHtml(section.category)}"
+            onclick="filterCategory('${escapeHtml(section.category)}')"
+        >
+            <span>${section.icon}</span>
+            ${escapeHtml(section.category)}
+        </button>
+    `).join('')
+
+    const commandCards = ALL_COMMANDS.map(item => `
+        <article
+            class="command-card"
+            data-category="${escapeHtml(item.category)}"
+            data-search="${escapeHtml(
+                `${item.command} ${item.description} ${item.category}`
+            ).toLowerCase()}"
+        >
+            <div class="command-top">
+                <div class="command-icon">
+                    ${item.icon}
+                </div>
+
+                <div class="command-category">
+                    ${escapeHtml(item.category)}
+                </div>
+            </div>
+
+            <div class="command-name">
+                ${escapeHtml(item.command)}
+            </div>
+
+            <div class="command-description">
+                ${escapeHtml(item.description)}
+            </div>
+
+            <button
+                class="copy-command"
+                onclick="copyCommand('${escapeHtml(item.command)}', this)"
+            >
+                COPIAR
+            </button>
+        </article>
+    `).join('')
+
     res.send(`<!DOCTYPE html>
-
 <html lang="es">
-
 <head>
 
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
 
-<meta
-    name="viewport"
-    content="width=device-width, initial-scale=1.0"
->
+<title>${BOT_NAME} — Oficial</title>
 
 <meta
     name="description"
-    content="𝕱𝖊𝖑𝖇𝖔𝖙 夜 — WhatsApp Bot creado por Fxlipe 夜."
+    content="Sitio oficial de ${BOT_NAME}. Comandos, funciones y estado del bot."
 >
 
-<title>𝕱𝖊𝖑𝖇𝖔𝖙 夜 — Official</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 
 <link
-    rel="preconnect"
-    href="https://fonts.googleapis.com"
->
-
-<link
-    rel="preconnect"
-    href="https://fonts.gstatic.com"
-    crossorigin
->
-
-<link
-    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap"
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@600;700;800&display=swap"
     rel="stylesheet"
 >
 
@@ -1136,17 +828,17 @@ app.get('/', (req, res) => {
 
 :root {
     --bg: #070707;
-    --card: rgba(18,18,18,.72);
+    --bg-soft: #0d0d0d;
+    --card: #101010;
+    --card-hover: #151515;
+    --text: #f5f5f5;
+    --muted: #909090;
     --line: rgba(255,255,255,.09);
-    --line2: rgba(255,255,255,.14);
-    --text: #f2f2f2;
-    --muted: #8d8d8d;
+    --line-strong: rgba(255,255,255,.16);
 }
 
 * {
     box-sizing: border-box;
-    margin: 0;
-    padding: 0;
 }
 
 html {
@@ -1154,50 +846,29 @@ html {
 }
 
 body {
-
-    min-height: 100vh;
-
-    color: var(--text);
-
+    margin: 0;
     background:
-        radial-gradient(
-            circle at 50% -10%,
-            rgba(255,255,255,.07),
-            transparent 34%
-        ),
+        linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px),
         var(--bg);
-
-    font-family: Inter, sans-serif;
-
+    background-size: 45px 45px;
+    color: var(--text);
+    font-family: Inter, Arial, sans-serif;
     overflow-x: hidden;
-
 }
 
 body::before {
-
     content: "";
-
     position: fixed;
-
     inset: 0;
-
     pointer-events: none;
-
-    opacity: .34;
-
-    background-image:
-        linear-gradient(
-            rgba(255,255,255,.025) 1px,
-            transparent 1px
-        ),
-        linear-gradient(
-            90deg,
-            rgba(255,255,255,.025) 1px,
-            transparent 1px
+    background:
+        radial-gradient(
+            circle at 50% 0%,
+            rgba(255,255,255,.08),
+            transparent 34%
         );
-
-    background-size: 44px 44px;
-
+    z-index: -1;
 }
 
 a {
@@ -1206,167 +877,122 @@ a {
 }
 
 .container {
-
-    width:
-        min(
-            1180px,
-            calc(100% - 40px)
-        );
-
+    width: min(1180px, calc(100% - 40px));
     margin: auto;
-
 }
 
 /* NAV */
 
-.navbar {
-
+nav {
     position: fixed;
-
     top: 0;
     left: 0;
     right: 0;
-
-    height: 74px;
-
     z-index: 100;
 
-    background:
-        rgba(7,7,7,.72);
+    background: rgba(7,7,7,.76);
+    backdrop-filter: blur(20px);
 
-    backdrop-filter:
-        blur(18px);
-
-    border-bottom:
-        1px solid var(--line);
-
+    border-bottom: 1px solid var(--line);
 }
 
 .nav-inner {
-
-    height: 100%;
+    height: 72px;
 
     display: flex;
-
     align-items: center;
-
     justify-content: space-between;
-
 }
 
 .brand {
-
-    font-family:
-        "Playfair Display",
-        serif;
-
+    font-family: "Playfair Display", serif;
     font-size: 21px;
-
+    font-weight: 800;
+    letter-spacing: .02em;
 }
 
 .brand span {
-    color: #777;
+    color: #999;
 }
 
 .nav-links {
-
     display: flex;
-
+    align-items: center;
     gap: 28px;
+}
 
-    color: #888;
-
+.nav-links a {
+    color: #aaa;
     font-size: 13px;
-
+    transition: .2s;
 }
 
 .nav-links a:hover {
     color: white;
 }
 
+.nav-button {
+    padding: 10px 16px;
+    border: 1px solid var(--line-strong);
+    border-radius: 8px;
+}
+
 /* HERO */
 
 .hero {
-
-    min-height: 760px;
-
+    min-height: 100vh;
     display: flex;
-
     align-items: center;
+    padding-top: 100px;
+    position: relative;
+}
 
-    text-align: center;
-
-    padding-top: 80px;
-
+.hero::after {
+    content: "";
+    position: absolute;
+    width: 500px;
+    height: 500px;
+    border: 1px solid rgba(255,255,255,.035);
+    border-radius: 50%;
+    right: -220px;
+    top: 25%;
 }
 
 .hero-content {
-
-    width: 100%;
-
     max-width: 850px;
-
-    margin: auto;
-
 }
 
 .eyebrow {
-
     display: inline-flex;
-
     align-items: center;
-
     gap: 9px;
 
+    border: 1px solid var(--line);
+    background: rgba(255,255,255,.025);
+
     padding: 8px 13px;
-
-    border:
-        1px solid var(--line2);
-
     border-radius: 999px;
 
     color: #aaa;
-
     font-size: 11px;
-
-    letter-spacing: 2px;
-
+    letter-spacing: .13em;
+    margin-bottom: 25px;
 }
 
 .status-dot {
-
     width: 7px;
     height: 7px;
-
     border-radius: 50%;
-
-    background: #ddd;
-
-    box-shadow:
-        0 0 10px
-        rgba(255,255,255,.45);
-
+    background: #fff;
+    box-shadow: 0 0 12px rgba(255,255,255,.8);
 }
 
 .hero h1 {
-
-    margin-top: 27px;
-
-    font-family:
-        "Playfair Display",
-        serif;
-
-    font-size:
-        clamp(
-            65px,
-            12vw,
-            150px
-        );
-
+    margin: 0;
+    font-family: "Playfair Display", serif;
+    font-size: clamp(65px, 12vw, 145px);
     line-height: .9;
-
-    letter-spacing: -5px;
-
+    letter-spacing: -.055em;
 }
 
 .hero h1 span {
@@ -1374,91 +1000,53 @@ a {
 }
 
 .hero-subtitle {
-
-    margin-top: 18px;
-
-    color: #b5b5b5;
-
-    font-size: 16px;
-
-    letter-spacing: 2px;
-
+    margin-top: 24px;
+    color: #aaa;
+    font-size: 18px;
+    letter-spacing: .25em;
     text-transform: uppercase;
-
 }
 
 .hero-text {
-
     max-width: 650px;
-
-    margin:
-        25px auto 0;
-
-    color: #858585;
-
-    font-size: 16px;
-
+    color: #888;
     line-height: 1.8;
-
+    font-size: 16px;
+    margin-top: 28px;
 }
 
 .hero-actions {
-
     display: flex;
-
-    justify-content: center;
-
-    gap: 12px;
-
     flex-wrap: wrap;
-
+    gap: 12px;
     margin-top: 32px;
-
 }
 
 .btn {
-
-    display: inline-flex;
-
-    align-items: center;
-
-    justify-content: center;
-
-    min-height: 46px;
-
-    padding:
-        0 20px;
-
+    padding: 14px 20px;
     border-radius: 9px;
-
     font-size: 13px;
-
-    transition: .2s;
-
-}
-
-.btn:hover {
-    transform: translateY(-2px);
+    font-weight: 600;
+    transition: .25s;
 }
 
 .btn-primary {
+    background: #fff;
+    color: #050505;
+}
 
-    background: #f2f2f2;
-
-    color: #080808;
-
+.btn-primary:hover {
+    transform: translateY(-2px);
+    background: #ddd;
 }
 
 .btn-secondary {
-
-    border:
-        1px solid var(--line2);
-
+    border: 1px solid var(--line-strong);
     color: #ddd;
+}
 
-    background:
-        rgba(255,255,255,.025);
-
+.btn-secondary:hover {
+    background: rgba(255,255,255,.06);
 }
 
 /* SECTIONS */
@@ -1467,69 +1055,146 @@ section {
     padding: 110px 0;
 }
 
-.section-head {
-    margin-bottom: 42px;
-}
-
 .section-kicker {
-
     color: #777;
-
     font-size: 11px;
-
-    letter-spacing: 3px;
-
     text-transform: uppercase;
-
-    margin-bottom: 12px;
-
+    letter-spacing: .18em;
+    margin-bottom: 16px;
 }
 
 .section-title {
-
-    font-family:
-        "Playfair Display",
-        serif;
-
-    font-size:
-        clamp(34px,5vw,58px);
-
+    font-family: "Playfair Display", serif;
+    font-size: clamp(38px, 6vw, 70px);
+    line-height: 1;
+    letter-spacing: -.04em;
+    margin: 0;
 }
 
 .section-description {
-
+    color: #858585;
     max-width: 650px;
-
-    color: #777;
-
-    margin-top: 14px;
-
-    line-height: 1.7;
-
+    line-height: 1.8;
+    margin-top: 22px;
 }
 
-/* FUNCIONES */
+/* FEATURES */
 
 .features {
-
     display: grid;
-
-    grid-template-columns:
-        repeat(3,1fr);
-
-    gap: 15px;
-
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+    margin-top: 45px;
 }
 
 .feature {
+    border: 1px solid var(--line);
+    background: rgba(255,255,255,.025);
+    border-radius: 14px;
+    padding: 27px;
+    transition: .25s;
+}
 
-    padding: 28px;
+.feature:hover {
+    transform: translateY(-4px);
+    background: rgba(255,255,255,.045);
+    border-color: var(--line-strong);
+}
 
-    min-height: 190px;
+.feature-icon {
+    font-size: 25px;
+    margin-bottom: 22px;
+}
 
-    border:
-        1px solid var(--line);
+.feature-title {
+    font-size: 16px;
+    font-weight: 700;
+}
 
+.feature-text {
+    color: #777;
+    font-size: 13px;
+    line-height: 1.7;
+    margin-top: 10px;
+}
+
+/* COMMANDS */
+
+.commands-header {
+    display: flex;
+    justify-content: space-between;
+    gap: 30px;
+    align-items: end;
+}
+
+.commands-counter {
+    color: #777;
+    font-size: 12px;
+    white-space: nowrap;
+}
+
+.command-tools {
+    margin-top: 38px;
+}
+
+.search-box {
+    width: 100%;
+    height: 54px;
+
+    background: rgba(255,255,255,.035);
+    border: 1px solid var(--line);
+    border-radius: 11px;
+
+    color: white;
+    outline: none;
+
+    padding: 0 18px;
+    font-size: 14px;
+}
+
+.search-box:focus {
+    border-color: rgba(255,255,255,.25);
+}
+
+.categories {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 14px;
+}
+
+.category-filter {
+    border: 1px solid var(--line);
+    background: rgba(255,255,255,.025);
+    color: #888;
+
+    border-radius: 999px;
+    padding: 9px 13px;
+
+    cursor: pointer;
+    font-size: 11px;
+
+    transition: .2s;
+}
+
+.category-filter:hover,
+.category-filter.active {
+    background: white;
+    color: black;
+    border-color: white;
+}
+
+.commands-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-top: 22px;
+}
+
+.command-card {
+    min-height: 210px;
+
+    border: 1px solid var(--line);
     background:
         linear-gradient(
             145deg,
@@ -1537,503 +1202,272 @@ section {
             rgba(255,255,255,.012)
         );
 
-    border-radius: 16px;
-
-    transition: .25s;
-
-}
-
-.feature:hover {
-
-    border-color:
-        rgba(255,255,255,.18);
-
-    transform:
-        translateY(-3px);
-
-}
-
-.feature-icon {
-
-    width: 42px;
-    height: 42px;
-
-    display: flex;
-
-    align-items: center;
-    justify-content: center;
-
-    border:
-        1px solid var(--line2);
-
-    border-radius: 10px;
-
-    margin-bottom: 22px;
-
-}
-
-.feature h3 {
-
-    font-size: 16px;
-
-    margin-bottom: 9px;
-
-}
-
-.feature p {
-
-    color: #777;
-
-    font-size: 13px;
-
-    line-height: 1.7;
-
-}
-
-/* COMANDOS */
-
-.commands-wrap {
-
-    border:
-        1px solid var(--line);
-
-    border-radius: 18px;
-
-    overflow: hidden;
-
-    background:
-        rgba(12,12,12,.75);
-
-}
-
-.command-toolbar {
-
-    display: flex;
-
-    flex-direction: column;
-
-    gap: 12px;
-
-    padding: 18px;
-
-    border-bottom:
-        1px solid var(--line);
-
-}
-
-.search {
-
-    width: 100%;
-
-    height: 46px;
-
-    border:
-        1px solid var(--line);
-
-    background:
-        #090909;
-
-    color: white;
-
-    border-radius: 9px;
-
-    padding:
-        0 15px;
-
-    outline: none;
-
-}
-
-.search:focus {
-
-    border-color:
-        rgba(255,255,255,.25);
-
-}
-
-.filters {
-
-    display: flex;
-
-    gap: 7px;
-
-    overflow-x: auto;
-
-    padding-bottom: 2px;
-
-}
-
-.filter {
-
-    white-space: nowrap;
-
-    border:
-        1px solid var(--line);
-
-    background:
-        #0b0b0b;
-
-    color: #777;
-
-    border-radius: 8px;
-
-    padding:
-        10px 13px;
-
-    cursor: pointer;
-
-    font-size: 12px;
-
-}
-
-.filter.active {
-
-    background: #eee;
-
-    color: #080808;
-
-    border-color: #eee;
-
-}
-
-.commands-grid {
-
-    display: grid;
-
-    grid-template-columns:
-        repeat(3,1fr);
-
-    gap: 1px;
-
-    background:
-        var(--line);
-
-}
-
-.command-card {
-
-    position: relative;
-
+    border-radius: 13px;
     padding: 20px;
 
-    background:
-        #0d0d0d;
+    display: flex;
+    flex-direction: column;
 
-    min-height: 115px;
-
-    transition: .2s;
-
+    transition:
+        transform .2s,
+        border-color .2s,
+        background .2s;
 }
 
 .command-card:hover {
+    transform: translateY(-3px);
+    border-color: var(--line-strong);
+    background: var(--card-hover);
+}
 
-    background:
-        #111;
+.command-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
 
+.command-icon {
+    font-size: 19px;
 }
 
 .command-category {
-
-    color: #555;
-
-    font-size: 10px;
-
-    letter-spacing: 1.5px;
-
-    text-transform: uppercase;
-
-    margin-bottom: 8px;
-
+    font-size: 9px;
+    color: #666;
+    letter-spacing: .13em;
 }
 
 .command-name {
-
-    color: #eee;
-
-    font-weight: 600;
-
-    font-size: 14px;
-
+    font-family: "Playfair Display", serif;
+    font-size: 25px;
+    font-weight: 700;
+    margin-top: 24px;
 }
 
 .command-description {
-
     color: #777;
-
     font-size: 12px;
-
     line-height: 1.6;
-
     margin-top: 8px;
-
+    flex: 1;
 }
 
-.copy-btn {
+.copy-command {
+    margin-top: 18px;
 
-    position: absolute;
+    width: 100%;
+    height: 36px;
 
-    right: 14px;
+    background: transparent;
+    border: 1px solid var(--line);
 
-    top: 14px;
+    color: #999;
+    border-radius: 7px;
 
-    border:
-        1px solid var(--line);
-
-    background:
-        transparent;
-
-    color: #666;
-
-    border-radius: 6px;
-
-    padding:
-        5px 7px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .12em;
 
     cursor: pointer;
-
-    font-size: 9px;
-
+    transition: .2s;
 }
 
-.copy-btn:hover {
-    color: white;
+.copy-command:hover {
+    background: white;
+    color: black;
+    border-color: white;
 }
 
 /* STATUS */
 
+.status-section {
+    border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+    background: rgba(255,255,255,.015);
+}
+
 .status-grid {
-
     display: grid;
-
-    grid-template-columns:
-        repeat(4,1fr);
-
-    gap: 12px;
-
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1px;
+    background: var(--line);
+    margin-top: 45px;
 }
 
 .status-card {
-
-    padding: 23px;
-
-    border:
-        1px solid var(--line);
-
-    border-radius: 14px;
-
-    background:
-        rgba(255,255,255,.02);
-
+    background: #090909;
+    padding: 30px;
 }
 
 .status-label {
-
     color: #666;
-
-    font-size: 11px;
-
+    font-size: 10px;
     text-transform: uppercase;
-
-    letter-spacing: 1.5px;
-
+    letter-spacing: .15em;
 }
 
 .status-value {
+    margin-top: 12px;
+    font-family: "Playfair Display", serif;
+    font-size: 25px;
+}
 
-    margin-top: 9px;
+.online {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
 
-    font-size: 17px;
-
-    color: #ddd;
-
+.online::before {
+    content: "";
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: white;
+    box-shadow: 0 0 10px rgba(255,255,255,.7);
 }
 
 /* CREATOR */
 
 .creator {
-
     display: grid;
-
-    grid-template-columns:
-        1.2fr .8fr;
-
-    gap: 35px;
-
+    grid-template-columns: 1fr 380px;
+    gap: 70px;
     align-items: center;
-
 }
 
 .creator-card {
-
-    padding: 35px;
-
-    border:
-        1px solid var(--line);
-
-    border-radius: 18px;
-
-    background:
-        linear-gradient(
-            145deg,
-            rgba(255,255,255,.04),
-            rgba(255,255,255,.01)
-        );
-
+    border: 1px solid var(--line);
+    background: rgba(255,255,255,.025);
+    padding: 32px;
+    border-radius: 15px;
 }
 
 .creator-name {
-
-    font-family:
-        "Playfair Display",
-        serif;
-
-    font-size: 35px;
-
+    font-family: "Playfair Display", serif;
+    font-size: 30px;
 }
 
 .creator-role {
-
-    color: #777;
-
+    color: #666;
     margin-top: 7px;
-
+    font-size: 12px;
 }
 
 .socials {
-
     display: flex;
-
-    gap: 10px;
-
+    gap: 8px;
+    margin-top: 28px;
     flex-wrap: wrap;
-
-    margin-top: 25px;
-
 }
 
 .social {
-
-    border:
-        1px solid var(--line);
-
+    border: 1px solid var(--line);
+    padding: 10px 13px;
     border-radius: 8px;
-
-    padding:
-        10px 14px;
-
+    font-size: 11px;
     color: #aaa;
-
-    font-size: 12px;
-
     transition: .2s;
-
 }
 
 .social:hover {
-
-    color: white;
-
-    border-color:
-        rgba(255,255,255,.25);
-
+    background: white;
+    color: black;
 }
 
 /* FOOTER */
 
 footer {
-
-    border-top:
-        1px solid var(--line);
-
-    padding: 35px 0;
-
+    border-top: 1px solid var(--line);
+    padding: 30px 0;
 }
 
 .footer-inner {
-
     display: flex;
-
     justify-content: space-between;
-
     align-items: center;
-
     gap: 20px;
-
 }
 
 .footer-brand {
-
-    font-family:
-        "Playfair Display",
-        serif;
-
-    font-size: 18px;
-
+    font-family: "Playfair Display", serif;
+    font-size: 17px;
 }
 
 .footer-info {
-
     color: #555;
-
-    font-size: 11px;
-
+    font-size: 10px;
     margin-top: 5px;
-
 }
 
 .footer-socials {
-
     display: flex;
-
-    gap: 18px;
-
-    align-items: center;
-
+    gap: 20px;
 }
 
 .footer-socials a {
-
-    color: #777;
-
-    font-size: 12px;
-
+    color: #666;
+    font-size: 11px;
 }
 
 .footer-socials a:hover {
     color: white;
 }
 
+/* TOAST */
+
+.toast {
+    position: fixed;
+    left: 50%;
+    bottom: 28px;
+
+    transform: translate(-50%, 20px);
+
+    background: white;
+    color: black;
+
+    padding: 12px 18px;
+    border-radius: 8px;
+
+    font-size: 12px;
+    font-weight: 600;
+
+    opacity: 0;
+    pointer-events: none;
+
+    transition: .25s;
+    z-index: 500;
+}
+
+.toast.show {
+    opacity: 1;
+    transform: translate(-50%, 0);
+}
+
 /* RESPONSIVE */
 
-@media(max-width:900px) {
+@media (max-width: 900px) {
 
     .features {
         grid-template-columns: 1fr;
     }
 
     .commands-grid {
-        grid-template-columns:
-            repeat(2,1fr);
+        grid-template-columns: repeat(2, 1fr);
     }
 
     .status-grid {
-        grid-template-columns:
-            repeat(2,1fr);
+        grid-template-columns: repeat(2, 1fr);
     }
 
     .creator {
         grid-template-columns: 1fr;
     }
-
 }
 
-@media(max-width:650px) {
+@media (max-width: 650px) {
 
     .container {
-
-        width:
-            calc(100% - 26px);
-
+        width: min(100% - 28px, 1180px);
     }
 
     .nav-links {
@@ -2041,15 +1475,19 @@ footer {
     }
 
     .hero {
-        min-height: 650px;
+        min-height: 90vh;
     }
 
     .hero h1 {
-        letter-spacing: -3px;
+        font-size: 67px;
     }
 
-    section {
-        padding: 80px 0;
+    .commands-header {
+        display: block;
+    }
+
+    .commands-counter {
+        margin-top: 15px;
     }
 
     .commands-grid {
@@ -2061,889 +1499,632 @@ footer {
     }
 
     .footer-inner {
-
         flex-direction: column;
-
         align-items: flex-start;
-
     }
 
+    .footer-socials {
+        flex-wrap: wrap;
+    }
 }
 
 </style>
-
 </head>
 
 <body>
 
 <!-- NAV -->
 
-<nav class="navbar">
+<nav>
+    <div class="container nav-inner">
 
-<div class="container nav-inner">
+        <a href="/" class="brand">
+            𝕱𝖊𝖑𝖇𝖔𝖙 <span>夜</span>
+        </a>
 
-<a href="/" class="brand">
-    𝕱𝖊𝖑𝖇𝖔𝖙 <span>夜</span>
-</a>
+        <div class="nav-links">
+            <a href="#funciones">Funciones</a>
+            <a href="#comandos">Comandos</a>
+            <a href="#estado">Estado</a>
+            <a href="#creador">Creador</a>
+            <a href="/browser" class="nav-button">Browser</a>
+        </div>
 
-<div class="nav-links">
-
-<a href="#funciones">
-    Funciones
-</a>
-
-<a href="#comandos">
-    Comandos
-</a>
-
-<a href="#estado">
-    Estado
-</a>
-
-<a href="#creador">
-    Creador
-</a>
-
-<a href="/browser">
-    Browser
-</a>
-
-</div>
-
-</div>
-
+    </div>
 </nav>
-
 
 <!-- HERO -->
 
-<header class="hero">
+<main>
 
-<div class="container hero-content">
+<section class="hero">
 
-<div class="eyebrow">
+    <div class="container">
 
-<span class="status-dot"></span>
+        <div class="hero-content">
 
-SISTEMA ONLINE
+            <div class="eyebrow">
+                <span class="status-dot"></span>
+                SISTEMA ONLINE
+            </div>
 
-</div>
+            <h1>
+                𝕱𝖊𝖑𝖇𝖔𝖙
+                <span>夜</span>
+            </h1>
 
-<h1>
-    𝕱𝖊𝖑𝖇𝖔𝖙
-    <span>夜</span>
-</h1>
+            <div class="hero-subtitle">
+                WhatsApp Bot
+            </div>
 
-<div class="hero-subtitle">
-    WhatsApp Bot
-</div>
+            <p class="hero-text">
+                Un bot de WhatsApp creado para ofrecer
+                herramientas, administración, entretenimiento,
+                utilidades y mucho más directamente desde tus grupos.
+            </p>
 
-<p class="hero-text">
+            <div class="hero-actions">
 
-Un bot de WhatsApp creado para ofrecer
-herramientas, administración, entretenimiento,
-utilidades y mucho más dentro de tus grupos.
+                <a href="#comandos" class="btn btn-primary">
+                    Explorar comandos
+                </a>
 
-</p>
+                <a href="#funciones" class="btn btn-secondary">
+                    Conocer Felbot
+                </a>
 
-<div class="hero-actions">
+            </div>
 
-<a
-    href="#comandos"
-    class="btn btn-primary"
->
-    Explorar comandos
-</a>
+            <div class="hero-actions" style="margin-top:14px;">
 
-<a
-    href="#funciones"
-    class="btn btn-secondary"
->
-    Conocer Felbot
-</a>
+                <a
+                    href="https://wa.me/573117354305"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="btn btn-secondary"
+                >
+                    WhatsApp
+                </a>
 
-</div>
+                <a
+                    href="https://instagram.com/fxzlp7_"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="btn btn-secondary"
+                >
+                    Instagram
+                </a>
 
-<div
-    class="hero-actions"
-    style="margin-top:28px;"
->
+            </div>
 
-<a
-    href="https://wa.me/573117354305"
-    target="_blank"
-    rel="noopener noreferrer"
-    class="btn btn-primary"
->
-    WhatsApp
-</a>
+        </div>
 
-<a
-    href="https://instagram.com/fxzlp7_"
-    target="_blank"
-    rel="noopener noreferrer"
-    class="btn btn-secondary"
->
-    Instagram
-</a>
+    </div>
 
-</div>
-
-</div>
-
-</header>
-
+</section>
 
 <!-- FUNCIONES -->
 
 <section id="funciones">
 
-<div class="container">
+    <div class="container">
 
-<div class="section-head">
+        <div class="section-kicker">
+            Felbot
+        </div>
 
-<div class="section-kicker">
-    Características
-</div>
+        <h2 class="section-title">
+            Todo desde<br>
+            WhatsApp.
+        </h2>
 
-<h2 class="section-title">
-    Todo en un solo lugar.
-</h2>
+        <p class="section-description">
+            Felbot reúne diferentes herramientas para que puedas
+            administrar grupos, jugar, crear contenido, usar
+            utilidades y disfrutar de funciones sociales desde
+            un mismo bot.
+        </p>
 
-<p class="section-description">
+        <div class="features">
 
-Felbot reúne herramientas para administrar
-comunidades, divertirse, automatizar tareas
-y aprovechar diferentes utilidades desde
-WhatsApp.
+            <div class="feature">
+                <div class="feature-icon">👮</div>
+                <div class="feature-title">
+                    Administración
+                </div>
+                <div class="feature-text">
+                    Herramientas para administrar grupos,
+                    usuarios, permisos, advertencias y configuración.
+                </div>
+            </div>
 
-</p>
+            <div class="feature">
+                <div class="feature-icon">🎮</div>
+                <div class="feature-title">
+                    Entretenimiento
+                </div>
+                <div class="feature-text">
+                    Juegos, dinámicas, rankings, compatibilidad,
+                    retos y funciones sociales.
+                </div>
+            </div>
 
-</div>
+            <div class="feature">
+                <div class="feature-icon">🛠️</div>
+                <div class="feature-title">
+                    Utilidades
+                </div>
+                <div class="feature-text">
+                    Stickers, herramientas de texto, traducción,
+                    voz y diferentes funciones prácticas.
+                </div>
+            </div>
 
+        </div>
 
-<div class="features">
-
-<div class="feature">
-
-<div class="feature-icon">
-    🛡️
-</div>
-
-<h3>
-    Administración
-</h3>
-
-<p>
-    Herramientas para moderar grupos,
-    gestionar miembros y configurar
-    diferentes opciones.
-</p>
-
-</div>
-
-
-<div class="feature">
-
-<div class="feature-icon">
-    🎮
-</div>
-
-<h3>
-    Entretenimiento
-</h3>
-
-<p>
-    Juegos, retos, preguntas, memes,
-    frases y dinámicas para tus grupos.
-</p>
-
-</div>
-
-
-<div class="feature">
-
-<div class="feature-icon">
-    🧰
-</div>
-
-<h3>
-    Utilidades
-</h3>
-
-<p>
-    Herramientas para búsquedas,
-    conversiones, información y
-    diferentes tareas.
-</p>
-
-</div>
-
-
-<div class="feature">
-
-<div class="feature-icon">
-    🎨
-</div>
-
-<h3>
-    Creatividad
-</h3>
-
-<p>
-    Stickers, imágenes, efectos de
-    texto y diferentes herramientas
-    creativas.
-</p>
-
-</div>
-
-
-<div class="feature">
-
-<div class="feature-icon">
-    🔥
-</div>
-
-<h3>
-    Free Fire
-</h3>
-
-<p>
-    Consulta información y estadísticas
-    relacionadas con jugadores y perfiles.
-</p>
-
-</div>
-
-
-<div class="feature">
-
-<div class="feature-icon">
-    ⚡
-</div>
-
-<h3>
-    Sistema Felbot
-</h3>
-
-<p>
-    Una experiencia sencilla y práctica
-    con comandos fáciles de utilizar.
-</p>
-
-</div>
-
-</div>
-
-</div>
+    </div>
 
 </section>
-
 
 <!-- COMANDOS -->
 
 <section id="comandos">
 
-<div class="container">
+    <div class="container">
 
-<div class="section-head">
+        <div class="commands-header">
 
-<div class="section-kicker">
-    Command Center
-</div>
+            <div>
+                <div class="section-kicker">
+                    Command Center
+                </div>
 
-<h2 class="section-title">
-    Comandos
-</h2>
+                <h2 class="section-title">
+                    Comandos.
+                </h2>
+            </div>
 
-<p class="section-description">
+            <div class="commands-counter">
+                ${TOTAL_COMMANDS} comandos · ${TOTAL_CATEGORIES} categorías
+            </div>
 
-Explora las herramientas disponibles
-en Felbot. Usa el prefijo
-<strong>.</strong> antes de cada comando.
+        </div>
 
-</p>
+        <p class="section-description">
+            Explora los comandos disponibles en Felbot.
+            Busca una función o filtra por categoría.
+        </p>
 
-</div>
+        <div class="command-tools">
 
+            <input
+                id="search"
+                class="search-box"
+                type="text"
+                placeholder="Buscar comando..."
+                autocomplete="off"
+            >
 
-<div class="commands-wrap">
+            <div class="categories">
 
-<div class="command-toolbar">
+                <button
+                    class="category-filter active"
+                    data-category="ALL"
+                    onclick="filterCategory('ALL')"
+                >
+                    ✦ TODOS
+                </button>
 
-<input
-    id="search"
-    class="search"
-    type="text"
-    placeholder="Buscar comando..."
-    autocomplete="off"
->
+                ${categoryButtons}
 
-<div
-    id="filters"
-    class="filters"
-></div>
+            </div>
 
-</div>
+        </div>
 
+        <div id="commandsGrid" class="commands-grid">
 
-<div
-    id="commandsGrid"
-    class="commands-grid"
-></div>
+            ${commandCards}
 
-</div>
+        </div>
 
-</div>
+        <div
+            id="noResults"
+            style="
+                display:none;
+                text-align:center;
+                color:#666;
+                padding:70px 20px;
+                font-size:13px;
+            "
+        >
+            No se encontraron comandos.
+        </div>
+
+    </div>
 
 </section>
-
 
 <!-- ESTADO -->
 
-<section id="estado">
+<section id="estado" class="status-section">
 
-<div class="container">
+    <div class="container">
 
-<div class="section-head">
+        <div class="section-kicker">
+            System
+        </div>
 
-<div class="section-kicker">
-    System
-</div>
+        <h2 class="section-title">
+            Estado.
+        </h2>
 
-<h2 class="section-title">
-    Estado del sistema
-</h2>
+        <p class="section-description">
+            Información actual del sistema de Felbot.
+        </p>
 
-<p class="section-description">
-    Información actual del servicio Felbot.
-</p>
+        <div class="status-grid">
 
-</div>
+            <div class="status-card">
+                <div class="status-label">
+                    Estado
+                </div>
 
+                <div class="status-value online">
+                    ONLINE
+                </div>
+            </div>
 
-<div class="status-grid">
+            <div class="status-card">
+                <div class="status-label">
+                    Versión
+                </div>
 
-<div class="status-card">
+                <div class="status-value">
+                    v${VERSION}
+                </div>
+            </div>
 
-<div class="status-label">
-    Estado
-</div>
+            <div class="status-card">
+                <div class="status-label">
+                    Comandos
+                </div>
 
-<div
-    id="status"
-    class="status-value"
->
-    Comprobando...
-</div>
+                <div
+                    id="statusCommands"
+                    class="status-value"
+                >
+                    ${TOTAL_COMMANDS}
+                </div>
+            </div>
 
-</div>
+            <div class="status-card">
+                <div class="status-label">
+                    Uptime
+                </div>
 
+                <div
+                    id="statusUptime"
+                    class="status-value"
+                >
+                    Cargando...
+                </div>
+            </div>
 
-<div class="status-card">
+        </div>
 
-<div class="status-label">
-    Uptime
-</div>
-
-<div
-    id="uptime"
-    class="status-value"
->
-    —
-</div>
-
-</div>
-
-
-<div class="status-card">
-
-<div class="status-label">
-    Comandos
-</div>
-
-<div
-    id="commandCount"
-    class="status-value"
->
-    ${TOTAL_COMMANDS}
-</div>
-
-</div>
-
-
-<div class="status-card">
-
-<div class="status-label">
-    Versión
-</div>
-
-<div
-    id="version"
-    class="status-value"
->
-    ${VERSION}
-</div>
-
-</div>
-
-</div>
-
-</div>
+    </div>
 
 </section>
-
 
 <!-- CREADOR -->
 
 <section id="creador">
 
-<div class="container creator">
+    <div class="container creator">
 
-<div>
+        <div>
 
-<div class="section-kicker">
-    Creator
-</div>
+            <div class="section-kicker">
+                Creator
+            </div>
 
-<h2 class="section-title">
-    Hecho por personas,
-    para comunidades.
-</h2>
+            <h2 class="section-title">
+                Hecho por personas,
+                para comunidades.
+            </h2>
 
-<p class="section-description">
+            <p class="section-description">
+                Felbot es un proyecto desarrollado para crear
+                una experiencia completa de herramientas,
+                administración y entretenimiento directamente
+                desde WhatsApp.
+            </p>
 
-Felbot es un proyecto desarrollado
-para crear una experiencia completa
-de herramientas y entretenimiento
-directamente desde WhatsApp.
+        </div>
 
-</p>
+        <div class="creator-card">
 
-</div>
+            <div class="creator-name">
+                Fxlipe 夜
+            </div>
 
+            <div class="creator-role">
+                Creador de Felbot
+            </div>
 
-<div class="creator-card">
+            <div class="socials">
 
-<div class="creator-name">
-    Fxlipe 夜
-</div>
+                <a
+                    href="https://wa.me/573117354305"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="social"
+                >
+                    WhatsApp
+                </a>
 
-<div class="creator-role">
-    Creador de Felbot
-</div>
+                <a
+                    href="https://instagram.com/fxzlp7_"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="social"
+                >
+                    Instagram
+                </a>
 
+            </div>
 
-<div class="socials">
+        </div>
 
-<a
-    href="https://wa.me/573117354305"
-    target="_blank"
-    rel="noopener noreferrer"
-    class="social"
->
-    WhatsApp
-</a>
-
-<a
-    href="https://instagram.com/fxzlp7_"
-    target="_blank"
-    rel="noopener noreferrer"
-    class="social"
->
-    Instagram
-</a>
-
-</div>
-
-</div>
-
-</div>
+    </div>
 
 </section>
 
+</main>
 
 <!-- FOOTER -->
 
 <footer>
 
-<div class="container footer-inner">
+    <div class="container footer-inner">
 
-<div>
+        <div>
 
-<div class="footer-brand">
-    𝕱𝖊𝖑𝖇𝖔𝖙 夜
-</div>
+            <div class="footer-brand">
+                𝕱𝖊𝖑𝖇𝖔𝖙 夜
+            </div>
 
-<div class="footer-info">
-    © 2026 — Todos los derechos reservados.
-</div>
+            <div class="footer-info">
+                © 2026 — Todos los derechos reservados.
+            </div>
 
-</div>
+        </div>
 
+        <div class="footer-socials">
 
-<div class="footer-socials">
+            <a
+                href="https://wa.me/573117354305"
+                target="_blank"
+                rel="noopener noreferrer"
+            >
+                WhatsApp
+            </a>
 
-<a
-    href="https://wa.me/573117354305"
-    target="_blank"
-    rel="noopener noreferrer"
->
-    WhatsApp
-</a>
+            <a
+                href="https://instagram.com/fxzlp7_"
+                target="_blank"
+                rel="noopener noreferrer"
+            >
+                Instagram
+            </a>
 
-<a
-    href="https://instagram.com/fxzlp7_"
-    target="_blank"
-    rel="noopener noreferrer"
->
-    Instagram
-</a>
+            <a href="/browser">
+                Browser
+            </a>
 
-<a href="/browser">
-    Browser
-</a>
+        </div>
 
-</div>
-
-</div>
+    </div>
 
 </footer>
 
+<div id="toast" class="toast">
+    Comando copiado
+</div>
 
 <script>
 
-const COMMAND_DATA =
-${safeJson(COMMANDS)}
+/* =========================================================
+   BUSCADOR Y FILTROS
+========================================================= */
 
-let currentCategory = 'TODOS'
+let activeCategory = 'ALL'
 
-const searchInput =
-    document.getElementById('search')
+const searchInput = document.getElementById('search')
+const cards = Array.from(
+    document.querySelectorAll('.command-card')
+)
 
-const filters =
-    document.getElementById('filters')
+const noResults = document.getElementById('noResults')
 
-const commandsGrid =
-    document.getElementById('commandsGrid')
+function filterCategory(category) {
 
+    activeCategory = category
 
-// FILTROS
+    document
+        .querySelectorAll('.category-filter')
+        .forEach(button => {
 
-function createFilters() {
+            const buttonCategory =
+                button.dataset.category
 
-    filters.innerHTML = ''
-
-    const all =
-        document.createElement('button')
-
-    all.className =
-        'filter active'
-
-    all.textContent =
-        'Todos'
-
-    all.onclick = () => {
-
-        currentCategory = 'TODOS'
-
-        document
-            .querySelectorAll('.filter')
-            .forEach(
-                btn =>
-                    btn.classList.remove(
-                        'active'
-                    )
+            button.classList.toggle(
+                'active',
+                buttonCategory === category
             )
+        })
 
-        all.classList.add('active')
-
-        renderCommands()
-
-    }
-
-    filters.appendChild(all)
-
-
-    COMMAND_DATA.forEach(category => {
-
-        const button =
-            document.createElement('button')
-
-        button.className =
-            'filter'
-
-        button.textContent =
-            category.icon +
-            ' ' +
-            category.category
-
-        button.onclick = () => {
-
-            currentCategory =
-                category.category
-
-            document
-                .querySelectorAll('.filter')
-                .forEach(
-                    btn =>
-                        btn.classList.remove(
-                            'active'
-                        )
-                )
-
-            button.classList.add('active')
-
-            renderCommands()
-
-        }
-
-        filters.appendChild(button)
-
-    })
-
+    applyFilters()
 }
 
-
-// RENDER COMANDOS
-
-function renderCommands() {
+function applyFilters() {
 
     const query =
         searchInput.value
             .trim()
             .toLowerCase()
 
-    let result = []
+    let visible = 0
 
-    COMMAND_DATA.forEach(category => {
+    cards.forEach(card => {
 
-        if (
-            currentCategory !== 'TODOS' &&
-            category.category !== currentCategory
-        ) {
-            return
+        const category =
+            card.dataset.category
+
+        const search =
+            card.dataset.search
+
+        const categoryMatch =
+            activeCategory === 'ALL' ||
+            category === activeCategory
+
+        const searchMatch =
+            !query ||
+            search.includes(query)
+
+        const show =
+            categoryMatch &&
+            searchMatch
+
+        card.style.display =
+            show ? 'flex' : 'none'
+
+        if (show) {
+            visible++
         }
-
-        category.commands.forEach(command => {
-
-            const name =
-                command[0]
-
-            const description =
-                command[1]
-
-            if (
-                !query ||
-                name
-                    .toLowerCase()
-                    .includes(query) ||
-                description
-                    .toLowerCase()
-                    .includes(query) ||
-                category.category
-                    .toLowerCase()
-                    .includes(query)
-            ) {
-
-                result.push({
-                    category,
-                    name,
-                    description
-                })
-
-            }
-
-        })
-
     })
 
-
-    commandsGrid.innerHTML = ''
-
-
-    if (!result.length) {
-
-        commandsGrid.innerHTML = \`
-            <div
-                style="
-                    grid-column:1/-1;
-                    padding:50px;
-                    text-align:center;
-                    color:#666;
-                "
-            >
-                No se encontraron comandos.
-            </div>
-        \`
-
-        return
-
-    }
-
-
-    result.forEach(item => {
-
-        const card =
-            document.createElement('article')
-
-        card.className =
-            'command-card'
-
-        card.innerHTML = \`
-
-            <div class="command-category">
-                \${escapeClient(
-                    item.category.category
-                )}
-            </div>
-
-            <div class="command-name">
-                .\${escapeClient(item.name)}
-            </div>
-
-            <div class="command-description">
-                \${escapeClient(
-                    item.description
-                )}
-            </div>
-
-            <button
-                class="copy-btn"
-                onclick="copyCommand('.\${escapeClient(item.name)}')"
-            >
-                COPIAR
-            </button>
-
-        \`
-
-        commandsGrid.appendChild(card)
-
-    })
-
+    noResults.style.display =
+        visible === 0 ? 'block' : 'none'
 }
-
-
-function escapeClient(value) {
-
-    return String(value)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#039;')
-
-}
-
-
-// COPIAR
-
-async function copyCommand(command) {
-
-    try {
-
-        await navigator.clipboard.writeText(
-            command
-        )
-
-        const old =
-            event &&
-            event.target
-                ? event.target.textContent
-                : null
-
-        if (
-            event &&
-            event.target
-        ) {
-
-            event.target.textContent =
-                'COPIADO'
-
-            setTimeout(() => {
-
-                event.target.textContent =
-                    old || 'COPIAR'
-
-            }, 1200)
-
-        }
-
-    } catch {
-
-        alert(command)
-
-    }
-
-}
-
-
-// BUSCADOR
 
 searchInput.addEventListener(
     'input',
-    renderCommands
+    applyFilters
 )
 
+/* =========================================================
+   COPIAR COMANDO
+========================================================= */
 
-// STATUS
+async function copyCommand(command, button) {
+
+    try {
+
+        await navigator.clipboard.writeText(command)
+
+        const original =
+            button.textContent
+
+        button.textContent =
+            'COPIADO ✓'
+
+        button.style.background =
+            'white'
+
+        button.style.color =
+            'black'
+
+        setTimeout(() => {
+
+            button.textContent =
+                original
+
+            button.style.background =
+                ''
+
+            button.style.color =
+                ''
+
+        }, 1300)
+
+        showToast('Comando copiado')
+
+    } catch (error) {
+
+        const textarea =
+            document.createElement('textarea')
+
+        textarea.value = command
+
+        document.body.appendChild(textarea)
+
+        textarea.select()
+
+        document.execCommand('copy')
+
+        textarea.remove()
+
+        showToast('Comando copiado')
+    }
+}
+
+/* =========================================================
+   TOAST
+========================================================= */
+
+function showToast(message) {
+
+    const toast =
+        document.getElementById('toast')
+
+    toast.textContent =
+        message
+
+    toast.classList.add('show')
+
+    clearTimeout(window.toastTimer)
+
+    window.toastTimer =
+        setTimeout(() => {
+
+            toast.classList.remove('show')
+
+        }, 1500)
+}
+
+/* =========================================================
+   ESTADO
+========================================================= */
 
 async function updateStatus() {
 
     try {
 
         const response =
-            await fetch(
-                '/status?t=' +
-                Date.now()
-            )
+            await fetch('/status')
 
         const data =
             await response.json()
 
+        document.getElementById(
+            'statusCommands'
+        ).textContent =
+            data.commands
 
         document.getElementById(
-            'status'
+            'statusUptime'
         ).textContent =
-            data.status === 'online'
-                ? 'Online'
-                : 'Offline'
+            data.uptimeFormatted
 
+    } catch (error) {
 
-        document.getElementById(
-            'uptime'
-        ).textContent =
-            data.uptimeFormatted || '—'
-
-
-        document.getElementById(
-            'commandCount'
-        ).textContent =
-            data.commands || '${TOTAL_COMMANDS}'
-
-
-        document.getElementById(
-            'version'
-        ).textContent =
-            data.version || '${VERSION}'
-
-
-    } catch {
-
-        document.getElementById(
-            'status'
-        ).textContent =
-            'Sin conexión'
-
+        console.error(
+            'STATUS:',
+            error
+        )
     }
-
 }
-
-
-createFilters()
-
-renderCommands()
 
 updateStatus()
 
@@ -2955,54 +2136,40 @@ setInterval(
 </script>
 
 </body>
-
 </html>`)
-
 })
 
-// ═══════════════════════════════════════════════
-// INICIAR
-// ═══════════════════════════════════════════════
+/* =========================================================
+   ERROR HANDLER
+========================================================= */
 
-app.listen(
-    PORT,
-    '0.0.0.0',
-    async () => {
+app.use((error, req, res, next) => {
 
-        console.log('')
-        console.log(
-            '╭──────────────────────────────╮'
-        )
-        console.log(
-            '│       𝕱𝖊𝖑𝖇𝖔𝖙 夜 SERVER       │'
-        )
-        console.log(
-            '├──────────────────────────────┤'
-        )
-        console.log(
-            `│ 🌐 PORT: ${PORT}`
-        )
-        console.log(
-            `│ 🤖 BOT: ${BOT_NAME}`
-        )
-        console.log(
-            `│ 👤 CREATOR: ${CREATOR}`
-        )
-        console.log(
-            `│ 📦 VERSION: ${VERSION}`
-        )
-        console.log(
-            `│ ⚡ COMMANDS: ${TOTAL_COMMANDS}`
-        )
-        console.log(
-            `│ 📂 CATEGORIES: ${TOTAL_CATEGORIES}`
-        )
-        console.log(
-            '╰──────────────────────────────╯'
-        )
-        console.log('')
+    console.error('SERVER ERROR:', error)
 
-        await startBrowser()
-
+    if (res.headersSent) {
+        return next(error)
     }
-)
+
+    res.status(500).json({
+        error: 'Error interno del servidor'
+    })
+})
+
+/* =========================================================
+   START
+========================================================= */
+
+app.listen(PORT, '0.0.0.0', () => {
+
+    console.log('')
+    console.log('────────────────────────────────────')
+    console.log(`🚀 ${BOT_NAME}`)
+    console.log(`🌐 PORT: ${PORT}`)
+    console.log(`📚 COMMANDS: ${TOTAL_COMMANDS}`)
+    console.log(`📂 CATEGORIES: ${TOTAL_CATEGORIES}`)
+    console.log('────────────────────────────────────')
+    console.log('')
+})
+
+module.exports = app
