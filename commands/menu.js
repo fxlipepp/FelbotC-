@@ -483,7 +483,7 @@ async function handleMenuButton(sock, chatId, buttonId, message) {
                 '..',
                 'assets',
                 'menucompleto',
-                'menu.png'
+                'menu.mp4'
             )
 
             if (!fs.existsSync(imagePath)) {
@@ -545,11 +545,10 @@ Aquí encontrarás herramientas, administración, entretenimiento y mucho más.
 
         const imagePath = path.join(
             __dirname,
-            '..',
-            'assets',
-            'imagenes',
-            'admin',
-            'admin.png'
+             '..',
+                'assets',
+                'menucompleto',
+                'menu.mp4'
         )
 
         if (!fs.existsSync(imagePath)) {
