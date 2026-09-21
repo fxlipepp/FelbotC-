@@ -8,6 +8,7 @@ const {
 const FELBOT_WEB = 'https://fxlipe.skyultraplus.online/'
 
 function formatUptime(seconds) {
+
     const h = Math.floor(seconds / 3600)
     const m = Math.floor((seconds % 3600) / 60)
     const s = Math.floor(seconds % 60)
@@ -16,6 +17,7 @@ function formatUptime(seconds) {
 }
 
 function buildIntroHeader(uptimeSeconds, version = '2.0.0') {
+
     const uptime = formatUptime(uptimeSeconds)
 
     return `╭━━━〔 𝕱𝖊𝖑𝖇𝖔𝖙 夜 〕━━━⬣
@@ -29,6 +31,8 @@ function buildIntroHeader(uptimeSeconds, version = '2.0.0') {
 }
 
 function buildMenuText(uptimeSeconds, version = '2.0.0') {
+
+    const introHeader = buildIntroHeader(uptimeSeconds, version)
 
     const helpMessage = `
 ╭━━〔 👑 OWNER 〕━━⬣
@@ -185,7 +189,7 @@ function buildMenuText(uptimeSeconds, version = '2.0.0') {
 ╰━━━━━━━━━━━━━━━━⬣
 
 ╭━━〔 🔞 NSFW 〕━━⬣
-> ✦ Comandos Pornograficos.
+> ✦ Comandos Pornograficos .
 
 ❀ \`.xxnx\` + <texto>
 > Busqueda porno (Para descarga).
@@ -444,7 +448,7 @@ function buildMenuText(uptimeSeconds, version = '2.0.0') {
 > *🚀 Powered By Fxlipe 夜*
 ╰━━━━━━━━━━━━⬣`
 
-    return helpMessage.trim()
+    return `${helpMessage.trim()}`
 }
 
 function getMenuButtonAction(buttonId) {
@@ -452,68 +456,43 @@ function getMenuButtonAction(buttonId) {
     switch (buttonId) {
 
         case 'view_full_menu':
-            return {
-                type: 'send_full_menu'
-            }
+            return { type: 'send_full_menu' }
 
         default:
             return null
     }
 }
 
-async function handleMenuButton(
-    sock,
-    chatId,
-    buttonId,
-    message
-) {
+async function handleMenuButton(sock, chatId, buttonId, message) {
 
-    const action =
-        getMenuButtonAction(buttonId)
+    const action = getMenuButtonAction(buttonId)
 
     if (!action) return false
 
     if (action.type === 'send_full_menu') {
 
+        const fullMenu = buildMenuText(
+            process.uptime(),
+            '2.0.0'
+        )
+
         try {
 
-            const fullMenu =
-                buildMenuText(
-                    process.uptime(),
-                    '2.0.0'
-                )
-
-            const imagePath =
-                path.join(
-                    __dirname,
-                    '..',
-                    'assets',
-                    'menucompleto',
-                    'menu.png'
-                )
+            const imagePath = path.join(
+                __dirname,
+                '..',
+                'assets',
+                'menucompleto',
+                'menu.png'
+            )
 
             if (!fs.existsSync(imagePath)) {
-
-                console.error(
-                    '❌ No se encontró la imagen:',
-                    imagePath
+                throw new Error(
+                    `No existe la imagen: ${imagePath}`
                 )
-
-                await sock.sendMessage(
-                    chatId,
-                    {
-                        text: fullMenu
-                    },
-                    {
-                        quoted: message
-                    }
-                )
-
-                return true
             }
 
-            const imageBuffer =
-                fs.readFileSync(imagePath)
+            const imageBuffer = fs.readFileSync(imagePath)
 
             await sock.sendMessage(
                 chatId,
@@ -526,24 +505,12 @@ async function handleMenuButton(
                 }
             )
 
-            console.log(
-                '✅ MENÚ COMPLETO ENVIADO'
-            )
-
-            return true
-
         } catch (error) {
 
             console.error(
-                '❌ ERROR AL ENVIAR MENÚ COMPLETO:',
+                '❌ ERROR EN MENU COMPLETO:',
                 error
             )
-
-            const fullMenu =
-                buildMenuText(
-                    process.uptime(),
-                    '2.0.0'
-                )
 
             await sock.sendMessage(
                 chatId,
@@ -554,25 +521,20 @@ async function handleMenuButton(
                     quoted: message
                 }
             )
-
-            return true
         }
+
+        return true
     }
 
     return false
 }
 
-async function helpCommand(
-    sock,
-    chatId,
-    message
-) {
+async function helpCommand(sock, chatId, message) {
 
-    const introCaption =
-        `${buildIntroHeader(
-            process.uptime(),
-            '2.0.0'
-        )}
+    const introCaption = `${buildIntroHeader(
+        process.uptime(),
+        '2.0.0'
+    )}
 
 Bienvenido a Felbot 夜.
 Aquí encontrarás herramientas, administración, entretenimiento y mucho más.
@@ -581,280 +543,179 @@ Aquí encontrarás herramientas, administración, entretenimiento y mucho más.
 
     try {
 
-        const imagePath =
-            path.join(
-                __dirname,
-                '..',
-                'assets',
-                'imagenes',
-                'admin',
-                'admin.png'
-            )
+        const imagePath = path.join(
+            __dirname,
+            '..',
+            'assets',
+            'imagenes',
+            'admin',
+            'admin.png'
+        )
 
         if (!fs.existsSync(imagePath)) {
-
             throw new Error(
-                'Menu image not found: ' +
-                imagePath
+                `Menu image not found: ${imagePath}`
             )
         }
 
-        const imageBuffer =
-            fs.readFileSync(imagePath)
+        const imageBuffer = fs.readFileSync(imagePath)
 
-        const preparedImage =
-            await prepareWAMessageMedia(
-                {
-                    image: imageBuffer
-                },
-                {
-                    upload:
-                        sock.waUploadToServer
-                }
-            )
+        const preparedImage = await prepareWAMessageMedia(
+            {
+                image: imageBuffer
+            },
+            {
+                upload: sock.waUploadToServer
+            }
+        )
 
         const buttons = [
-
             [
                 'VER MENU COMPLETO',
                 'view_full_menu'
             ],
-
             [
                 'CONTACTAME 夜',
                 'owner'
             ],
-
             [
                 'REPORTAR ERROR ❗',
                 'report_error'
             ],
-
             [
                 'SOLICITUD DE COMANDO 🕸️',
                 'request_command'
             ],
-
             [
                 'ADQUIRIR BOT 💵',
                 'buy_bot'
             ]
+        ].map(([display_text, id]) => ({
 
-        ].map(
-            ([display_text, id]) => ({
+            name: 'quick_reply',
 
-                name: 'quick_reply',
-
-                buttonParamsJson:
-                    JSON.stringify({
-                        display_text,
-                        id
-                    })
-
+            buttonParamsJson: JSON.stringify({
+                display_text,
+                id
             })
-        )
+
+        }))
 
         /*
-         * =====================================================
-         * MENSAJE PRINCIPAL
-         * =====================================================
-         */
-
-        const menuMessage =
-            generateWAMessageFromContent(
-                chatId,
-                {
-
-                    interactiveMessage: {
-
-                        /*
-                         * ENCABEZADO ORIGINAL
-                         */
-
-                        header: {
-
-                            title:
-                                '𝕱𝖊𝖑𝖇𝖔𝖙 夜',
-
-                            subtitle:
-                                'Menú interactivo',
-
-                            hasMediaAttachment:
-                                true,
-
-                            ...preparedImage
-                        },
-
-                        /*
-                         * CUERPO ORIGINAL
-                         */
-
-                        body: {
-
-                            text:
-                                introCaption
-                        },
-
-                        /*
-                         * PIE ORIGINAL
-                         */
-
-                        footer: {
-
-                            text:
-                                '𝕱𝖊𝖑𝖇𝖔𝖙 夜 • Menú interactivo'
-                        },
-
-                        /*
-                         * BOTONES + ENLACE DEL ENCABEZADO
-                         */
-
-                        nativeFlowMessage: {
-
-                            /*
-                             * Esta configuración hace que
-                             * WhatsApp tenga un destino URL
-                             * asociado al tap target.
-                             */
-
-                            messageParamsJson:
-                                JSON.stringify({
-
-                                    tap_target_configuration: {
-
-                                        title:
-                                            '𝕱𝖊𝖑𝖇𝖔𝖙 夜',
-
-                                        description:
-                                            'Menú interactivo',
-
-                                        canonical_url:
-                                            FELBOT_WEB,
-
-                                        domain:
-                                            'fxlipe.skyultraplus.online',
-
-                                        /*
-                                         * Índice del elemento
-                                         * asociado al tap target.
-                                         */
-
-                                        button_index:
-                                            0
-                                    }
-                                }),
-
-                            buttons
-                        }
-                    }
-
-                },
-                {
-                    quoted:
-                        message
-                }
-            )
-
-        /*
-         * =====================================================
-         * CONTEXT INFO
-         * =====================================================
+         * Configuración experimental.
          *
-         * Dejamos externalAdReply como respaldo visual.
-         * El enlace real del tap target está arriba.
+         * WhatsApp/Baileys no documenta que el
+         * header.title sea un enlace clicable.
+         *
+         * La dejamos porque algunos forks de Baileys
+         * reconocen tap_target_configuration.
          */
 
-        if (
-            menuMessage.message &&
-            menuMessage.message.interactiveMessage
-        ) {
+        const messageParams = {
 
-            menuMessage
-                .message
-                .interactiveMessage
-                .contextInfo = {
+            tap_target_configuration: {
 
-                externalAdReply: {
+                title: '𝕱𝖊𝖑𝖇𝖔𝖙 夜',
 
-                    title:
-                        '𝕱𝖊𝖑𝖇𝖔𝖙 夜',
+                description: 'Menú interactivo',
 
-                    body:
-                        'Menú interactivo',
+                canonical_url: FELBOT_WEB,
 
-                    mediaType:
-                        1,
+                domain: 'fxlipe.skyultraplus.online',
 
-                    sourceUrl:
-                        FELBOT_WEB,
-
-                    renderLargerThumbnail:
-                        false,
-
-                    showAdAttribution:
-                        false
-                }
+                button_index: 0
             }
         }
 
-        /*
-         * =====================================================
-         * ENVIAR MENÚ
-         * =====================================================
-         */
+        const menuMessage = generateWAMessageFromContent(
+            chatId,
+            {
+                interactiveMessage: {
+
+                    header: {
+
+                        title: '𝕱𝖊𝖑𝖇𝖔𝖙 夜',
+
+                        subtitle: 'Menú interactivo',
+
+                        hasMediaAttachment: true,
+
+                        ...preparedImage
+                    },
+
+                    body: {
+                        text: introCaption
+                    },
+
+                    footer: {
+                        text: '𝕱𝖊𝖑𝖇𝖔𝖙 夜 • Menú interactivo'
+                    },
+
+                    nativeFlowMessage: {
+
+                        buttons,
+
+                        messageParamsJson:
+                            JSON.stringify(messageParams)
+                    },
+
+                    contextInfo: {
+
+                        externalAdReply: {
+
+                            title: '𝕱𝖊𝖑𝖇𝖔𝖙 夜',
+
+                            body: 'Menú interactivo',
+
+                            mediaType: 1,
+
+                            sourceUrl: FELBOT_WEB,
+
+                            thumbnailUrl: FELBOT_WEB,
+
+                            renderLargerThumbnail: false,
+
+                            showAdAttribution: false
+                        }
+                    }
+                }
+            },
+            {
+                quoted: message
+            }
+        )
 
         await sock.relayMessage(
-
-            menuMessage
-                .key
-                .remoteJid,
-
+            menuMessage.key.remoteJid,
             menuMessage.message,
-
             {
-
-                messageId:
-                    menuMessage.key.id,
+                messageId: menuMessage.key.id,
 
                 additionalNodes: [
 
                     {
-
-                        tag:
-                            'biz',
+                        tag: 'biz',
 
                         attrs: {},
 
                         content: [
 
                             {
-
-                                tag:
-                                    'interactive',
+                                tag: 'interactive',
 
                                 attrs: {
-
-                                    type:
-                                        'native_flow',
-
-                                    v:
-                                        '1'
+                                    type: 'native_flow',
+                                    v: '1'
                                 },
 
                                 content: [
 
                                     {
-
-                                        tag:
-                                            'native_flow',
+                                        tag: 'native_flow',
 
                                         attrs: {
-
-                                            v:
-                                                '9',
-
-                                            name:
-                                                'mixed'
+                                            v: '9',
+                                            name: 'mixed'
                                         }
                                     }
                                 ]
@@ -868,46 +729,27 @@ Aquí encontrarás herramientas, administración, entretenimiento y mucho más.
     } catch (error) {
 
         console.error(
-            '❌ ERROR AL MOSTRAR MENÚ:',
+            '❌ ERROR EN MENU:',
             error
         )
-
-        /*
-         * Si WhatsApp rechaza el mensaje interactivo,
-         * se conserva el fallback original.
-         */
 
         await sock.sendMessage(
             chatId,
             {
-                text:
-                    introCaption
+                text: introCaption
             },
             {
-                quoted:
-                    message
+                quoted: message
             }
         )
     }
 }
 
-helpCommand.buildMenuText =
-    buildMenuText
+helpCommand.buildMenuText = buildMenuText
+helpCommand.getMenuButtonAction = getMenuButtonAction
+helpCommand.handleMenuButton = handleMenuButton
 
-helpCommand.getMenuButtonAction =
-    getMenuButtonAction
-
-helpCommand.handleMenuButton =
-    handleMenuButton
-
-module.exports =
-    helpCommand
-
-module.exports.buildMenuText =
-    buildMenuText
-
-module.exports.getMenuButtonAction =
-    getMenuButtonAction
-
-module.exports.handleMenuButton =
-    handleMenuButton
+module.exports = helpCommand
+module.exports.buildMenuText = buildMenuText
+module.exports.getMenuButtonAction = getMenuButtonAction
+module.exports.handleMenuButton = handleMenuButton
