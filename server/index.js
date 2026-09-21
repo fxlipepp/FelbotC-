@@ -19,7 +19,6 @@ app.use(express.json({ limit: '50kb' }))
 
 const COMMANDS = [
 
-    // ───────────── OWNER ─────────────
     {
         category: 'OWNER',
         icon: '👑',
@@ -37,7 +36,6 @@ const COMMANDS = [
         ]
     },
 
-    // ───────────── GENERAL ─────────────
     {
         category: 'GENERAL',
         icon: '✦',
@@ -60,7 +58,6 @@ const COMMANDS = [
         ]
     },
 
-    // ───────────── UTILIDADES ─────────────
     {
         category: 'UTILIDADES',
         icon: '⚙️',
@@ -82,7 +79,6 @@ const COMMANDS = [
         ]
     },
 
-    // ───────────── ADMIN ─────────────
     {
         category: 'ADMIN',
         icon: '🛡️',
@@ -113,7 +109,6 @@ const COMMANDS = [
         ]
     },
 
-    // ───────────── FREE FIRE ─────────────
     {
         category: 'FREE FIRE',
         icon: '🔥',
@@ -129,7 +124,6 @@ const COMMANDS = [
         ]
     },
 
-    // ───────────── STICKERS ─────────────
     {
         category: 'STICKERS',
         icon: '🎨',
@@ -145,7 +139,6 @@ const COMMANDS = [
         ]
     },
 
-    // ───────────── TEXTMAKER ─────────────
     {
         category: 'TEXTMAKER',
         icon: '✍️',
@@ -164,7 +157,6 @@ const COMMANDS = [
         ]
     },
 
-    // ───────────── ANIME ─────────────
     {
         category: 'ANIME',
         icon: '🌸',
@@ -176,12 +168,10 @@ const COMMANDS = [
             ['megumin', 'Contenido de Megumin'],
             ['akira', 'Contenido anime'],
             ['shinobu', 'Contenido de Shinobu'],
-            ['loli', 'Contenido anime'],
             ['cosplay', 'Obtiene contenido cosplay']
         ]
     },
 
-    // ───────────── JUEGOS ─────────────
     {
         category: 'JUEGOS',
         icon: '🎮',
@@ -200,17 +190,13 @@ const COMMANDS = [
         ]
     },
 
-    // ───────────── DIVERSIÓN ─────────────
     {
         category: 'DIVERSIÓN',
         icon: '🎭',
         commands: [
             ['ship', 'Calcula compatibilidad'],
             ['love', 'Calcula porcentaje de amor'],
-            ['gay', 'Juego de porcentaje'],
-            ['simp', 'Juego de porcentaje'],
             ['rate', 'Califica algo'],
-            ['dado', 'Lanza un dado'],
             ['meme', 'Genera un meme'],
             ['joke', 'Cuenta un chiste'],
             ['fact', 'Dato curioso'],
@@ -219,14 +205,11 @@ const COMMANDS = [
         ]
     },
 
-    // ───────────── DESCARGAS ─────────────
     {
         category: 'DESCARGAS',
         icon: '↓',
         commands: [
-            ['play', 'Busca y descarga audio'],
-            ['ytmp3', 'Descarga audio'],
-            ['ytmp4', 'Descarga video'],
+            ['play', 'Busca y descarga contenido'],
             ['instagram', 'Descarga contenido de Instagram'],
             ['facebook', 'Descarga contenido de Facebook'],
             ['tiktok', 'Descarga videos de TikTok'],
@@ -238,7 +221,8 @@ const COMMANDS = [
 ]
 
 const TOTAL_COMMANDS = COMMANDS.reduce(
-    (total, category) => total + category.commands.length,
+    (total, category) =>
+        total + category.commands.length,
     0
 )
 
@@ -249,41 +233,53 @@ const TOTAL_CATEGORIES = COMMANDS.length
 // ═══════════════════════════════════════════════
 
 function formatUptime(ms) {
-    const totalSeconds = Math.floor(ms / 1000)
 
-    const days = Math.floor(totalSeconds / 86400)
-    const hours = Math.floor((totalSeconds % 86400) / 3600)
-    const minutes = Math.floor((totalSeconds % 3600) / 60)
-    const seconds = totalSeconds % 60
+    const totalSeconds =
+        Math.floor(ms / 1000)
+
+    const days =
+        Math.floor(totalSeconds / 86400)
+
+    const hours =
+        Math.floor(
+            (totalSeconds % 86400) / 3600
+        )
+
+    const minutes =
+        Math.floor(
+            (totalSeconds % 3600) / 60
+        )
+
+    const seconds =
+        totalSeconds % 60
 
     const parts = []
 
     if (days) parts.push(`${days}d`)
     if (hours) parts.push(`${hours}h`)
     if (minutes) parts.push(`${minutes}m`)
-    if (seconds || !parts.length) parts.push(`${seconds}s`)
+
+    if (
+        seconds ||
+        !parts.length
+    ) {
+        parts.push(`${seconds}s`)
+    }
 
     return parts.join(' ')
 }
 
-function escapeHtml(value) {
-    return String(value)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#039;')
-}
-
 function safeJson(value) {
+
     return JSON.stringify(value)
         .replace(/</g, '\\u003c')
         .replace(/>/g, '\\u003e')
         .replace(/&/g, '\\u0026')
+
 }
 
 // ═══════════════════════════════════════════════
-// BROWSER REMOTO
+// BROWSER
 // ═══════════════════════════════════════════════
 
 let browser = null
@@ -294,6 +290,7 @@ async function startBrowser() {
     try {
 
         browser = await puppeteer.launch({
+
             headless: true,
 
             userDataDir:
@@ -312,20 +309,28 @@ async function startBrowser() {
                 '--no-default-browser-check',
                 '--window-size=1280,900'
             ]
+
         })
 
-        browserPage = await browser.newPage()
+        browserPage =
+            await browser.newPage()
 
         await browserPage.setViewport({
             width: 1280,
             height: 900
         })
 
-        await browserPage.goto('about:blank', {
-            waitUntil: 'domcontentloaded'
-        })
+        await browserPage.goto(
+            'about:blank',
+            {
+                waitUntil:
+                    'domcontentloaded'
+            }
+        )
 
-        console.log('🌐 Browser remoto iniciado')
+        console.log(
+            '🌐 Browser remoto iniciado'
+        )
 
     } catch (error) {
 
@@ -345,13 +350,21 @@ async function startBrowser() {
 app.get('/api/commands', (req, res) => {
 
     res.json({
+
         bot: BOT_NAME,
+
         creator: CREATOR,
+
         version: VERSION,
+
         prefix: PREFIX,
+
         total: TOTAL_COMMANDS,
+
         categories: TOTAL_CATEGORIES,
+
         data: COMMANDS
+
     })
 
 })
@@ -372,16 +385,19 @@ app.get('/status', (req, res) => {
 
         version: VERSION,
 
-        uptime: Date.now() - START_TIME,
+        uptime:
+            Date.now() - START_TIME,
 
         uptimeFormatted:
             formatUptime(
                 Date.now() - START_TIME
             ),
 
-        commands: TOTAL_COMMANDS,
+        commands:
+            TOTAL_COMMANDS,
 
-        categories: TOTAL_CATEGORIES,
+        categories:
+            TOTAL_CATEGORIES,
 
         browser:
             browserOnline
@@ -396,20 +412,22 @@ app.get('/status', (req, res) => {
 })
 
 // ═══════════════════════════════════════════════
-// BROWSER - PÁGINA
+// BROWSER
 // ═══════════════════════════════════════════════
 
-app.get('/browser', async (req, res) => {
+app.get('/browser', (req, res) => {
 
     res.send(`<!DOCTYPE html>
+
 <html lang="es">
+
 <head>
 
 <meta charset="UTF-8">
 
 <meta
     name="viewport"
-    content="width=device-width, initial-scale=1.0"
+    content="width=device-width,initial-scale=1.0"
 >
 
 <title>Felbot Browser</title>
@@ -421,32 +439,54 @@ app.get('/browser', async (req, res) => {
 }
 
 body {
+
     margin: 0;
-    background: #090909;
-    color: #eee;
-    font-family: Arial, sans-serif;
+
+    background: #080808;
+
+    color: white;
+
+    font-family:
+        Arial,
+        sans-serif;
+
 }
 
 .toolbar {
+
     height: 62px;
+
     display: flex;
+
     align-items: center;
+
     gap: 8px;
+
     padding: 10px 14px;
+
     background: #111;
-    border-bottom: 1px solid #292929;
-    position: sticky;
-    top: 0;
-    z-index: 10;
+
+    border-bottom:
+        1px solid #292929;
+
 }
 
 button {
+
     background: #181818;
+
     color: #eee;
-    border: 1px solid #303030;
+
+    border:
+        1px solid #303030;
+
     border-radius: 8px;
-    padding: 10px 13px;
+
+    padding:
+        10px 13px;
+
     cursor: pointer;
+
 }
 
 button:hover {
@@ -454,20 +494,38 @@ button:hover {
 }
 
 .address {
+
     flex: 1;
+
     background: #0d0d0d;
-    border: 1px solid #2a2a2a;
+
+    border:
+        1px solid #2a2a2a;
+
     color: #aaa;
+
     border-radius: 8px;
-    padding: 11px 13px;
+
+    padding:
+        11px 13px;
+
+    outline: none;
+
 }
 
 #screen {
+
     display: block;
+
     width: 100%;
-    min-height: calc(100vh - 62px);
+
+    min-height:
+        calc(100vh - 62px);
+
     object-fit: contain;
+
     background: #050505;
+
 }
 
 </style>
@@ -478,20 +536,22 @@ button:hover {
 
 <div class="toolbar">
 
-    <button onclick="goBack()">←</button>
+<button onclick="goBack()">←</button>
 
-    <button onclick="goForward()">→</button>
+<button onclick="goForward()">→</button>
 
-    <button onclick="reloadPage()">↻</button>
+<button onclick="reloadPage()">↻</button>
 
-    <input
-        id="address"
-        class="address"
-        value="about:blank"
-        onkeydown="handleAddress(event)"
-    >
+<input
+    id="address"
+    class="address"
+    value="about:blank"
+    onkeydown="handleAddress(event)"
+>
 
-    <button onclick="goAddress()">Ir</button>
+<button onclick="goAddress()">
+    Ir
+</button>
 
 </div>
 
@@ -502,10 +562,13 @@ button:hover {
 
 <script>
 
-const screen = document.getElementById('screen')
-const address = document.getElementById('address')
+const screen =
+    document.getElementById('screen')
 
-async function refreshScreen() {
+const address =
+    document.getElementById('address')
+
+function refreshScreen() {
 
     screen.src =
         '/browser/screenshot?t=' +
@@ -515,380 +578,523 @@ async function refreshScreen() {
 
 async function reloadPage() {
 
-    await fetch('/browser/reload', {
-        method: 'POST'
-    })
+    await fetch(
+        '/browser/reload',
+        {
+            method: 'POST'
+        }
+    )
 
-    setTimeout(refreshScreen, 1000)
+    setTimeout(
+        refreshScreen,
+        1000
+    )
 
 }
 
 async function goBack() {
 
-    await fetch('/browser/back', {
-        method: 'POST'
-    })
+    await fetch(
+        '/browser/back',
+        {
+            method: 'POST'
+        }
+    )
 
-    setTimeout(refreshScreen, 1000)
+    setTimeout(
+        refreshScreen,
+        1000
+    )
 
 }
 
 async function goForward() {
 
-    await fetch('/browser/forward', {
-        method: 'POST'
-    })
+    await fetch(
+        '/browser/forward',
+        {
+            method: 'POST'
+        }
+    )
 
-    setTimeout(refreshScreen, 1000)
+    setTimeout(
+        refreshScreen,
+        1000
+    )
 
 }
 
 async function goAddress() {
 
-    const url = address.value.trim()
+    const url =
+        address.value.trim()
 
     if (!url) return
 
-    await fetch('/browser/navigate', {
+    await fetch(
+        '/browser/navigate',
+        {
 
-        method: 'POST',
+            method: 'POST',
 
-        headers: {
-            'Content-Type':
-                'application/json'
-        },
+            headers: {
+                'Content-Type':
+                    'application/json'
+            },
 
-        body: JSON.stringify({
-            url
-        })
+            body:
+                JSON.stringify({
+                    url
+                })
 
-    })
+        }
+    )
 
-    setTimeout(refreshScreen, 1800)
+    setTimeout(
+        refreshScreen,
+        1800
+    )
 
 }
 
 function handleAddress(event) {
 
-    if (event.key === 'Enter') {
+    if (
+        event.key === 'Enter'
+    ) {
         goAddress()
     }
 
 }
 
-setInterval(refreshScreen, 2500)
+setInterval(
+    refreshScreen,
+    2500
+)
 
 </script>
 
 </body>
+
 </html>`)
 
 })
 
 // ═══════════════════════════════════════════════
-// BROWSER - SCREENSHOT
+// BROWSER SCREENSHOT
 // ═══════════════════════════════════════════════
 
-app.get('/browser/screenshot', async (req, res) => {
+app.get(
+    '/browser/screenshot',
+    async (req, res) => {
 
-    try {
+        try {
 
-        if (!browserPage || browserPage.isClosed()) {
-            return res.status(503).send('Browser offline')
+            if (
+                !browserPage ||
+                browserPage.isClosed()
+            ) {
+
+                return res
+                    .status(503)
+                    .send(
+                        'Browser offline'
+                    )
+
+            }
+
+            const image =
+                await browserPage.screenshot({
+                    type: 'png',
+                    fullPage: false
+                })
+
+            res.setHeader(
+                'Content-Type',
+                'image/png'
+            )
+
+            res.send(image)
+
+        } catch (error) {
+
+            res.status(500).send(
+                'Error capturando pantalla'
+            )
+
         }
-
-        const image =
-            await browserPage.screenshot({
-                type: 'png',
-                fullPage: false
-            })
-
-        res.setHeader(
-            'Content-Type',
-            'image/png'
-        )
-
-        res.send(image)
-
-    } catch (error) {
-
-        res.status(500).send(
-            'Error capturando pantalla'
-        )
 
     }
-
-})
+)
 
 // ═══════════════════════════════════════════════
-// BROWSER - NAVEGAR
+// BROWSER NAVIGATE
 // ═══════════════════════════════════════════════
 
-app.post('/browser/navigate', async (req, res) => {
+app.post(
+    '/browser/navigate',
+    async (req, res) => {
 
-    try {
+        try {
 
-        if (!browserPage || browserPage.isClosed()) {
-            return res.status(503).json({
-                error: 'Browser offline'
+            if (
+                !browserPage ||
+                browserPage.isClosed()
+            ) {
+
+                return res
+                    .status(503)
+                    .json({
+                        error:
+                            'Browser offline'
+                    })
+
+            }
+
+            let url =
+                String(
+                    req.body.url || ''
+                ).trim()
+
+            if (!url) {
+
+                return res
+                    .status(400)
+                    .json({
+                        error:
+                            'URL requerida'
+                    })
+
+            }
+
+            if (
+                !url.startsWith('http://') &&
+                !url.startsWith('https://')
+            ) {
+
+                url =
+                    'https://' + url
+
+            }
+
+            await browserPage.goto(
+                url,
+                {
+                    waitUntil:
+                        'domcontentloaded',
+                    timeout: 30000
+                }
+            )
+
+            res.json({
+                ok: true,
+                url:
+                    browserPage.url()
             })
-        }
 
-        let url = String(
-            req.body.url || ''
-        ).trim()
+        } catch (error) {
 
-        if (!url) {
-            return res.status(400).json({
-                error: 'URL requerida'
+            res.status(500).json({
+                error:
+                    error.message
             })
+
         }
-
-        if (
-            !url.startsWith('http://') &&
-            !url.startsWith('https://')
-        ) {
-            url = 'https://' + url
-        }
-
-        await browserPage.goto(url, {
-            waitUntil: 'domcontentloaded',
-            timeout: 30000
-        })
-
-        res.json({
-            ok: true,
-            url: browserPage.url()
-        })
-
-    } catch (error) {
-
-        res.status(500).json({
-            error: error.message
-        })
 
     }
-
-})
+)
 
 // ═══════════════════════════════════════════════
-// BROWSER - CLICK
+// BROWSER CLICK
 // ═══════════════════════════════════════════════
 
-app.post('/browser/click', async (req, res) => {
+app.post(
+    '/browser/click',
+    async (req, res) => {
 
-    try {
+        try {
 
-        if (!browserPage || browserPage.isClosed()) {
-            return res.status(503).json({
-                error: 'Browser offline'
+            if (
+                !browserPage ||
+                browserPage.isClosed()
+            ) {
+
+                return res
+                    .status(503)
+                    .json({
+                        error:
+                            'Browser offline'
+                    })
+
+            }
+
+            const {
+                x,
+                y
+            } = req.body
+
+            await browserPage.mouse.click(
+                Number(x),
+                Number(y)
+            )
+
+            res.json({
+                ok: true
             })
+
+        } catch (error) {
+
+            res.status(500).json({
+                error:
+                    error.message
+            })
+
         }
 
-        const {
-            x,
-            y
-        } = req.body
-
-        await browserPage.mouse.click(
-            Number(x),
-            Number(y)
-        )
-
-        res.json({
-            ok: true
-        })
-
-    } catch (error) {
-
-        res.status(500).json({
-            error: error.message
-        })
-
     }
-
-})
+)
 
 // ═══════════════════════════════════════════════
-// BROWSER - TYPE
+// BROWSER TYPE
 // ═══════════════════════════════════════════════
 
-app.post('/browser/type', async (req, res) => {
+app.post(
+    '/browser/type',
+    async (req, res) => {
 
-    try {
+        try {
 
-        if (!browserPage || browserPage.isClosed()) {
-            return res.status(503).json({
-                error: 'Browser offline'
+            if (
+                !browserPage ||
+                browserPage.isClosed()
+            ) {
+
+                return res
+                    .status(503)
+                    .json({
+                        error:
+                            'Browser offline'
+                    })
+
+            }
+
+            await browserPage.keyboard.type(
+                String(
+                    req.body.text || ''
+                )
+            )
+
+            res.json({
+                ok: true
             })
+
+        } catch (error) {
+
+            res.status(500).json({
+                error:
+                    error.message
+            })
+
         }
 
-        const text =
-            String(req.body.text || '')
-
-        await browserPage.keyboard.type(
-            text
-        )
-
-        res.json({
-            ok: true
-        })
-
-    } catch (error) {
-
-        res.status(500).json({
-            error: error.message
-        })
-
     }
-
-})
+)
 
 // ═══════════════════════════════════════════════
-// BROWSER - KEY
+// BROWSER KEY
 // ═══════════════════════════════════════════════
 
-app.post('/browser/key', async (req, res) => {
+app.post(
+    '/browser/key',
+    async (req, res) => {
 
-    try {
+        try {
 
-        if (!browserPage || browserPage.isClosed()) {
-            return res.status(503).json({
-                error: 'Browser offline'
+            if (
+                !browserPage ||
+                browserPage.isClosed()
+            ) {
+
+                return res
+                    .status(503)
+                    .json({
+                        error:
+                            'Browser offline'
+                    })
+
+            }
+
+            await browserPage.keyboard.press(
+                String(
+                    req.body.key || ''
+                )
+            )
+
+            res.json({
+                ok: true
             })
+
+        } catch (error) {
+
+            res.status(500).json({
+                error:
+                    error.message
+            })
+
         }
 
-        const key =
-            String(req.body.key || '')
-
-        await browserPage.keyboard.press(
-            key
-        )
-
-        res.json({
-            ok: true
-        })
-
-    } catch (error) {
-
-        res.status(500).json({
-            error: error.message
-        })
-
     }
-
-})
+)
 
 // ═══════════════════════════════════════════════
-// BROWSER - RELOAD
+// BROWSER RELOAD
 // ═══════════════════════════════════════════════
 
-app.post('/browser/reload', async (req, res) => {
+app.post(
+    '/browser/reload',
+    async (req, res) => {
 
-    try {
+        try {
 
-        if (!browserPage || browserPage.isClosed()) {
-            return res.status(503).json({
-                error: 'Browser offline'
+            if (
+                !browserPage ||
+                browserPage.isClosed()
+            ) {
+
+                return res
+                    .status(503)
+                    .json({
+                        error:
+                            'Browser offline'
+                    })
+
+            }
+
+            await browserPage.reload({
+                waitUntil:
+                    'domcontentloaded',
+                timeout: 30000
             })
+
+            res.json({
+                ok: true,
+                url:
+                    browserPage.url()
+            })
+
+        } catch (error) {
+
+            res.status(500).json({
+                error:
+                    error.message
+            })
+
         }
 
-        await browserPage.reload({
-            waitUntil: 'domcontentloaded',
-            timeout: 30000
-        })
-
-        res.json({
-            ok: true,
-            url: browserPage.url()
-        })
-
-    } catch (error) {
-
-        res.status(500).json({
-            error: error.message
-        })
-
     }
-
-})
+)
 
 // ═══════════════════════════════════════════════
-// BROWSER - BACK
+// BROWSER BACK
 // ═══════════════════════════════════════════════
 
-app.post('/browser/back', async (req, res) => {
+app.post(
+    '/browser/back',
+    async (req, res) => {
 
-    try {
+        try {
 
-        if (!browserPage || browserPage.isClosed()) {
-            return res.status(503).json({
-                error: 'Browser offline'
+            if (
+                !browserPage ||
+                browserPage.isClosed()
+            ) {
+
+                return res
+                    .status(503)
+                    .json({
+                        error:
+                            'Browser offline'
+                    })
+
+            }
+
+            await browserPage.goBack({
+                waitUntil:
+                    'domcontentloaded',
+                timeout: 30000
             })
+
+            res.json({
+                ok: true,
+                url:
+                    browserPage.url()
+            })
+
+        } catch (error) {
+
+            res.status(500).json({
+                error:
+                    error.message
+            })
+
         }
 
-        await browserPage.goBack({
-            waitUntil: 'domcontentloaded',
-            timeout: 30000
-        })
-
-        res.json({
-            ok: true,
-            url: browserPage.url()
-        })
-
-    } catch (error) {
-
-        res.status(500).json({
-            error: error.message
-        })
-
     }
-
-})
+)
 
 // ═══════════════════════════════════════════════
-// BROWSER - FORWARD
+// BROWSER FORWARD
 // ═══════════════════════════════════════════════
 
-app.post('/browser/forward', async (req, res) => {
+app.post(
+    '/browser/forward',
+    async (req, res) => {
 
-    try {
+        try {
 
-        if (!browserPage || browserPage.isClosed()) {
-            return res.status(503).json({
-                error: 'Browser offline'
+            if (
+                !browserPage ||
+                browserPage.isClosed()
+            ) {
+
+                return res
+                    .status(503)
+                    .json({
+                        error:
+                            'Browser offline'
+                    })
+
+            }
+
+            await browserPage.goForward({
+                waitUntil:
+                    'domcontentloaded',
+                timeout: 30000
             })
+
+            res.json({
+                ok: true,
+                url:
+                    browserPage.url()
+            })
+
+        } catch (error) {
+
+            res.status(500).json({
+                error:
+                    error.message
+            })
+
         }
 
-        await browserPage.goForward({
-            waitUntil: 'domcontentloaded',
-            timeout: 30000
-        })
-
-        res.json({
-            ok: true,
-            url: browserPage.url()
-        })
-
-    } catch (error) {
-
-        res.status(500).json({
-            error: error.message
-        })
-
     }
-
-})
+)
 
 // ═══════════════════════════════════════════════
-// WEB OFICIAL
+// WEB PRINCIPAL
 // ═══════════════════════════════════════════════
 
 app.get('/', (req, res) => {
-
-    const categoriesJson =
-        safeJson(COMMANDS)
 
     res.send(`<!DOCTYPE html>
 
@@ -905,7 +1111,7 @@ app.get('/', (req, res) => {
 
 <meta
     name="description"
-    content="𝕱𝖊𝖑𝖇𝖔𝖙 夜 — Bot de WhatsApp creado por Fxlipe 夜."
+    content="𝕱𝖊𝖑𝖇𝖔𝖙 夜 — WhatsApp Bot creado por Fxlipe 夜."
 >
 
 <title>𝕱𝖊𝖑𝖇𝖔𝖙 夜 — Official</title>
@@ -929,17 +1135,12 @@ app.get('/', (req, res) => {
 <style>
 
 :root {
-
     --bg: #070707;
-    --bg2: #0b0b0b;
     --card: rgba(18,18,18,.72);
     --line: rgba(255,255,255,.09);
     --line2: rgba(255,255,255,.14);
     --text: #f2f2f2;
     --muted: #8d8d8d;
-    --soft: #bdbdbd;
-    --white: #ffffff;
-
 }
 
 * {
@@ -997,13 +1198,6 @@ body::before {
 
     background-size: 44px 44px;
 
-    mask-image:
-        linear-gradient(
-            to bottom,
-            black,
-            transparent 90%
-        );
-
 }
 
 a {
@@ -1011,23 +1205,19 @@ a {
     text-decoration: none;
 }
 
-button,
-input {
-    font: inherit;
-}
-
 .container {
 
-    width: min(
-        1180px,
-        calc(100% - 40px)
-    );
+    width:
+        min(
+            1180px,
+            calc(100% - 40px)
+        );
 
     margin: auto;
 
 }
 
-/* NAVBAR */
+/* NAV */
 
 .navbar {
 
@@ -1066,12 +1256,6 @@ input {
 
 .brand {
 
-    display: flex;
-
-    align-items: center;
-
-    gap: 10px;
-
     font-family:
         "Playfair Display",
         serif;
@@ -1081,7 +1265,7 @@ input {
 }
 
 .brand span {
-    color: #8b8b8b;
+    color: #777;
 }
 
 .nav-links {
@@ -1090,15 +1274,9 @@ input {
 
     gap: 28px;
 
-    color: #8f8f8f;
+    color: #888;
 
     font-size: 13px;
-
-}
-
-.nav-links a {
-
-    transition: .2s;
 
 }
 
@@ -1147,7 +1325,7 @@ input {
 
     border-radius: 999px;
 
-    color: #a6a6a6;
+    color: #aaa;
 
     font-size: 11px;
 
@@ -1162,7 +1340,7 @@ input {
 
     border-radius: 50%;
 
-    background: #d8d8d8;
+    background: #ddd;
 
     box-shadow:
         0 0 10px
@@ -1179,13 +1357,15 @@ input {
         serif;
 
     font-size:
-        clamp(65px, 12vw, 150px);
+        clamp(
+            65px,
+            12vw,
+            150px
+        );
 
     line-height: .9;
 
     letter-spacing: -5px;
-
-    font-weight: 700;
 
 }
 
@@ -1211,7 +1391,8 @@ input {
 
     max-width: 650px;
 
-    margin: 25px auto 0;
+    margin:
+        25px auto 0;
 
     color: #858585;
 
@@ -1252,10 +1433,7 @@ input {
 
     font-size: 13px;
 
-    transition:
-        transform .2s,
-        background .2s,
-        border .2s;
+    transition: .2s;
 
 }
 
@@ -1271,10 +1449,6 @@ input {
 
 }
 
-.btn-primary:hover {
-    background: white;
-}
-
 .btn-secondary {
 
     border:
@@ -1285,11 +1459,6 @@ input {
     background:
         rgba(255,255,255,.025);
 
-}
-
-.btn-secondary:hover {
-    background:
-        rgba(255,255,255,.07);
 }
 
 /* SECTIONS */
@@ -1323,7 +1492,7 @@ section {
         serif;
 
     font-size:
-        clamp(34px, 5vw, 58px);
+        clamp(34px,5vw,58px);
 
 }
 
@@ -1339,14 +1508,14 @@ section {
 
 }
 
-/* FEATURES */
+/* FUNCIONES */
 
 .features {
 
     display: grid;
 
     grid-template-columns:
-        repeat(3, 1fr);
+        repeat(3,1fr);
 
     gap: 15px;
 
@@ -1421,7 +1590,7 @@ section {
 
 }
 
-/* COMMANDS */
+/* COMANDOS */
 
 .commands-wrap {
 
@@ -1441,11 +1610,11 @@ section {
 
     display: flex;
 
-    gap: 10px;
+    flex-direction: column;
 
-    flex-wrap: wrap;
+    gap: 12px;
 
-    padding: 16px;
+    padding: 18px;
 
     border-bottom:
         1px solid var(--line);
@@ -1454,11 +1623,9 @@ section {
 
 .search {
 
-    flex: 1;
+    width: 100%;
 
-    min-width: 220px;
-
-    height: 44px;
+    height: 46px;
 
     border:
         1px solid var(--line);
@@ -1471,15 +1638,17 @@ section {
     border-radius: 9px;
 
     padding:
-        0 14px;
+        0 15px;
 
     outline: none;
 
 }
 
 .search:focus {
+
     border-color:
         rgba(255,255,255,.25);
+
 }
 
 .filters {
@@ -1509,7 +1678,7 @@ section {
     border-radius: 8px;
 
     padding:
-        11px 13px;
+        10px 13px;
 
     cursor: pointer;
 
@@ -1532,7 +1701,7 @@ section {
     display: grid;
 
     grid-template-columns:
-        repeat(3, 1fr);
+        repeat(3,1fr);
 
     gap: 1px;
 
@@ -1545,12 +1714,35 @@ section {
 
     position: relative;
 
-    padding: 19px;
+    padding: 20px;
 
     background:
         #0d0d0d;
 
-    min-height: 110px;
+    min-height: 115px;
+
+    transition: .2s;
+
+}
+
+.command-card:hover {
+
+    background:
+        #111;
+
+}
+
+.command-category {
+
+    color: #555;
+
+    font-size: 10px;
+
+    letter-spacing: 1.5px;
+
+    text-transform: uppercase;
+
+    margin-bottom: 8px;
 
 }
 
@@ -1599,7 +1791,7 @@ section {
 
     cursor: pointer;
 
-    font-size: 10px;
+    font-size: 9px;
 
 }
 
@@ -1614,7 +1806,7 @@ section {
     display: grid;
 
     grid-template-columns:
-        repeat(4, 1fr);
+        repeat(4,1fr);
 
     gap: 12px;
 
@@ -1654,10 +1846,6 @@ section {
 
     color: #ddd;
 
-}
-
-.online {
-    color: #ddd;
 }
 
 /* CREATOR */
@@ -1809,103 +1997,15 @@ footer {
 
     font-size: 12px;
 
-    transition: .2s;
-
 }
 
 .footer-socials a:hover {
     color: white;
 }
 
-/* MODAL */
-
-.modal {
-
-    position: fixed;
-
-    inset: 0;
-
-    z-index: 200;
-
-    display: none;
-
-    align-items: center;
-
-    justify-content: center;
-
-    padding: 20px;
-
-    background:
-        rgba(0,0,0,.75);
-
-    backdrop-filter:
-        blur(12px);
-
-}
-
-.modal.show {
-    display: flex;
-}
-
-.modal-card {
-
-    width: min(
-        500px,
-        100%
-    );
-
-    padding: 30px;
-
-    background: #101010;
-
-    border:
-        1px solid var(--line2);
-
-    border-radius: 16px;
-
-}
-
-.modal-close {
-
-    float: right;
-
-    border: 0;
-
-    background: transparent;
-
-    color: #777;
-
-    cursor: pointer;
-
-    font-size: 20px;
-
-}
-
-.modal h2 {
-
-    font-family:
-        "Playfair Display",
-        serif;
-
-    font-size: 28px;
-
-    margin-bottom: 12px;
-
-}
-
-.modal p {
-
-    color: #777;
-
-    line-height: 1.7;
-
-    font-size: 13px;
-
-}
-
 /* RESPONSIVE */
 
-@media (max-width: 900px) {
+@media(max-width:900px) {
 
     .features {
         grid-template-columns: 1fr;
@@ -1913,12 +2013,12 @@ footer {
 
     .commands-grid {
         grid-template-columns:
-            repeat(2, 1fr);
+            repeat(2,1fr);
     }
 
     .status-grid {
         grid-template-columns:
-            repeat(2, 1fr);
+            repeat(2,1fr);
     }
 
     .creator {
@@ -1927,14 +2027,13 @@ footer {
 
 }
 
-@media (max-width: 650px) {
+@media(max-width:650px) {
 
     .container {
+
         width:
-            min(
-                100% - 26px,
-                1180px
-            );
+            calc(100% - 26px);
+
     }
 
     .nav-links {
@@ -1962,8 +2061,11 @@ footer {
     }
 
     .footer-inner {
+
         flex-direction: column;
+
         align-items: flex-start;
+
     }
 
 }
@@ -1974,602 +2076,546 @@ footer {
 
 <body>
 
-<!-- ═══════════════════════════════════════════ -->
-<!-- NAVBAR -->
-<!-- ═══════════════════════════════════════════ -->
+<!-- NAV -->
 
 <nav class="navbar">
 
-    <div class="container nav-inner">
+<div class="container nav-inner">
 
-        <a
-            href="/"
-            class="brand"
-        >
-            𝕱𝖊𝖑𝖇𝖔𝖙 <span>夜</span>
-        </a>
+<a href="/" class="brand">
+    𝕱𝖊𝖑𝖇𝖔𝖙 <span>夜</span>
+</a>
 
-        <div class="nav-links">
+<div class="nav-links">
 
-            <a href="#funciones">
-                Funciones
-            </a>
+<a href="#funciones">
+    Funciones
+</a>
 
-            <a href="#comandos">
-                Comandos
-            </a>
+<a href="#comandos">
+    Comandos
+</a>
 
-            <a href="#estado">
-                Estado
-            </a>
+<a href="#estado">
+    Estado
+</a>
 
-            <a href="#creador">
-                Creador
-            </a>
+<a href="#creador">
+    Creador
+</a>
 
-            <a href="/browser">
-                Browser
-            </a>
+<a href="/browser">
+    Browser
+</a>
 
-        </div>
+</div>
 
-    </div>
+</div>
 
 </nav>
 
 
-<!-- ═══════════════════════════════════════════ -->
 <!-- HERO -->
-<!-- ═══════════════════════════════════════════ -->
 
 <header class="hero">
 
-    <div class="container hero-content">
+<div class="container hero-content">
 
-        <div class="eyebrow">
+<div class="eyebrow">
 
-            <span class="status-dot"></span>
+<span class="status-dot"></span>
 
-            SISTEMA ONLINE
+SISTEMA ONLINE
 
-        </div>
+</div>
 
-        <h1>
-            𝕱𝖊𝖑𝖇𝖔𝖙
-            <span>夜</span>
-        </h1>
+<h1>
+    𝕱𝖊𝖑𝖇𝖔𝖙
+    <span>夜</span>
+</h1>
 
-        <div class="hero-subtitle">
-            WhatsApp Bot
-        </div>
+<div class="hero-subtitle">
+    WhatsApp Bot
+</div>
 
-        <p class="hero-text">
+<p class="hero-text">
 
-            Un bot de WhatsApp creado para ofrecer
-            herramientas, administración, entretenimiento,
-            utilidades y mucho más dentro de tus grupos.
+Un bot de WhatsApp creado para ofrecer
+herramientas, administración, entretenimiento,
+utilidades y mucho más dentro de tus grupos.
 
-        </p>
+</p>
 
-        <div class="hero-actions">
+<div class="hero-actions">
 
-            <a
-                href="#comandos"
-                class="btn btn-primary"
-            >
-                Explorar comandos
-            </a>
+<a
+    href="#comandos"
+    class="btn btn-primary"
+>
+    Explorar comandos
+</a>
 
-            <a
-                href="#funciones"
-                class="btn btn-secondary"
-            >
-                Conocer Felbot
-            </a>
+<a
+    href="#funciones"
+    class="btn btn-secondary"
+>
+    Conocer Felbot
+</a>
 
-        </div>
+</div>
 
-        <div
-            class="hero-actions"
-            style="margin-top: 28px;"
-        >
+<div
+    class="hero-actions"
+    style="margin-top:28px;"
+>
 
-            <a
-                href="https://wa.me/573117354305"
-                target="_blank"
-                rel="noopener noreferrer"
-                class="btn btn-primary"
-            >
-                WhatsApp
-            </a>
+<a
+    href="https://wa.me/573117354305"
+    target="_blank"
+    rel="noopener noreferrer"
+    class="btn btn-primary"
+>
+    WhatsApp
+</a>
 
-            <a
-                href="https://instagram.com/fxzlp7_"
-                target="_blank"
-                rel="noopener noreferrer"
-                class="btn btn-secondary"
-            >
-                Instagram
-            </a>
+<a
+    href="https://instagram.com/fxzlp7_"
+    target="_blank"
+    rel="noopener noreferrer"
+    class="btn btn-secondary"
+>
+    Instagram
+</a>
 
-        </div>
+</div>
 
-    </div>
+</div>
 
 </header>
 
 
-<!-- ═══════════════════════════════════════════ -->
 <!-- FUNCIONES -->
-<!-- ═══════════════════════════════════════════ -->
 
 <section id="funciones">
 
-    <div class="container">
+<div class="container">
 
-        <div class="section-head">
+<div class="section-head">
 
-            <div class="section-kicker">
-                Características
-            </div>
+<div class="section-kicker">
+    Características
+</div>
 
-            <h2 class="section-title">
-                Todo en un solo lugar.
-            </h2>
+<h2 class="section-title">
+    Todo en un solo lugar.
+</h2>
 
-            <p class="section-description">
+<p class="section-description">
 
-                Felbot reúne herramientas para administrar
-                comunidades, divertirse, automatizar tareas
-                y aprovechar diferentes utilidades desde
-                WhatsApp.
+Felbot reúne herramientas para administrar
+comunidades, divertirse, automatizar tareas
+y aprovechar diferentes utilidades desde
+WhatsApp.
 
-            </p>
+</p>
 
-        </div>
-
-
-        <div class="features">
-
-            <article class="feature">
-
-                <div class="feature-icon">
-                    🛡️
-                </div>
-
-                <h3>
-                    Administración
-                </h3>
-
-                <p>
-                    Herramientas para moderar grupos,
-                    gestionar miembros, configurar
-                    bienvenida, despedida y protección
-                    contra enlaces.
-                </p>
-
-            </article>
+</div>
 
 
-            <article class="feature">
+<div class="features">
 
-                <div class="feature-icon">
-                    🎮
-                </div>
+<div class="feature">
 
-                <h3>
-                    Entretenimiento
-                </h3>
+<div class="feature-icon">
+    🛡️
+</div>
 
-                <p>
-                    Juegos, retos, preguntas, memes,
-                    frases, dinámicas y diferentes
-                    comandos para mantener activos
-                    tus grupos.
-                </p>
+<h3>
+    Administración
+</h3>
 
-            </article>
+<p>
+    Herramientas para moderar grupos,
+    gestionar miembros y configurar
+    diferentes opciones.
+</p>
 
-
-            <article class="feature">
-
-                <div class="feature-icon">
-                    🧰
-                </div>
-
-                <h3>
-                    Utilidades
-                </h3>
-
-                <p>
-                    Herramientas para búsquedas,
-                    conversiones, información,
-                    códigos QR, traducciones y
-                    diferentes tareas.
-                </p>
-
-            </article>
+</div>
 
 
-            <article class="feature">
+<div class="feature">
 
-                <div class="feature-icon">
-                    🎨
-                </div>
+<div class="feature-icon">
+    🎮
+</div>
 
-                <h3>
-                    Creatividad
-                </h3>
+<h3>
+    Entretenimiento
+</h3>
 
-                <p>
-                    Stickers, imágenes, efectos de
-                    texto, contenido anime y otras
-                    herramientas creativas.
-                </p>
+<p>
+    Juegos, retos, preguntas, memes,
+    frases y dinámicas para tus grupos.
+</p>
 
-            </article>
-
-
-            <article class="feature">
-
-                <div class="feature-icon">
-                    🔥
-                </div>
-
-                <h3>
-                    Free Fire
-                </h3>
-
-                <p>
-                    Consulta información y estadísticas
-                    relacionadas con jugadores, rangos,
-                    perfiles y gremios.
-                </p>
-
-            </article>
+</div>
 
 
-            <article class="feature">
+<div class="feature">
 
-                <div class="feature-icon">
-                    ⚡
-                </div>
+<div class="feature-icon">
+    🧰
+</div>
 
-                <h3>
-                    Sistema Felbot
-                </h3>
+<h3>
+    Utilidades
+</h3>
 
-                <p>
-                    Diseñado para funcionar de forma
-                    rápida y práctica, con una interfaz
-                    sencilla y comandos fáciles de usar.
-                </p>
+<p>
+    Herramientas para búsquedas,
+    conversiones, información y
+    diferentes tareas.
+</p>
 
-            </article>
+</div>
 
-        </div>
 
-    </div>
+<div class="feature">
+
+<div class="feature-icon">
+    🎨
+</div>
+
+<h3>
+    Creatividad
+</h3>
+
+<p>
+    Stickers, imágenes, efectos de
+    texto y diferentes herramientas
+    creativas.
+</p>
+
+</div>
+
+
+<div class="feature">
+
+<div class="feature-icon">
+    🔥
+</div>
+
+<h3>
+    Free Fire
+</h3>
+
+<p>
+    Consulta información y estadísticas
+    relacionadas con jugadores y perfiles.
+</p>
+
+</div>
+
+
+<div class="feature">
+
+<div class="feature-icon">
+    ⚡
+</div>
+
+<h3>
+    Sistema Felbot
+</h3>
+
+<p>
+    Una experiencia sencilla y práctica
+    con comandos fáciles de utilizar.
+</p>
+
+</div>
+
+</div>
+
+</div>
 
 </section>
 
 
-<!-- ═══════════════════════════════════════════ -->
 <!-- COMANDOS -->
-<!-- ═══════════════════════════════════════════ -->
 
 <section id="comandos">
 
-    <div class="container">
+<div class="container">
 
-        <div class="section-head">
+<div class="section-head">
 
-            <div class="section-kicker">
-                Command Center
-            </div>
+<div class="section-kicker">
+    Command Center
+</div>
 
-            <h2 class="section-title">
-                Comandos
-            </h2>
+<h2 class="section-title">
+    Comandos
+</h2>
 
-            <p class="section-description">
+<p class="section-description">
 
-                Explora las herramientas disponibles
-                en Felbot. Usa el prefijo
-                <strong>.</strong> antes de cada comando.
+Explora las herramientas disponibles
+en Felbot. Usa el prefijo
+<strong>.</strong> antes de cada comando.
 
-            </p>
+</p>
 
-        </div>
-
-
-        <div class="commands-wrap">
-
-            <div class="command-toolbar">
-
-                <input
-                    id="search"
-                    class="search"
-                    type="text"
-                    placeholder="Buscar comando..."
-                    autocomplete="off"
-                >
-
-                <div
-                    id="filters"
-                    class="filters"
-                ></div>
-
-            </div>
+</div>
 
 
-            <div
-                id="commandsGrid"
-                class="commands-grid"
-            ></div>
+<div class="commands-wrap">
 
-        </div>
+<div class="command-toolbar">
 
-    </div>
+<input
+    id="search"
+    class="search"
+    type="text"
+    placeholder="Buscar comando..."
+    autocomplete="off"
+>
+
+<div
+    id="filters"
+    class="filters"
+></div>
+
+</div>
+
+
+<div
+    id="commandsGrid"
+    class="commands-grid"
+></div>
+
+</div>
+
+</div>
 
 </section>
 
 
-<!-- ═══════════════════════════════════════════ -->
 <!-- ESTADO -->
-<!-- ═══════════════════════════════════════════ -->
 
 <section id="estado">
 
-    <div class="container">
+<div class="container">
 
-        <div class="section-head">
+<div class="section-head">
 
-            <div class="section-kicker">
-                System
-            </div>
+<div class="section-kicker">
+    System
+</div>
 
-            <h2 class="section-title">
-                Estado del sistema
-            </h2>
+<h2 class="section-title">
+    Estado del sistema
+</h2>
 
-            <p class="section-description">
+<p class="section-description">
+    Información actual del servicio Felbot.
+</p>
 
-                Información actual del servicio Felbot.
-
-            </p>
-
-        </div>
+</div>
 
 
-        <div class="status-grid">
+<div class="status-grid">
 
-            <div class="status-card">
+<div class="status-card">
 
-                <div class="status-label">
-                    Estado
-                </div>
+<div class="status-label">
+    Estado
+</div>
 
-                <div
-                    id="status"
-                    class="status-value online"
-                >
-                    Comprobando...
-                </div>
+<div
+    id="status"
+    class="status-value"
+>
+    Comprobando...
+</div>
 
-            </div>
-
-
-            <div class="status-card">
-
-                <div class="status-label">
-                    Uptime
-                </div>
-
-                <div
-                    id="uptime"
-                    class="status-value"
-                >
-                    —
-                </div>
-
-            </div>
+</div>
 
 
-            <div class="status-card">
+<div class="status-card">
 
-                <div class="status-label">
-                    Comandos
-                </div>
+<div class="status-label">
+    Uptime
+</div>
 
-                <div
-                    id="commandCount"
-                    class="status-value"
-                >
-                    ${TOTAL_COMMANDS}
-                </div>
+<div
+    id="uptime"
+    class="status-value"
+>
+    —
+</div>
 
-            </div>
+</div>
 
 
-            <div class="status-card">
+<div class="status-card">
 
-                <div class="status-label">
-                    Versión
-                </div>
+<div class="status-label">
+    Comandos
+</div>
 
-                <div
-                    id="version"
-                    class="status-value"
-                >
-                    ${VERSION}
-                </div>
+<div
+    id="commandCount"
+    class="status-value"
+>
+    ${TOTAL_COMMANDS}
+</div>
 
-            </div>
+</div>
 
-        </div>
 
-    </div>
+<div class="status-card">
+
+<div class="status-label">
+    Versión
+</div>
+
+<div
+    id="version"
+    class="status-value"
+>
+    ${VERSION}
+</div>
+
+</div>
+
+</div>
+
+</div>
 
 </section>
 
 
-<!-- ═══════════════════════════════════════════ -->
 <!-- CREADOR -->
-<!-- ═══════════════════════════════════════════ -->
 
 <section id="creador">
 
-    <div class="container creator">
+<div class="container creator">
 
-        <div>
+<div>
 
-            <div class="section-kicker">
-                Creator
-            </div>
+<div class="section-kicker">
+    Creator
+</div>
 
-            <h2 class="section-title">
-                Hecho por personas,
-                para comunidades.
-            </h2>
+<h2 class="section-title">
+    Hecho por personas,
+    para comunidades.
+</h2>
 
-            <p class="section-description">
+<p class="section-description">
 
-                Felbot es un proyecto desarrollado
-                para crear una experiencia completa
-                de herramientas y entretenimiento
-                directamente desde WhatsApp.
+Felbot es un proyecto desarrollado
+para crear una experiencia completa
+de herramientas y entretenimiento
+directamente desde WhatsApp.
 
-            </p>
+</p>
 
-        </div>
-
-
-        <div class="creator-card">
-
-            <div class="creator-name">
-                Fxlipe 夜
-            </div>
-
-            <div class="creator-role">
-                Creador de Felbot
-            </div>
+</div>
 
 
-            <div class="socials">
+<div class="creator-card">
 
-                <a
-                    href="https://wa.me/573117354305"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    class="social"
-                >
-                    WhatsApp
-                </a>
+<div class="creator-name">
+    Fxlipe 夜
+</div>
 
-                <a
-                    href="https://instagram.com/fxzlp7_"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    class="social"
-                >
-                    Instagram
-                </a>
+<div class="creator-role">
+    Creador de Felbot
+</div>
 
-            </div>
 
-        </div>
+<div class="socials">
 
-    </div>
+<a
+    href="https://wa.me/573117354305"
+    target="_blank"
+    rel="noopener noreferrer"
+    class="social"
+>
+    WhatsApp
+</a>
+
+<a
+    href="https://instagram.com/fxzlp7_"
+    target="_blank"
+    rel="noopener noreferrer"
+    class="social"
+>
+    Instagram
+</a>
+
+</div>
+
+</div>
+
+</div>
 
 </section>
 
 
-<!-- ═══════════════════════════════════════════ -->
 <!-- FOOTER -->
-<!-- ═══════════════════════════════════════════ -->
 
 <footer>
 
-    <div class="container footer-inner">
+<div class="container footer-inner">
 
-        <div>
+<div>
 
-            <div class="footer-brand">
-                𝕱𝖊𝖑𝖇𝖔𝖙 夜
-            </div>
+<div class="footer-brand">
+    𝕱𝖊𝖑𝖇𝖔𝖙 夜
+</div>
 
-            <div class="footer-info">
-                © 2026 — Todos los derechos reservados.
-            </div>
-
-        </div>
-
-
-        <div class="footer-socials">
-
-            <a
-                href="https://wa.me/573117354305"
-                target="_blank"
-                rel="noopener noreferrer"
-            >
-                WhatsApp
-            </a>
-
-            <a
-                href="https://instagram.com/fxzlp7_"
-                target="_blank"
-                rel="noopener noreferrer"
-            >
-                Instagram
-            </a>
-
-            <a href="/browser">
-                Browser
-            </a>
-
-        </div>
-
-    </div>
-
-</footer>
-
-
-<!-- ═══════════════════════════════════════════ -->
-<!-- MODAL -->
-<!-- ═══════════════════════════════════════════ -->
-
-<div
-    id="modal"
-    class="modal"
->
-
-    <div class="modal-card">
-
-        <button
-            class="modal-close"
-            onclick="closeModal()"
-        >
-            ×
-        </button>
-
-        <h2 id="modalTitle">
-            Felbot
-        </h2>
-
-        <p id="modalText">
-            Información del comando.
-        </p>
-
-    </div>
+<div class="footer-info">
+    © 2026 — Todos los derechos reservados.
+</div>
 
 </div>
+
+
+<div class="footer-socials">
+
+<a
+    href="https://wa.me/573117354305"
+    target="_blank"
+    rel="noopener noreferrer"
+>
+    WhatsApp
+</a>
+
+<a
+    href="https://instagram.com/fxzlp7_"
+    target="_blank"
+    rel="noopener noreferrer"
+>
+    Instagram
+</a>
+
+<a href="/browser">
+    Browser
+</a>
+
+</div>
+
+</div>
+
+</footer>
 
 
 <script>
 
 const COMMAND_DATA =
-    ${categoriesJson}
+${safeJson(COMMANDS)}
 
 let currentCategory = 'TODOS'
 
@@ -2583,40 +2629,41 @@ const commandsGrid =
     document.getElementById('commandsGrid')
 
 
-// ═══════════════════════════════════════════════
 // FILTROS
-// ═══════════════════════════════════════════════
 
 function createFilters() {
 
     filters.innerHTML = ''
 
-    const allButton =
+    const all =
         document.createElement('button')
 
-    allButton.className =
+    all.className =
         'filter active'
 
-    allButton.textContent =
+    all.textContent =
         'Todos'
 
-    allButton.onclick = () => {
+    all.onclick = () => {
 
         currentCategory = 'TODOS'
 
         document
             .querySelectorAll('.filter')
-            .forEach(btn =>
-                btn.classList.remove('active')
+            .forEach(
+                btn =>
+                    btn.classList.remove(
+                        'active'
+                    )
             )
 
-        allButton.classList.add('active')
+        all.classList.add('active')
 
         renderCommands()
 
     }
 
-    filters.appendChild(allButton)
+    filters.appendChild(all)
 
 
     COMMAND_DATA.forEach(category => {
@@ -2624,7 +2671,8 @@ function createFilters() {
         const button =
             document.createElement('button')
 
-        button.className = 'filter'
+        button.className =
+            'filter'
 
         button.textContent =
             category.icon +
@@ -2638,8 +2686,11 @@ function createFilters() {
 
             document
                 .querySelectorAll('.filter')
-                .forEach(btn =>
-                    btn.classList.remove('active')
+                .forEach(
+                    btn =>
+                        btn.classList.remove(
+                            'active'
+                        )
                 )
 
             button.classList.add('active')
@@ -2655,9 +2706,7 @@ function createFilters() {
 }
 
 
-// ═══════════════════════════════════════════════
-// COMANDOS
-// ═══════════════════════════════════════════════
+// RENDER COMANDOS
 
 function renderCommands() {
 
@@ -2666,9 +2715,7 @@ function renderCommands() {
             .trim()
             .toLowerCase()
 
-
     let result = []
-
 
     COMMAND_DATA.forEach(category => {
 
@@ -2679,7 +2726,6 @@ function renderCommands() {
             return
         }
 
-
         category.commands.forEach(command => {
 
             const name =
@@ -2688,11 +2734,14 @@ function renderCommands() {
             const description =
                 command[1]
 
-
             if (
                 !query ||
-                name.toLowerCase().includes(query) ||
-                description.toLowerCase().includes(query) ||
+                name
+                    .toLowerCase()
+                    .includes(query) ||
+                description
+                    .toLowerCase()
+                    .includes(query) ||
                 category.category
                     .toLowerCase()
                     .includes(query)
@@ -2742,15 +2791,22 @@ function renderCommands() {
         card.className =
             'command-card'
 
-
         card.innerHTML = \`
+
+            <div class="command-category">
+                \${escapeClient(
+                    item.category.category
+                )}
+            </div>
 
             <div class="command-name">
                 .\${escapeClient(item.name)}
             </div>
 
             <div class="command-description">
-                \${escapeClient(item.description)}
+                \${escapeClient(
+                    item.description
+                )}
             </div>
 
             <button
@@ -2781,9 +2837,7 @@ function escapeClient(value) {
 }
 
 
-// ═══════════════════════════════════════════════
 // COPIAR
-// ═══════════════════════════════════════════════
 
 async function copyCommand(command) {
 
@@ -2793,70 +2847,39 @@ async function copyCommand(command) {
             command
         )
 
-        openModal(
-            'Comando copiado',
-            command +
-            ' fue copiado al portapapeles.'
-        )
+        const old =
+            event &&
+            event.target
+                ? event.target.textContent
+                : null
+
+        if (
+            event &&
+            event.target
+        ) {
+
+            event.target.textContent =
+                'COPIADO'
+
+            setTimeout(() => {
+
+                event.target.textContent =
+                    old || 'COPIAR'
+
+            }, 1200)
+
+        }
 
     } catch {
 
-        openModal(
-            'Comando',
-            command
-        )
+        alert(command)
 
     }
 
 }
 
 
-// ═══════════════════════════════════════════════
-// MODAL
-// ═══════════════════════════════════════════════
-
-function openModal(title, text) {
-
-    document.getElementById(
-        'modalTitle'
-    ).textContent = title
-
-    document.getElementById(
-        'modalText'
-    ).textContent = text
-
-    document.getElementById(
-        'modal'
-    ).classList.add('show')
-
-}
-
-
-function closeModal() {
-
-    document.getElementById(
-        'modal'
-    ).classList.remove('show')
-
-}
-
-
-document
-    .getElementById('modal')
-    .addEventListener('click', event => {
-
-        if (
-            event.target.id === 'modal'
-        ) {
-            closeModal()
-        }
-
-    })
-
-
-// ═══════════════════════════════════════════════
 // BUSCADOR
-// ═══════════════════════════════════════════════
 
 searchInput.addEventListener(
     'input',
@@ -2864,9 +2887,7 @@ searchInput.addEventListener(
 )
 
 
-// ═══════════════════════════════════════════════
 // STATUS
-// ═══════════════════════════════════════════════
 
 async function updateStatus() {
 
@@ -2899,7 +2920,7 @@ async function updateStatus() {
         document.getElementById(
             'commandCount'
         ).textContent =
-            data.commands || ${TOTAL_COMMANDS}
+            data.commands || '${TOTAL_COMMANDS}'
 
 
         document.getElementById(
@@ -2920,10 +2941,6 @@ async function updateStatus() {
 }
 
 
-// ═══════════════════════════════════════════════
-// INICIALIZAR
-// ═══════════════════════════════════════════════
-
 createFilters()
 
 renderCommands()
@@ -2943,26 +2960,49 @@ setInterval(
 
 })
 
-
 // ═══════════════════════════════════════════════
-// START SERVER
+// INICIAR
 // ═══════════════════════════════════════════════
 
-app.listen(PORT, '0.0.0.0', async () => {
+app.listen(
+    PORT,
+    '0.0.0.0',
+    async () => {
 
-    console.log('')
-    console.log('╭──────────────────────────────╮')
-    console.log('│       𝕱𝖊𝖑𝖇𝖔𝖙 夜 SERVER       │')
-    console.log('├──────────────────────────────┤')
-    console.log(`│ 🌐 PORT: ${PORT}`)
-    console.log(`│ 🤖 BOT: ${BOT_NAME}`)
-    console.log(`│ 👤 CREATOR: ${CREATOR}`)
-    console.log(`│ 📦 VERSION: ${VERSION}`)
-    console.log(`│ ⚡ COMMANDS: ${TOTAL_COMMANDS}`)
-    console.log(`│ 📂 CATEGORIES: ${TOTAL_CATEGORIES}`)
-    console.log('╰──────────────────────────────╯')
-    console.log('')
+        console.log('')
+        console.log(
+            '╭──────────────────────────────╮'
+        )
+        console.log(
+            '│       𝕱𝖊𝖑𝖇𝖔𝖙 夜 SERVER       │'
+        )
+        console.log(
+            '├──────────────────────────────┤'
+        )
+        console.log(
+            `│ 🌐 PORT: ${PORT}`
+        )
+        console.log(
+            `│ 🤖 BOT: ${BOT_NAME}`
+        )
+        console.log(
+            `│ 👤 CREATOR: ${CREATOR}`
+        )
+        console.log(
+            `│ 📦 VERSION: ${VERSION}`
+        )
+        console.log(
+            `│ ⚡ COMMANDS: ${TOTAL_COMMANDS}`
+        )
+        console.log(
+            `│ 📂 CATEGORIES: ${TOTAL_CATEGORIES}`
+        )
+        console.log(
+            '╰──────────────────────────────╯'
+        )
+        console.log('')
 
-    await startBrowser()
+        await startBrowser()
 
-})
+    }
+)
