@@ -29,15 +29,16 @@ function buildIntroHeader(uptimeSeconds, version = '2.0.0') {
 │ 📚 Comandos • 120
 │ ⏳ Uptime   • ${uptime}
 │
-├──────────────────────────⬣
-│ 🌐 WEB OFICIAL
-│ ${WEB_URL}
-│
 ╰━━━━━━━━━━━━━━━━━━━━━━━━━━⬣`
 }
 
 function buildMenuText(uptimeSeconds, version = '2.0.0') {
-    const introHeader = buildIntroHeader(uptimeSeconds, version)
+
+    const introHeader =
+        buildIntroHeader(
+            uptimeSeconds,
+            version
+        )
 
     const helpMessage = `${introHeader}
 
@@ -203,15 +204,36 @@ function buildMenuText(uptimeSeconds, version = '2.0.0') {
 │
 ╰━━━━━━━━━━━━━━━━━━━━━━⬣
 
+╭━━〔 🔞 NSFW 〕━━⬣
+│
+│ ✦ Comandos para contenido adulto.
+│
+│ ❀ \`.xxnx\` + <texto>
+│   Búsqueda para descarga.
+│
+│ ❀ \`.follar\` + <@usuario>
+│   Comando de interacción.
+│
+│ ❀ \`.cum\` + <@usuario>
+│   Comando de interacción.
+│
+│ ❀ \`.masturbarsef\`
+│   Comando de interacción femenina.
+│
+│ ❀ \`.masturbarsem\`
+│   Comando de interacción masculina.
+│
+╰━━━━━━━━━━━━━━━━━━━━━━⬣
+
 ╭━━〔 🎨 STICKERS 〕━━⬣
 │
-│ ✦ Herramientas de stickers.
+│ ✦ Herramientas de stickers e imágenes.
 │
 │ ❀ \`.s\`
 │   Convertir imagen o video en sticker.
 │
 │ ❀ \`.crop\`
-│   Imagen/video a sticker centrado.
+│   Imagen o video a sticker centrado.
 │
 │ ❀ \`.brat\`
 │   Convertir texto en sticker.
@@ -292,7 +314,7 @@ function buildMenuText(uptimeSeconds, version = '2.0.0') {
 
 ╭━━〔 🖼️ ANIME 〕━━⬣
 │
-│ ✦ Reacciones y gifs anime.
+│ ✦ Reacciones y gifs estilo anime.
 │
 │ ❀ \`.nom\`
 │   Comer cariñosamente a alguien.
@@ -322,7 +344,7 @@ function buildMenuText(uptimeSeconds, version = '2.0.0') {
 
 ╭━━〔 🎮 JUEGOS 〕━━⬣
 │
-│ ✦ Juegos y entretenimiento.
+│ ✦ Juegos y entretenimiento interactivo.
 │
 │ ❀ \`.ppt\` + <@usuario>
 │   Piedra, papel o tijera.
@@ -430,7 +452,7 @@ function buildMenuText(uptimeSeconds, version = '2.0.0') {
 │   Buscar y descargar música.
 │
 │ ❀ \`.video\` + <nombre>
-│   Buscar y descargar videos.
+│   Buscar y descargar videos de YouTube.
 │
 │ ❀ \`.song\` + <nombre>
 │   Descargar canciones en MP3.
@@ -448,7 +470,7 @@ function buildMenuText(uptimeSeconds, version = '2.0.0') {
 │   Descargar reels y publicaciones.
 │
 │ ❀ \`.ytmp4\` + <link>
-│   Descargar videos.
+│   Descargar videos de YouTube.
 │
 ╰━━━━━━━━━━━━━━━━━━━━━━⬣
 
@@ -456,9 +478,7 @@ function buildMenuText(uptimeSeconds, version = '2.0.0') {
 │
 │          𝕱𝖊𝖑𝖇𝖔𝖙 夜
 │
-│ 🚀 Powered By Fxlipe 夜
-│
-│ 🌐 ${WEB_URL}
+│          POWERED BY FXLIPE 夜
 │
 ╰━━━━━━━━━━━━━━━━━━━━━━━━━━⬣`
 
@@ -466,11 +486,13 @@ function buildMenuText(uptimeSeconds, version = '2.0.0') {
 }
 
 /* =========================================================
-   BOTONES
+   ACCIONES DE LOS BOTONES
 ========================================================= */
 
 function getMenuButtonAction(buttonId) {
+
     switch (buttonId) {
+
         case 'view_full_menu':
             return {
                 type: 'send_full_menu'
@@ -481,12 +503,17 @@ function getMenuButtonAction(buttonId) {
     }
 }
 
+/* =========================================================
+   MANEJADOR DE BOTONES
+========================================================= */
+
 async function handleMenuButton(
     sock,
     chatId,
     buttonId,
     message
 ) {
+
     const action =
         getMenuButtonAction(buttonId)
 
@@ -517,7 +544,7 @@ async function handleMenuButton(
 }
 
 /* =========================================================
-   MENÚ INTERACTIVO
+   COMANDO MENU
 ========================================================= */
 
 async function helpCommand(
@@ -538,13 +565,9 @@ async function helpCommand(
 │ Herramientas, administración,
 │ entretenimiento y mucho más.
 │
-├──────────────────────────⬣
-│ 🌐 WEB OFICIAL
-│ ${WEB_URL}
+│ Selecciona una opción abajo.
 │
-╰──────────────────────────⬣
-
-👇 Elige una opción para continuar.`
+╰──────────────────────────⬣`
 
     try {
 
@@ -577,38 +600,94 @@ async function helpCommand(
                 }
             )
 
+        /*
+         * 𝕱𝖊𝖑𝖇𝖔𝖙 夜
+         * Se muestra como el primer elemento
+         * interactivo y abre directamente la web.
+         *
+         * No se muestra la URL.
+         */
+
         const buttons = [
-            [
-                'VER MENU COMPLETO',
-                'view_full_menu'
-            ],
-            [
-                'CONTACTAME 夜',
-                'owner'
-            ],
-            [
-                'REPORTAR ERROR ❗',
-                'report_error'
-            ],
-            [
-                'SOLICITUD DE COMANDO 🕸️',
-                'request_command'
-            ],
-            [
-                'ADQUIRIR BOT 💵',
-                'buy_bot'
-            ]
-        ].map(
-            ([display_text, id]) => ({
+
+            {
+                name: 'cta_url',
+
+                buttonParamsJson:
+                    JSON.stringify({
+                        display_text:
+                            '𝕱𝖊𝖑𝖇𝖔𝖙 夜',
+
+                        url:
+                            WEB_URL
+                    })
+            },
+
+            {
                 name: 'quick_reply',
 
                 buttonParamsJson:
                     JSON.stringify({
-                        display_text,
-                        id
+                        display_text:
+                            'VER MENU COMPLETO',
+
+                        id:
+                            'view_full_menu'
                     })
-            })
-        )
+            },
+
+            {
+                name: 'quick_reply',
+
+                buttonParamsJson:
+                    JSON.stringify({
+                        display_text:
+                            'CONTACTAME 夜',
+
+                        id:
+                            'owner'
+                    })
+            },
+
+            {
+                name: 'quick_reply',
+
+                buttonParamsJson:
+                    JSON.stringify({
+                        display_text:
+                            'REPORTAR ERROR ❗',
+
+                        id:
+                            'report_error'
+                    })
+            },
+
+            {
+                name: 'quick_reply',
+
+                buttonParamsJson:
+                    JSON.stringify({
+                        display_text:
+                            'SOLICITUD DE COMANDO 🕸️',
+
+                        id:
+                            'request_command'
+                    })
+            },
+
+            {
+                name: 'quick_reply',
+
+                buttonParamsJson:
+                    JSON.stringify({
+                        display_text:
+                            'ADQUIRIR BOT 💵',
+
+                        id:
+                            'buy_bot'
+                    })
+            }
+        ]
 
         const menuMessage =
             generateWAMessageFromContent(
@@ -649,7 +728,8 @@ async function helpCommand(
                     }
                 },
                 {
-                    quoted: message
+                    quoted:
+                        message
                 }
             )
 
@@ -662,9 +742,11 @@ async function helpCommand(
 
                 additionalNodes: [
                     {
-                        tag: 'biz',
+                        tag:
+                            'biz',
 
-                        attrs: {},
+                        attrs:
+                            {},
 
                         content: [
                             {
@@ -675,7 +757,8 @@ async function helpCommand(
                                     type:
                                         'native_flow',
 
-                                    v: '1'
+                                    v:
+                                        '1'
                                 },
 
                                 content: [
@@ -684,7 +767,8 @@ async function helpCommand(
                                             'native_flow',
 
                                         attrs: {
-                                            v: '9',
+                                            v:
+                                                '9',
 
                                             name:
                                                 'mixed'
@@ -712,7 +796,8 @@ async function helpCommand(
                     introCaption
             },
             {
-                quoted: message
+                quoted:
+                    message
             }
         )
     }
@@ -731,7 +816,8 @@ helpCommand.getMenuButtonAction =
 helpCommand.handleMenuButton =
     handleMenuButton
 
-module.exports = helpCommand
+module.exports =
+    helpCommand
 
 module.exports.buildMenuText =
     buildMenuText
