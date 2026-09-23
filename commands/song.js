@@ -2,6 +2,10 @@ const youtubedl = require('youtube-dl-exec')
 const fs = require('fs')
 const path = require('path')
 const os = require('os')
+const {
+   generateWAMessageFromContent,
+   prepareWAMessageMedia
+} = require('@whiskeysockets/baileys')
 
 // ======================================================
 // CACHE
@@ -1139,61 +1143,106 @@ async function songCommand(
                video.views
          })
 
-      await sock.sendMessage(
-         chatId,
-         {
-            image: {
-               url:
-                  video.thumbnail
-            },
+      const buttons = [
+         [
+            '🎬 Video',
+            `song::video::${selectionId}`
+         ],
+         [
+            '🎵 Audio',
+            `song::audio::${selectionId}`
+         ]
+      ].map(
+         ([display_text, id]) => ({
+            name: 'quick_reply',
+            buttonParamsJson:
+               JSON.stringify({
+                  display_text,
+                  id
+               })
+         })
+      )
 
-            caption:
-`🎵 *${video.title || 'Canción'}*
+      let preparedImage = {}
 
-> ❀ Autor: ${video.author?.name || 'Unknown'}
-> ❀ Duración: ${video.timestamp || 'Unknown'}
-> ❀ Vistas: ${Number(
-   video.views || 0
-).toLocaleString()}
-
-Elige cómo quieres escucharla:`,
-
-            footer:
-               'FelbotC',
-
-            buttons: [
+      try {
+         preparedImage =
+            await prepareWAMessageMedia(
                {
-                  buttonId:
-                     `song::video::${selectionId}`,
-
-                  buttonText: {
-                     displayText:
-                        '🎬 Video'
-                  },
-
-                  type:
-                     1
+                  image: {
+                     url:
+                        video.thumbnail
+                  }
                },
                {
-                  buttonId:
-                     `song::audio::${selectionId}`,
-
-                  buttonText: {
-                     displayText:
-                        '🎵 Audio'
-                  },
-
-                  type:
-                     1
+                  upload:
+                     sock.waUploadToServer
                }
-            ],
+            )
+      } catch {}
 
-            headerType:
-               1
-         },
+      const songMessage =
+         generateWAMessageFromContent(
+            chatId,
+            {
+               interactiveMessage: {
+                  header: {
+                     title:
+                        '🎵 ' + (video.title || 'Canción'),
+                     subtitle:
+                        `${video.author?.name || 'Unknown'} • ${video.timestamp || 'Unknown'} • ${Number(video.views || 0).toLocaleString()} vistas`,
+                     hasMediaAttachment:
+                        true,
+                     ...preparedImage
+                  },
+                  body: {
+                     text:
+                        'Elige cómo quieres recibir la canción:'
+                  },
+                  footer: {
+                     text:
+                        'FelbotC'
+                  },
+                  nativeFlowMessage: {
+                     buttons
+                  }
+               }
+            },
+            {
+               quoted: message
+            }
+         )
+
+      await sock.relayMessage(
+         songMessage.key.remoteJid,
+         songMessage.message,
          {
-            quoted:
-               message
+            messageId:
+               songMessage.key.id,
+            additionalNodes: [
+               {
+                  tag: 'biz',
+                  attrs: {},
+                  content: [
+                     {
+                        tag: 'interactive',
+                        attrs: {
+                           type: 'native_flow',
+                           v: '1'
+                        },
+                        content: [
+                           {
+                              tag: 'native_flow',
+                              attrs: {
+                                 v: '9',
+                                 name: 'mixed'
+                              }
+                           }
+                        ]
+                     }
+                  ]
+               }
+            ]
          }
       )
 
