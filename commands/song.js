@@ -795,7 +795,7 @@ async function songCommand(
    video.views || 0
 ).toLocaleString()}
 
-> ⚡ Descarga rápida...
+> ⚡ Descargando audio...
 > ${createBar(25)} 25%`
             },
             {
