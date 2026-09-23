@@ -90,4 +90,4 @@ async function besarCommand(sock, chatId, message) {
     }, { quoted: message })
 }
 
-module.exports = { besarCommand }
+module.exports = { besarCommand }//A
