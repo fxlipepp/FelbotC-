@@ -28,14 +28,9 @@ try {
 const searchCache = new Map()
 
 function limitMapSize(map, max = 100) {
-
    while (map.size > max) {
-
-      const firstKey =
-         map.keys().next().value
-
+      const firstKey = map.keys().next().value
       if (!firstKey) break
-
       map.delete(firstKey)
    }
 }
@@ -45,9 +40,7 @@ function limitMapSize(map, max = 100) {
 // ======================================================
 
 function cleanMemory() {
-
    try {
-
       if (searchCache.size > 70) {
          searchCache.clear()
       }
@@ -58,7 +51,6 @@ function cleanMemory() {
       ) {
          global.gc()
       }
-
    } catch {}
 }
 
@@ -68,11 +60,10 @@ setInterval(
 )
 
 // ======================================================
-// BARRA DE PROGRESO
+// BARRA
 // ======================================================
 
 function createBar(percent) {
-
    const total = 10
 
    const filled =
@@ -91,7 +82,6 @@ function createBar(percent) {
 }
 
 function progressText(percent) {
-
    return `${createBar(percent)} ${percent}%`
 }
 
@@ -106,25 +96,17 @@ const YOUTUBE_USER_AGENT =
    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36'
 
 // ======================================================
-// ESTADO DE COOKIES
+// ESTADO COOKIES
 // ======================================================
 
 function getCookiesStatus() {
-
    try {
-
-      if (
-         !fs.existsSync(
-            cookiesPath
-         )
-      ) {
+      if (!fs.existsSync(cookiesPath)) {
          return false
       }
 
       const stats =
-         fs.statSync(
-            cookiesPath
-         )
+         fs.statSync(cookiesPath)
 
       if (!stats.isFile()) {
          return false
@@ -135,9 +117,7 @@ function getCookiesStatus() {
       }
 
       return true
-
    } catch {
-
       return false
    }
 }
@@ -147,12 +127,8 @@ function getCookiesStatus() {
 // ======================================================
 
 function validateCookiesFile() {
-
    try {
-
-      if (
-         !getCookiesStatus()
-      ) {
+      if (!getCookiesStatus()) {
          return false
       }
 
@@ -179,7 +155,6 @@ function validateCookiesFile() {
          firstLine === '# Netscape HTTP Cookie File'
 
       if (!validHeader) {
-
          console.log(
             '⚠️ COOKIES: encabezado Netscape inválido'
          )
@@ -190,7 +165,6 @@ function validateCookiesFile() {
       return true
 
    } catch {
-
       return false
    }
 }
@@ -209,24 +183,12 @@ console.log(
 // ======================================================
 
 const BASE_OPTIONS = {
-
-   noWarnings:
-      true,
-
-   noPlaylist:
-      true,
-
-   retries:
-      1,
-
-   noCheckCertificates:
-      true,
-
-   jsRuntimes:
-      'node',
-
-   userAgent:
-      YOUTUBE_USER_AGENT
+   noWarnings: true,
+   noPlaylist: true,
+   retries: 1,
+   noCheckCertificates: true,
+   jsRuntimes: 'node',
+   userAgent: YOUTUBE_USER_AGENT
 }
 
 // ======================================================
@@ -241,26 +203,20 @@ function youtubeOptions({
       ...BASE_OPTIONS
    }
 
-   // Un solo cliente para reducir latencia
    options.extractorArgs =
       'youtube:player_client=default'
 
-   // Cookies
    if (cookiesAvailable) {
-
       options.cookies =
          cookiesPath
    }
 
-   // FFmpeg solamente cuando está disponible
    if (ffmpegPath) {
-
       options.ffmpegLocation =
          ffmpegPath
    }
 
    if (format) {
-
       options.format =
          format
    }
@@ -277,9 +233,7 @@ function formatDuration(seconds) {
    if (
       seconds === undefined ||
       seconds === null ||
-      Number.isNaN(
-         Number(seconds)
-      )
+      Number.isNaN(Number(seconds))
    ) {
       return 'Unknown'
    }
@@ -333,14 +287,26 @@ function sanitizeSongTitle(
 }
 
 // ======================================================
-// SELECCIONES DE BOTONES
+// OBTENER USUARIO
+// ======================================================
+
+function getUserId(message) {
+
+   return (
+      message?.key?.participant ||
+      message?.participant ||
+      message?.key?.remoteJid ||
+      ''
+   )
+}
+
+// ======================================================
+// SELECCIONES
 // ======================================================
 
 function getSongSelectionMap() {
 
-   if (
-      !global.songSelections
-   ) {
+   if (!global.songSelections) {
       global.songSelections =
          new Map()
    }
@@ -369,11 +335,9 @@ function registerSongSelection(
 
    setTimeout(
       () => {
-
          selections.delete(
             selectionId
          )
-
       },
       1000 * 60 * 10
    )
@@ -393,9 +357,7 @@ async function reactToSong(
 
    try {
 
-      if (
-         !message?.key
-      ) {
+      if (!message?.key) {
          return
       }
 
@@ -413,59 +375,6 @@ async function reactToSong(
 }
 
 // ======================================================
-// MENSAJE DE PROGRESO
-// ======================================================
-
-async function sendProgress(
-   sock,
-   chatId,
-   loading,
-   title,
-   author,
-   duration,
-   type,
-   percent,
-   status
-) {
-
-   try {
-
-      await sock.sendMessage(
-         chatId,
-         {
-            edit:
-               loading.key,
-
-            image: {
-               url:
-                  loading.thumbnail ||
-                  'https://i.imgur.com/AfFp7pu.png'
-            },
-
-            caption:
-`╭━━━〔 𝕱𝖊𝖑𝖇𝖔𝖙 夜 〕━━━⬣
-│ ${type === 'video' ? '🎬' : '🎵'} *${type === 'video' ? 'VIDEO' : 'AUDIO'}*
-╰━━━━━━━━━━━━━━━━━━━━⬣
-
-> ❀ *Título:* ${title}
-> ❀ *Autor:* ${author}
-> ❀ *Duración:* ${duration}
-
-╭────────────────────⬣
-│ ${status}
-│
-│ ${progressText(percent)}
-╰────────────────────⬣
-
-> 🍪 Cookies: ${cookiesAvailable ? 'ON' : 'OFF'}
-> ⚡ FelbotC`
-         }
-      )
-
-   } catch {}
-}
-
-// ======================================================
 // BUSCAR YOUTUBE
 // ======================================================
 
@@ -474,15 +383,12 @@ async function searchYouTube(
 ) {
 
    console.log(`
-╭──────────────────────⬣
-│ 🔎 BUSCANDO YOUTUBE
-├──────────────────────⬣
-│ 🎵 ${query}
-│ ⚡ SEARCH RÁPIDO
-│ 🍪 COOKIES: ${cookiesAvailable ? 'ON' : 'OFF'}
-│ 🌐 USER-AGENT: FIJO
-│ 🎯 CLIENT: default
-╰──────────────────────⬣
+🎶 FELBOT PLAY
+├─ 🔎 ${query}
+├─ ⚡ SEARCH RÁPIDO
+├─ 🍪 COOKIES: ${cookiesAvailable ? 'ON' : 'OFF'}
+├─ 🌐 USER-AGENT: FIJO
+└─ 🎯 CLIENT: default
 `)
 
    try {
@@ -514,7 +420,6 @@ async function searchYouTube(
          ) ||
          !results.entries.length
       ) {
-
          throw new Error(
             'No se encontraron resultados'
          )
@@ -527,7 +432,6 @@ async function searchYouTube(
          !selected ||
          !selected.id
       ) {
-
          throw new Error(
             'Resultado de YouTube inválido'
          )
@@ -543,11 +447,6 @@ async function searchYouTube(
       console.log(
          '✅ VIDEO:',
          selected.title
-      )
-
-      console.log(
-         '🎯 URL:',
-         videoUrl
       )
 
       return {
@@ -581,7 +480,6 @@ async function searchYouTube(
             ),
 
          author: {
-
             name:
                selected.uploader ||
                selected.channel ||
@@ -607,7 +505,7 @@ async function searchYouTube(
 }
 
 // ======================================================
-// DESCARGA VIDEO
+// DESCARGAR VIDEO
 // ======================================================
 
 async function downloadVideo(
@@ -626,12 +524,10 @@ async function downloadVideo(
          tempDir
       )
    ) {
-
       fs.mkdirSync(
          tempDir,
          {
-            recursive:
-               true
+            recursive: true
          }
       )
    }
@@ -651,31 +547,35 @@ async function downloadVideo(
       )
 
    console.log(`
-╭──────────────────────⬣
-│ 🎬 DESCARGA DE VIDEO
-├──────────────────────⬣
-│ 🎥 YT-DLP
-│ ⚡ VIDEO MP4
-│ 🍪 COOKIES: ${cookiesAvailable ? 'ON' : 'OFF'}
-│ 🌐 USER-AGENT: FIJO
-│ 🎯 CLIENT: default
-│ 🔧 FFMPEG: ${ffmpegPath ? 'ON' : 'OFF'}
-╰──────────────────────⬣
+🎬 FELBOT VIDEO
+├─ ⚡ MODO VIDEO
+├─ 🍪 COOKIES: ${cookiesAvailable ? 'ON' : 'OFF'}
+├─ 🌐 USER-AGENT: FIJO
+├─ 🎯 CLIENT: default
+└─ 🔧 FFMPEG: ${ffmpegPath ? 'ON' : 'OFF'}
 `)
 
    try {
 
       if (onStage) {
          await onStage(
-            25,
-            '🔎 Preparando formatos...'
+            20,
+            '🔎 Analizando formatos...'
          )
       }
 
+      /*
+       * bv* = mejor formato que contenga video
+       * ba  = mejor audio
+       * /b  = fallback a formato combinado
+       *
+       * Esta es la selección general recomendada
+       * por yt-dlp para video.
+       */
       const options =
          youtubeOptions({
             format:
-               'bestvideo*[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best'
+               'bv*+ba/b'
          })
 
       options.output =
@@ -699,13 +599,18 @@ async function downloadVideo(
       options.retries =
          1
 
-      // Cuando tenga que unir video + audio
-      options.mergeOutputFormat =
-         'mp4'
+      /*
+       * Si yt-dlp necesita unir video + audio,
+       * el resultado será MP4.
+       */
+      if (ffmpegPath) {
+         options.mergeOutputFormat =
+            'mp4'
+      }
 
       if (onStage) {
          await onStage(
-            45,
+            40,
             '⬇️ Descargando video...'
          )
       }
@@ -724,7 +629,7 @@ async function downloadVideo(
             80,
             ffmpegPath
                ? '🔧 Preparando MP4...'
-               : '📦 Preparando archivo...'
+               : '📦 Preparando video...'
          )
       }
 
@@ -739,18 +644,22 @@ async function downloadVideo(
          )
 
       if (!files.length) {
-
          throw new Error(
             'No se descargó ningún video'
          )
       }
 
+      /*
+       * Preferimos MP4 si existe.
+       */
       const preferredFile =
          files.find(
             file =>
-               file.endsWith(
-                  '.mp4'
-               )
+               file.endsWith('.mp4')
+         ) ||
+         files.find(
+            file =>
+               !file.endsWith('.part')
          ) ||
          files[0]
 
@@ -765,7 +674,6 @@ async function downloadVideo(
             outputFile
          )
       ) {
-
          throw new Error(
             'Video descargado inexistente'
          )
@@ -777,7 +685,6 @@ async function downloadVideo(
          )
 
       if (!stats.size) {
-
          throw new Error(
             'Video descargado vacío'
          )
@@ -796,31 +703,27 @@ async function downloadVideo(
       }
 
       console.log(`
-╭──────────────────────⬣
-│ ✅ VIDEO COMPLETADO
-├──────────────────────⬣
-│ 🍪 COOKIES: ${cookiesAvailable ? 'ON' : 'OFF'}
-│ 🌐 USER-AGENT: FIJO
-│ 📦 ${(stats.size / 1024 / 1024).toFixed(2)} MB
-│ 🎬 ${preferredFile}
-│ 🔧 FFMPEG: ${ffmpegPath ? 'ON' : 'OFF'}
-╰──────────────────────⬣
+✅ VIDEO COMPLETADO
+├─ 📦 ${(stats.size / 1024 / 1024).toFixed(2)} MB
+├─ 🎬 ${preferredFile}
+├─ 🍪 COOKIES: ${cookiesAvailable ? 'ON' : 'OFF'}
+└─ 🔧 FFMPEG: ${ffmpegPath ? 'ON' : 'OFF'}
 `)
 
-      // Eliminar TODOS los archivos generados
+      /*
+       * Limpiar todos los archivos de esta descarga.
+       */
       for (
          const file of files
       ) {
 
          try {
-
             fs.unlinkSync(
                path.join(
                   tempDir,
                   file
                )
             )
-
          } catch {}
       }
 
@@ -852,14 +755,12 @@ async function downloadVideo(
          ) {
 
             try {
-
                fs.unlinkSync(
                   path.join(
                      tempDir,
                      file
                   )
                )
-
             } catch {}
          }
 
@@ -870,7 +771,7 @@ async function downloadVideo(
 }
 
 // ======================================================
-// DESCARGA AUDIO
+// DESCARGAR AUDIO
 // ======================================================
 
 async function downloadAudio(
@@ -889,12 +790,10 @@ async function downloadAudio(
          tempDir
       )
    ) {
-
       fs.mkdirSync(
          tempDir,
          {
-            recursive:
-               true
+            recursive: true
          }
       )
    }
@@ -914,23 +813,18 @@ async function downloadAudio(
       )
 
    console.log(`
-╭──────────────────────⬣
-│ 🚀 DESCARGA DE AUDIO
-├──────────────────────⬣
-│ 🎵 YT-DLP
-│ ⚡ MODO M4A
-│ 🍪 COOKIES: ${cookiesAvailable ? 'ON' : 'OFF'}
-│ 🌐 USER-AGENT: FIJO
-│ 🎯 CLIENT: default
-│ 🚫 SIN CONVERSIÓN
-╰──────────────────────⬣
+🎵 FELBOT AUDIO
+├─ ⚡ MODO M4A
+├─ 🍪 COOKIES: ${cookiesAvailable ? 'ON' : 'OFF'}
+├─ 🌐 USER-AGENT: FIJO
+└─ 🎯 CLIENT: default
 `)
 
    try {
 
       if (onStage) {
          await onStage(
-            25,
+            20,
             '🔎 Preparando audio...'
          )
       }
@@ -964,7 +858,7 @@ async function downloadAudio(
 
       if (onStage) {
          await onStage(
-            45,
+            40,
             '⬇️ Descargando audio...'
          )
       }
@@ -996,13 +890,16 @@ async function downloadAudio(
          )
 
       if (!files.length) {
-
          throw new Error(
-            'No se descargó ningún archivo'
+            'No se descargó ningún audio'
          )
       }
 
       const downloadedFile =
+         files.find(
+            file =>
+               !file.endsWith('.part')
+         ) ||
          files[0]
 
       const outputFile =
@@ -1016,9 +913,8 @@ async function downloadAudio(
             outputFile
          )
       ) {
-
          throw new Error(
-            'Archivo descargado inexistente'
+            'Audio inexistente'
          )
       }
 
@@ -1028,9 +924,8 @@ async function downloadAudio(
          )
 
       if (!stats.size) {
-
          throw new Error(
-            'Archivo descargado vacío'
+            'Audio vacío'
          )
       }
 
@@ -1047,30 +942,32 @@ async function downloadAudio(
       }
 
       console.log(`
-╭──────────────────────⬣
-│ ✅ AUDIO COMPLETADO
-├──────────────────────⬣
-│ 🍪 COOKIES: ${cookiesAvailable ? 'ON' : 'OFF'}
-│ 🌐 USER-AGENT: FIJO
-│ 📦 ${(stats.size / 1024 / 1024).toFixed(2)} MB
-│ ⚡ SIN FFMPEG
-╰──────────────────────⬣
+✅ AUDIO COMPLETADO
+├─ 📦 ${(stats.size / 1024 / 1024).toFixed(2)} MB
+├─ 🍪 COOKIES: ${cookiesAvailable ? 'ON' : 'OFF'}
+└─ ⚡ SIN CONVERSIÓN
 `)
 
-      try {
+      for (
+         const file of files
+      ) {
 
-         fs.unlinkSync(
-            outputFile
-         )
-
-      } catch {}
+         try {
+            fs.unlinkSync(
+               path.join(
+                  tempDir,
+                  file
+               )
+            )
+         } catch {}
+      }
 
       return buffer
 
    } catch (error) {
 
       console.log(
-         '❌ DOWNLOAD ERROR:',
+         '❌ AUDIO DOWNLOAD ERROR:',
          error?.stderr ||
          error?.message ||
          error
@@ -1093,14 +990,12 @@ async function downloadAudio(
          ) {
 
             try {
-
                fs.unlinkSync(
                   path.join(
                      tempDir,
                      file
                   )
                )
-
             } catch {}
          }
 
@@ -1111,7 +1006,54 @@ async function downloadAudio(
 }
 
 // ======================================================
-// ENVIAR AUDIO / VIDEO
+// ACTUALIZAR MENSAJE
+// ======================================================
+
+async function updateLoading(
+   sock,
+   chatId,
+   loading,
+   selection,
+   mediaType,
+   percent,
+   status
+) {
+
+   try {
+
+      await sock.sendMessage(
+         chatId,
+         {
+            edit:
+               loading.key,
+
+            image: {
+               url:
+                  selection.thumbnail ||
+                  'https://i.imgur.com/AfFp7pu.png'
+            },
+
+            caption:
+`${mediaType === 'video' ? '🎬' : '🎵'} *${mediaType === 'video' ? 'VIDEO' : 'AUDIO'}*
+
+> ❀ ${selection.title || 'Canción'}
+> ❀ ${selection.author?.name || 'Unknown'}
+> ❀ ${selection.timestamp || 'Unknown'}
+
+${status}
+
+${progressText(percent)}
+
+> 🍪 Cookies: ${cookiesAvailable ? 'ON' : 'OFF'}
+> ⚡ FelbotC`
+         }
+      )
+
+   } catch {}
+}
+
+// ======================================================
+// ENVIAR MEDIA
 // ======================================================
 
 async function sendSongMedia(
@@ -1135,20 +1077,14 @@ async function sendSongMedia(
 
    try {
 
-      // =================================================
-      // REACCIÓN INICIAL
-      // =================================================
-
+      // Reacción inicial
       await reactToSong(
          sock,
          message,
          '⏳'
       )
 
-      // =================================================
-      // MENSAJE DE CARGA
-      // =================================================
-
+      // Mensaje inicial
       loading =
          await sock.sendMessage(
             chatId,
@@ -1160,19 +1096,15 @@ async function sendSongMedia(
                },
 
                caption:
-`╭━━━〔 𝕱𝖊𝖑𝖇𝖔𝖙 夜 〕━━━⬣
-│ ${mediaType === 'video' ? '🎬' : '🎵'} *${mediaType === 'video' ? 'VIDEO' : 'AUDIO'}*
-╰━━━━━━━━━━━━━━━━━━━━⬣
+`${mediaType === 'video' ? '🎬' : '🎵'} *${mediaType === 'video' ? 'VIDEO' : 'AUDIO'}*
 
-> ❀ *Título:* ${selection.title || 'Canción'}
-> ❀ *Autor:* ${selection.author?.name || 'Unknown'}
-> ❀ *Duración:* ${selection.timestamp || 'Unknown'}
+> ❀ ${selection.title || 'Canción'}
+> ❀ ${selection.author?.name || 'Unknown'}
+> ❀ ${selection.timestamp || 'Unknown'}
 
-╭────────────────────⬣
-│ ⏳ Iniciando descarga...
-│
-│ ${progressText(10)}
-╰────────────────────⬣
+⏳ Iniciando descarga...
+
+${progressText(10)}
 
 > 🍪 Cookies: ${cookiesAvailable ? 'ON' : 'OFF'}
 > ⚡ FelbotC`
@@ -1183,64 +1115,46 @@ async function sendSongMedia(
             }
          )
 
-      // Guardar thumbnail para edits
-      loading.thumbnail =
-         selection.thumbnail
-
-      // =================================================
-      // DESCARGA
-      // =================================================
-
-      const updateProgress =
+      const onStage =
          async (
             percent,
             status
          ) => {
 
-            if (!loading) return
-
-            await sendProgress(
+            await updateLoading(
                sock,
                chatId,
                loading,
-               selection.title ||
-                  'Canción',
-               selection.author?.name ||
-                  'Unknown',
-               selection.timestamp ||
-                  'Unknown',
+               selection,
                mediaType,
                percent,
                status
             )
          }
 
+      // Descargar
       const mediaBuffer =
          mediaType === 'video'
             ? await downloadVideo(
                  selection.url,
-                 updateProgress
+                 onStage
               )
             : await downloadAudio(
                  selection.url,
-                 updateProgress
+                 onStage
               )
 
       if (
          !mediaBuffer ||
          mediaBuffer.length < 50000
       ) {
-
          throw new Error(
             'Archivo inválido'
          )
       }
 
-      // =================================================
       // 100%
-      // =================================================
-
-      await updateProgress(
+      await onStage(
          100,
          '✅ Descarga completada'
       )
@@ -1267,16 +1181,12 @@ async function sendSongMedia(
                   '.mp4',
 
                caption:
-`╭━━━〔 🎬 𝕱𝖊𝖑𝖇𝖔𝖙 夜 〕━━━⬣
-
-> ❀ *${selection.title || 'Canción'}*
+`🎬 *${selection.title || 'Canción'}*
 
 > ❀ Autor: ${selection.author?.name || 'Unknown'}
 > ❀ Duración: ${selection.timestamp || 'Unknown'}
 
-╰━━━━━━━━━━━━━━━━━━━━⬣
-> ⚡ Video descargado
-> 🍪 Cookies: ${cookiesAvailable ? 'ON' : 'OFF'}`
+⚡ Video enviado por Felbot`
             },
             {
                quoted:
@@ -1313,20 +1223,14 @@ async function sendSongMedia(
          )
       }
 
-      // =================================================
-      // REACCIÓN FINAL
-      // =================================================
-
+      // Reacción final
       await reactToSong(
          sock,
          message,
          '✅'
       )
 
-      // =================================================
-      // EDITAR MENSAJE FINAL
-      // =================================================
-
+      // Editar estado
       try {
 
          await sock.sendMessage(
@@ -1342,40 +1246,25 @@ async function sendSongMedia(
                },
 
                caption:
-`╭━━━〔 𝕱𝖊𝖑𝖇𝖔𝖙 夜 〕━━━⬣
-│ ${mediaType === 'video' ? '🎬' : '🎵'} *COMPLETADO*
-╰━━━━━━━━━━━━━━━━━━━━⬣
+`✅ *COMPLETADO*
 
-> ❀ *${selection.title || 'Canción'}*
+> ❀ ${selection.title || 'Canción'}
 
-> ${progressText(100)}
-> ✅ ${mediaType === 'video'
-      ? 'Video enviado correctamente'
-      : 'Audio enviado correctamente'}
+${progressText(100)}
 
-> ⚡ Tiempo: ${(
-      (Date.now() - startTime) /
-      1000
-   ).toFixed(1)}s
+> ⚡ ${mediaType === 'video'
+   ? 'Video enviado correctamente'
+   : 'Audio enviado correctamente'}
+
+> ⏱️ ${(
+   (Date.now() - startTime) /
+   1000
+).toFixed(1)}s
 > 🍪 Cookies: ${cookiesAvailable ? 'ON' : 'OFF'}`
             }
          )
 
       } catch {}
-
-      console.log(`
-╭──────────────────────⬣
-│ ✅ MEDIA ENVIADA
-├──────────────────────⬣
-│ 🎵 ${safeTitle}
-│ 📦 ${mediaType.toUpperCase()}
-│ 🍪 COOKIES: ${cookiesAvailable ? 'ON' : 'OFF'}
-│ ⏱️ ${(
-   (Date.now() - startTime) /
-   1000
-).toFixed(1)}s
-╰──────────────────────⬣
-`)
 
       return true
 
@@ -1388,19 +1277,11 @@ async function sendSongMedia(
          error
       )
 
-      // =================================================
-      // REACCIÓN ERROR
-      // =================================================
-
       await reactToSong(
          sock,
          message,
          '❌'
       )
-
-      // =================================================
-      // MENSAJE ERROR
-      // =================================================
 
       try {
 
@@ -1408,18 +1289,11 @@ async function sendSongMedia(
             chatId,
             {
                text:
-`╭━━━〔 ❌ FELBOT 夜 〕━━━⬣
+`❌ *No se pudo descargar*
 
-No pude descargar
-${mediaType === 'video'
-   ? 'el video'
-   : 'el audio'}.
+> ${selection.title || 'Canción'}
 
-> 🎵 ${selection.title || 'Canción'}
-
-> 🔄 Inténtalo nuevamente.
-
-╰━━━━━━━━━━━━━━━━━━━━⬣`
+Inténtalo nuevamente.`
             },
             {
                quoted:
@@ -1434,7 +1308,7 @@ ${mediaType === 'video'
 }
 
 // ======================================================
-// MANEJAR BOTONES
+// BOTONES
 // ======================================================
 
 async function handleSongButton(
@@ -1471,6 +1345,10 @@ async function handleSongButton(
          selectionId
       )
 
+   // ===================================================
+   // BOTÓN EXPIRADO
+   // ===================================================
+
    if (!selection) {
 
       await reactToSong(
@@ -1483,7 +1361,7 @@ async function handleSongButton(
          chatId,
          {
             text:
-               '⏳ Este botón expiró. Busca la canción otra vez.'
+               '⏳ Este botón expiró. Usa `.play` nuevamente.'
          },
          {
             quoted:
@@ -1494,9 +1372,58 @@ async function handleSongButton(
       return true
    }
 
+   // ===================================================
+   // VERIFICAR DUEÑO
+   // ===================================================
+
+   const clickedBy =
+      senderId ||
+      getUserId(message)
+
+   const owner =
+      selection.owner
+
+   if (
+      owner &&
+      clickedBy !== owner
+   ) {
+
+      await reactToSong(
+         sock,
+         message,
+         '🔒'
+      )
+
+      await sock.sendMessage(
+         chatId,
+         {
+            text:
+`🔒 *Este botón no es tuyo.*
+
+Solo puede utilizarlo la persona que ejecutó:
+
+> .play ${selection.title || 'la canción'}`
+         },
+         {
+            quoted:
+               message
+         }
+      )
+
+      return true
+   }
+
+   // ===================================================
+   // ELIMINAR SELECCIÓN
+   // ===================================================
+
    selections.delete(
       selectionId
    )
+
+   // ===================================================
+   // DESCARGAR
+   // ===================================================
 
    await sendSongMedia(
       sock,
@@ -1525,9 +1452,7 @@ async function songCommand(
    try {
 
       console.log(`
-╭──────────────────────⬣
-│ 🎶 NUEVA DESCARGA
-╰──────────────────────⬣
+🎶 NUEVA DESCARGA
 `)
 
       // =================================================
@@ -1552,14 +1477,12 @@ async function songCommand(
             chatId,
             {
                text:
-`╭━━━〔 🎵 FELBOT 夜 〕━━━⬣
+`🎵 *Felbot Play*
 
 Escribe una canción.
 
 > Ejemplo:
-> .play Canserbero - Es épico
-
-╰━━━━━━━━━━━━━━━━━━━━⬣`
+> .play Canserbero - Es épico`
             },
             {
                quoted:
@@ -1569,8 +1492,11 @@ Escribe una canción.
       }
 
       // =================================================
-      // REACCIÓN DE BÚSQUEDA
+      // USUARIO QUE EJECUTÓ PLAY
       // =================================================
+
+      const ownerId =
+         getUserId(message)
 
       await reactToSong(
          sock,
@@ -1592,10 +1518,6 @@ Escribe una canción.
             'youtu.be'
          )
       ) {
-
-         console.log(
-            '🔗 URL DIRECTA'
-         )
 
          video = {
 
@@ -1664,20 +1586,14 @@ Escribe una canción.
 
             setTimeout(
                () => {
-
                   searchCache.delete(
                      cacheKey
                   )
-
                },
                1000 * 60 * 5
             )
          }
       }
-
-      // =================================================
-      // REACCIÓN RESULTADO
-      // =================================================
 
       await reactToSong(
          sock,
@@ -1708,7 +1624,11 @@ Escribe una canción.
                video.timestamp,
 
             views:
-               video.views
+               video.views,
+
+            // IMPORTANTE
+            owner:
+               ownerId
          })
 
       // =================================================
@@ -1744,7 +1664,6 @@ Escribe una canción.
                   display_text,
 
                   id
-
                })
          })
       )
@@ -1774,7 +1693,7 @@ Escribe una canción.
       } catch {}
 
       // =================================================
-      // MENSAJE INTERACTIVO
+      // MENSAJE
       // =================================================
 
       const songMessage =
@@ -1805,23 +1724,19 @@ Escribe una canción.
                   body: {
 
                      text:
-`╭━━━〔 𝕱𝖊𝖑𝖇𝖔𝖙 夜 〕━━━⬣
+`🎵 *${video.title || 'Canción'}*
 
-> 🎵 *${video.title || 'Canción'}*
+> ❀ ${video.author?.name || 'Unknown'}
+> ❀ ${video.timestamp || 'Unknown'}
+> ❀ ${Number(video.views || 0).toLocaleString()} vistas
 
-> ❀ Autor: ${video.author?.name || 'Unknown'}
-> ❀ Duración: ${video.timestamp || 'Unknown'}
-> ❀ Vistas: ${Number(video.views || 0).toLocaleString()}
-
-╰━━━━━━━━━━━━━━━━━━━━⬣
-
-Selecciona cómo quieres recibirlo:`
+Selecciona una opción:`
                   },
 
                   footer: {
 
                      text:
-                        '🍪 Cookies ON • ⚡ FelbotC'
+                        '⚡ FelbotC • 🍪 Cookies ON'
                   },
 
                   nativeFlowMessage: {
@@ -1838,7 +1753,7 @@ Selecciona cómo quieres recibirlo:`
          )
 
       // =================================================
-      // ENVIAR
+      // RELAY
       // =================================================
 
       await sock.relayMessage(
@@ -1901,22 +1816,16 @@ Selecciona cómo quieres recibirlo:`
          }
       )
 
-      // =================================================
-      // LOG
-      // =================================================
-
       console.log(`
-╭──────────────────────⬣
-│ ✅ SELECCIÓN DE CANCIÓN
-├──────────────────────⬣
-│ 🎵 ${video.title || 'Canción'}
-│ 🎬 BOTONES: VIDEO / AUDIO
-│ 🍪 COOKIES: ${cookiesAvailable ? 'ON' : 'OFF'}
-│ ⚡ ${(
+✅ PLAY LISTO
+├─ 🎵 ${video.title || 'Canción'}
+├─ 🎬 VIDEO / AUDIO
+├─ 🔒 BOTONES PRIVADOS
+├─ 🍪 COOKIES: ${cookiesAvailable ? 'ON' : 'OFF'}
+└─ ⚡ ${(
    (Date.now() - startTime) /
    1000
 ).toFixed(1)}s
-╰──────────────────────⬣
 `)
 
       cleanMemory()
@@ -1942,13 +1851,7 @@ Selecciona cómo quieres recibirlo:`
             chatId,
             {
                text:
-`╭━━━〔 ❌ FELBOT 夜 〕━━━⬣
-
-Ocurrió un error buscando la canción.
-
-> 🔄 Inténtalo nuevamente.
-
-╰━━━━━━━━━━━━━━━━━━━━⬣`
+                  '❌ Error buscando la canción 😭'
             },
             {
                quoted:
