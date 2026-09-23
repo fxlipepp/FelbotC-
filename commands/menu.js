@@ -482,6 +482,7 @@ async function handleMenuButton(sock, chatId, buttonId, message) {
                 __dirname,
                 '..',
                 'assets',
+                'gifs',
                 'menucompleto',
                 'menu.mp4'
             )
@@ -547,6 +548,7 @@ Aquí encontrarás herramientas, administración, entretenimiento y mucho más.
             __dirname,
              '..',
                 'assets',
+                'gifs',
                 'menucompleto',
                 'menu.mp4'
         )
