@@ -1,4 +1,3 @@
-
 const fs = require('fs')
 const path = require('path')
 const {
@@ -36,8 +35,6 @@ function buildMenuText(uptimeSeconds, version = '2.0.0') {
     const introHeader = buildIntroHeader(uptimeSeconds, version)
 
     const helpMessage = `
-${introHeader}
-
 ╭━━〔 👑 OWNER 〕━━⬣
 > ✦ Comandos de administracion.
 
@@ -447,16 +444,12 @@ ${introHeader}
 > Descargar videos de YouTube.
 ╰━━━━━━━━━━━━━━━━⬣
 
-╭━〔  𝕱𝖊𝖑𝖇𝖔𝖙 夜  〕━⬣
+╭━〔  𝕱𝖊𝖑𝖇𝖔𝖙 夜 〕━⬣
 > *🚀 Powered By Fxlipe 夜*
 ╰━━━━━━━━━━━━⬣`
 
     return `${helpMessage.trim()}`
 }
-
-// ======================================================
-// BOTONES
-// ======================================================
 
 function getMenuButtonAction(buttonId) {
 
@@ -472,93 +465,47 @@ function getMenuButtonAction(buttonId) {
     }
 }
 
-// ======================================================
-// MENU COMPLETO
-// ======================================================
+async function handleMenuButton(sock, chatId, buttonId, message) {
 
-async function handleMenuButton(
-    sock,
-    chatId,
-    buttonId,
-    message
-) {
-
-    const action =
-        getMenuButtonAction(
-            buttonId
-        )
+    const action = getMenuButtonAction(buttonId)
 
     if (!action) return false
 
-    if (
-        action.type ===
-        'send_full_menu'
-    ) {
+    if (action.type === 'send_full_menu') {
 
-        const fullMenu =
-            buildMenuText(
-                process.uptime(),
-                '2.0.0'
-            )
+        const fullMenu = buildMenuText(
+            process.uptime(),
+            '2.0.0'
+        )
 
         try {
 
-            const videoPath =
-                path.join(
-                    __dirname,
-                    '..',
-                    'assets',
-                     'gifs',
-                    'menucompleto',
-                    'menu.mp4'
-                )
+            const videoPath = path.join(
+                __dirname,
+                '..',
+                'assets',
+                'menucompleto',
+                'menu.mp4'
+            )
 
-            if (
-                !fs.existsSync(
-                    videoPath
-                )
-            ) {
-
+            if (!fs.existsSync(videoPath)) {
                 throw new Error(
                     `No existe el video: ${videoPath}`
                 )
             }
 
-            const videoBuffer =
-                fs.readFileSync(
-                    videoPath
-                )
+            const videoBuffer = fs.readFileSync(videoPath)
 
             await sock.sendMessage(
                 chatId,
                 {
-                    video:
-                        videoBuffer,
-
-                    mimetype:
-                        'video/mp4',
-
-                    gifPlayback:
-                        true,
-
-                    caption:
-                        fullMenu,
-
-                    contextInfo: {
-                        externalAdReply: {
-                            title: '𝕱𝖊𝖑𝖇𝖔𝖙 夜',
-                            body: 'Abrir página web',
-                            mediaType: 1,
-                            sourceUrl: FELBOT_WEB,
-                            thumbnailUrl: FELBOT_WEB,
-                            renderLargerThumbnail: false,
-                            showAdAttribution: false
-                        }
-                    }
+                    video: videoBuffer,
+                    mimetype: 'video/mp4',
+                    gifPlayback: true,
+                    caption: fullMenu
                 },
                 {
-                    quoted:
-                        message
+                    quoted: message
                 }
             )
 
@@ -572,12 +519,10 @@ async function handleMenuButton(
             await sock.sendMessage(
                 chatId,
                 {
-                    text:
-                        fullMenu
+                    text: fullMenu
                 },
                 {
-                    quoted:
-                        message
+                    quoted: message
                 }
             )
         }
@@ -588,21 +533,12 @@ async function handleMenuButton(
     return false
 }
 
-// ======================================================
-// MENU PRINCIPAL
-// ======================================================
+async function helpCommand(sock, chatId, message) {
 
-async function helpCommand(
-    sock,
-    chatId,
-    message
-) {
-
-    const introCaption =
-`${buildIntroHeader(
-    process.uptime(),
-    '2.0.0'
-)}
+    const introCaption = `${buildIntroHeader(
+        process.uptime(),
+        '2.0.0'
+    )}
 
 Bienvenido a Felbot 夜.
 Aquí encontrarás herramientas, administración, entretenimiento y mucho más.
@@ -611,239 +547,192 @@ Aquí encontrarás herramientas, administración, entretenimiento y mucho más.
 
     try {
 
-        const videoPath =
-            path.join(
-                __dirname,
-                '..',
-                'assets',
-                'gifs',
-                'menucompleto',
-                'menu.mp4'
-            )
+        const videoPath = path.join(
+            __dirname,
+            '..',
+            'assets',
+            'menucompleto',
+            'menu.mp4'
+        )
 
-        if (
-            !fs.existsSync(
-                videoPath
-            )
-        ) {
-
+        if (!fs.existsSync(videoPath)) {
             throw new Error(
                 `Menu video not found: ${videoPath}`
             )
         }
 
-        const videoBuffer =
-            fs.readFileSync(
-                videoPath
-            )
+        const videoBuffer = fs.readFileSync(videoPath)
 
-        // ==================================================
-        // PREPARAR VIDEO
-        // ==================================================
-
-        const preparedVideo =
-            await prepareWAMessageMedia(
-                {
-                    video:
-                        videoBuffer
-                },
-                {
-                    upload:
-                        sock.waUploadToServer
-                }
-            )
-
-        // ==================================================
-        // BOTONES
-        // ==================================================
+        /*
+         * El botón VER MENU COMPLETO
+         * manda el mismo video como GIF.
+         */
 
         const buttons = [
-            [
-                'VER MENU COMPLETO',
-                'view_full_menu'
-            ],
-            [
-                'CONTACTAME 夜',
-                'owner'
-            ],
-            [
-                'REPORTAR ERROR ❗',
-                'report_error'
-            ],
-            [
-                'SOLICITUD DE COMANDO 🕸️',
-                'request_command'
-            ],
-            [
-                'ADQUIRIR BOT 💵',
-                'buy_bot'
-            ]
-        ].map(
-            ([display_text, id]) => ({
 
-                name:
-                    'quick_reply',
+            {
+                name: 'quick_reply',
 
-                buttonParamsJson:
-                    JSON.stringify({
-                        display_text,
-                        id
-                    })
-            })
-        )
+                buttonParamsJson: JSON.stringify({
+                    display_text: 'VER MENU COMPLETO',
+                    id: 'view_full_menu'
+                })
+            },
 
-        // ==================================================
-        // ENLACE DEL ENCABEZADO
-        // ==================================================
+            {
+                name: 'cta_url',
 
-        const messageParams = {
+                buttonParamsJson: JSON.stringify({
+                    display_text: '🌐 PAGINA WEB',
+                    url: FELBOT_WEB
+                })
+            },
 
-            tap_target_configuration: {
+            {
+                name: 'quick_reply',
 
-                title:
-                    '𝕱𝖊𝖑𝖇𝖔𝖙 夜',
+                buttonParamsJson: JSON.stringify({
+                    display_text: 'CONTACTAME 夜',
+                    id: 'owner'
+                })
+            },
 
-                description:
-                    'Abrir página web',
+            {
+                name: 'quick_reply',
 
-                canonical_url:
-                    FELBOT_WEB,
+                buttonParamsJson: JSON.stringify({
+                    display_text: 'REPORTAR ERROR ❗',
+                    id: 'report_error'
+                })
+            },
 
-                domain:
-                    'fxlipe.skyultraplus.online',
+            {
+                name: 'quick_reply',
 
-                button_index:
-                    0
+                buttonParamsJson: JSON.stringify({
+                    display_text: 'SOLICITUD DE COMANDO 🕸️',
+                    id: 'request_command'
+                })
+            },
+
+            {
+                name: 'quick_reply',
+
+                buttonParamsJson: JSON.stringify({
+                    display_text: 'ADQUIRIR BOT 💵',
+                    id: 'buy_bot'
+                })
             }
-        }
+        ]
 
-        // ==================================================
-        // MENSAJE INTERACTIVO
-        // ==================================================
+        const menuMessage = generateWAMessageFromContent(
+            chatId,
+            {
+                interactiveMessage: {
 
-        const menuMessage =
-            generateWAMessageFromContent(
-                chatId,
-                {
-                    interactiveMessage: {
+                    header: {
 
-                        header: {
+                        title: '𝕱𝖊𝖑𝖇𝖔𝖙 夜',
 
-                            title:
-                                '𝕱𝖊𝖑𝖇𝖔𝖙 夜',
+                        subtitle: 'Menú interactivo',
 
-                            subtitle:
-                                'Menú interactivo',
+                        hasMediaAttachment: true,
 
-                            hasMediaAttachment:
-                                true,
+                        videoMessage: {
+                            url: undefined
+                        }
+                    },
 
-                            ...preparedVideo
-                        },
+                    body: {
+                        text: introCaption
+                    },
 
-                        body: {
+                    footer: {
+                        text: '𝕱𝖊𝖑𝖇𝖔𝖙 夜 • Menú interactivo'
+                    },
 
-                            text:
-                                introCaption
-                        },
+                    nativeFlowMessage: {
 
-                        footer: {
+                        buttons,
 
-                            text:
-                                '𝕱𝖊𝖑𝖇𝖔𝖙 夜 • Menú interactivo'
-                        },
+                        messageParamsJson: JSON.stringify({
 
-                        nativeFlowMessage: {
+                            tap_target_configuration: {
 
-                            buttons,
+                                title: '𝕱𝖊𝖑𝖇𝖔𝖙 夜',
 
-                            messageParamsJson:
-                                JSON.stringify(
-                                    messageParams
-                                )
-                        },
+                                description: 'Abrir página web',
 
-                        contextInfo: {
+                                canonical_url: FELBOT_WEB,
 
-                            externalAdReply: {
+                                domain: 'fxlipe.skyultraplus.online',
 
-                                title:
-                                    '𝕱𝖊𝖑𝖇𝖔𝖙 夜',
-
-                                body:
-                                    'Abrir página web',
-
-                                mediaType:
-                                    1,
-
-                                sourceUrl:
-                                    FELBOT_WEB,
-
-                                thumbnailUrl:
-                                    FELBOT_WEB,
-
-                                renderLargerThumbnail:
-                                    false,
-
-                                showAdAttribution:
-                                    false
+                                button_index: 1
                             }
+                        })
+                    },
+
+                    contextInfo: {
+
+                        externalAdReply: {
+
+                            title: '𝕱𝖊𝖑𝖇𝖔𝖙 夜',
+
+                            body: 'Abrir página web',
+
+                            mediaType: 1,
+
+                            sourceUrl: FELBOT_WEB,
+
+                            thumbnailUrl: FELBOT_WEB,
+
+                            renderLargerThumbnail: false,
+
+                            showAdAttribution: false
                         }
                     }
-                },
-                {
-                    quoted:
-                        message
                 }
-            )
+            },
+            {
+                quoted: message
+            }
+        )
 
-        // ==================================================
-        // ENVIAR
-        // ==================================================
+        /*
+         * Intentamos enviar el menú interactivo.
+         */
 
         await sock.relayMessage(
             menuMessage.key.remoteJid,
             menuMessage.message,
             {
-                messageId:
-                    menuMessage.key.id,
+                messageId: menuMessage.key.id,
 
                 additionalNodes: [
 
                     {
-                        tag:
-                            'biz',
+                        tag: 'biz',
 
                         attrs: {},
 
                         content: [
 
                             {
-                                tag:
-                                    'interactive',
+                                tag: 'interactive',
 
                                 attrs: {
-
-                                    type:
-                                        'native_flow',
-
-                                    v:
-                                        '1'
+                                    type: 'native_flow',
+                                    v: '1'
                                 },
 
                                 content: [
 
                                     {
-                                        tag:
-                                            'native_flow',
+                                        tag: 'native_flow',
 
                                         attrs: {
-
-                                            v:
-                                                '9',
-
-                                            name:
-                                                'mixed'
+                                            v: '9',
+                                            name: 'mixed'
                                         }
                                     }
                                 ]
@@ -857,132 +746,59 @@ Aquí encontrarás herramientas, administración, entretenimiento y mucho más.
     } catch (error) {
 
         console.error(
-            '❌ ERROR EN MENU:',
+            '❌ ERROR EN MENU INTERACTIVO:',
             error
         )
 
-        // ==================================================
-        // FALLBACK
-        // ==================================================
+        /*
+         * FALLBACK:
+         * Si WhatsApp rechaza el mensaje interactivo,
+         * mandamos directamente el mismo MP4 como GIF.
+         */
 
         try {
 
-            const videoPath =
-                path.join(
-                    __dirname,
-                    '..',
-                    'assets',
-                    'gifs',
-                    'menucompleto',
-                    'menu.mp4'
-                )
-
-            if (
-                fs.existsSync(
-                    videoPath
-                )
-            ) {
-
-                const videoBuffer =
-                    fs.readFileSync(
-                        videoPath
-                    )
-
-                await sock.sendMessage(
-                    chatId,
-                    {
-                        video:
-                            videoBuffer,
-
-                        mimetype:
-                            'video/mp4',
-
-                        gifPlayback:
-                            true,
-
-                        caption:
-                            introCaption,
-
-                        contextInfo: {
-                            externalAdReply: {
-                                title: '𝕱𝖊𝖑𝖇𝖔𝖙 夜',
-                                body: 'Abrir página web',
-                                mediaType: 1,
-                                sourceUrl: FELBOT_WEB,
-                                thumbnailUrl: FELBOT_WEB,
-                                renderLargerThumbnail: false,
-                                showAdAttribution: false
-                            }
-                        }
-                    },
-                    {
-                        quoted:
-                            message
-                    }
-                )
-
-            } else {
-
-                await sock.sendMessage(
-                    chatId,
-                    {
-                        text:
-                            introCaption
-                    },
-                    {
-                        quoted:
-                            message
-                    }
-                )
-            }
-
-        } catch (fallbackError) {
-
-            console.error(
-                '❌ ERROR EN FALLBACK MENU:',
-                fallbackError
+            await sock.sendMessage(
+                chatId,
+                {
+                    video: videoBuffer,
+                    mimetype: 'video/mp4',
+                    gifPlayback: true,
+                    caption: introCaption
+                },
+                {
+                    quoted: message
+                }
             )
 
-            try {
+        } catch (videoError) {
 
-                await sock.sendMessage(
-                    chatId,
-                    {
-                        text:
-                            introCaption
-                    },
-                    {
-                        quoted:
-                            message
-                    }
-                )
+            console.error(
+                '❌ ERROR EN VIDEO DEL MENU:',
+                videoError
+            )
 
-            } catch {}
+            await sock.sendMessage(
+                chatId,
+                {
+                    text: `${introCaption}
+
+🌐 Página web:
+${FELBOT_WEB}`
+                },
+                {
+                    quoted: message
+                }
+            )
         }
     }
 }
 
-// ======================================================
-// EXPORTS
-// ======================================================
+helpCommand.buildMenuText = buildMenuText
+helpCommand.getMenuButtonAction = getMenuButtonAction
+helpCommand.handleMenuButton = handleMenuButton
 
-helpCommand.buildMenuText =
-    buildMenuText
-
-helpCommand.getMenuButtonAction =
-    getMenuButtonAction
-
-helpCommand.handleMenuButton =
-    handleMenuButton
-
-module.exports =
-    helpCommand
-
-module.exports.buildMenuText =
-    buildMenuText
-
-module.exports.getMenuButtonAction =
-    getMenuButtonAction
-
-module.exports.handleMenuButton =
-    handleMenuButton
+module.exports = helpCommand
+module.exports.buildMenuText = buildMenuText
+module.exports.getMenuButtonAction = getMenuButtonAction
+module.exports.handleMenuButton = handleMenuButton
