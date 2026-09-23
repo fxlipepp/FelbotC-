@@ -1,8 +1,15 @@
 const fs = require('fs')
-const { execFileSync } = require('child_process')
+const path = require('path')
 const youtubedl = require('youtube-dl-exec')
 
 const cookiesPath = '/home/container/cookies.txt'
+
+const USER_AGENT =
+   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36'
+
+// ======================================================
+// COOKIES
+// ======================================================
 
 function getCookiesStatus() {
    try {
@@ -10,512 +17,923 @@ function getCookiesStatus() {
          return false
       }
 
-      const stats = fs.statSync(cookiesPath)
+      const stats =
+         fs.statSync(cookiesPath)
 
-      if (!stats.isFile()) {
-         return false
-      }
-
-      if (stats.size <= 100) {
-         return false
-      }
-
-      return true
+      return (
+         stats.isFile() &&
+         stats.size > 100
+      )
    } catch {
       return false
    }
 }
 
-function buildYtDlpOptions(extra = {}) {
+// ======================================================
+// OPCIONES BASE
+// ======================================================
+
+function buildOptions() {
+
    const options = {
-      noWarnings: true,
-      noPlaylist: true,
-      noCheckCertificates: true,
-      skipDownload: true,
-      dumpSingleJson: true,
-      quiet: true,
-      noProgress: true,
-      extractorArgs: 'youtube:player_client=default',
-      ...extra
+
+      noWarnings:
+         true,
+
+      noPlaylist:
+         true,
+
+      noCheckCertificates:
+         true,
+
+      skipDownload:
+         true,
+
+      quiet:
+         true,
+
+      noProgress:
+         true,
+
+      extractorArgs:
+         'youtube:player_client=default',
+
+      userAgent:
+         USER_AGENT
+
    }
 
-   if (getCookiesStatus()) {
-      options.cookies = cookiesPath
+   if (
+      getCookiesStatus()
+   ) {
+      options.cookies =
+         cookiesPath
    }
 
    return options
 }
 
-function normalizeValue(value, fallback = '—') {
+// ======================================================
+// BUSCAR VIDEO
+// ======================================================
+
+async function resolveVideo(query) {
+
    if (
-      value === undefined ||
-      value === null ||
-      value === 'none' ||
-      value === 'N/A' ||
-      value === 'NaN'
+      query.includes(
+         'youtube.com'
+      ) ||
+      query.includes(
+         'youtu.be'
+      )
    ) {
-      return fallback
+
+      return {
+         url:
+            query,
+
+         title:
+            'YouTube'
+      }
    }
 
-   return String(value)
+   const result =
+      await youtubedl(
+         'ytsearch1:' + query,
+         {
+            ...buildOptions(),
+
+            dumpSingleJson:
+               true,
+
+            flatPlaylist:
+               true,
+
+            playlistEnd:
+               1
+         }
+      )
+
+   if (
+      !result ||
+      !result.entries ||
+      !result.entries.length
+   ) {
+      throw new Error(
+         'No se encontró el video'
+      )
+   }
+
+   const video =
+      result.entries[0]
+
+   return {
+
+      url:
+         video.webpage_url ||
+         `https://www.youtube.com/watch?v=${video.id}`,
+
+      title:
+         video.title ||
+         query
+   }
 }
 
-function formatBytes(bytes) {
+// ======================================================
+// OBTENER FORMATOS
+// ======================================================
+
+async function getFormats(url) {
+
+   /*
+    * IMPORTANTE:
+    *
+    * No usamos:
+    *
+    * execFileSync('yt-dlp')
+    *
+    * porque en Sky no existe el binario
+    * yt-dlp en el PATH.
+    *
+    * youtube-dl-exec utiliza su propio
+    * ejecutable.
+    */
+
+   const options = {
+
+      ...buildOptions(),
+
+      dumpSingleJson:
+         true,
+
+      skipDownload:
+         true,
+
+      noPlaylist:
+         true,
+
+      /*
+       * No seleccionar ningún formato.
+       */
+
+      format:
+         undefined
+   }
+
+   const info =
+      await youtubedl(
+         url,
+         options
+      )
+
    if (
-      bytes === undefined ||
-      bytes === null ||
-      Number.isNaN(Number(bytes))
+      !info ||
+      !Array.isArray(
+         info.formats
+      )
+   ) {
+
+      throw new Error(
+         'yt-dlp no devolvió información de formatos'
+      )
+   }
+
+   return info
+}
+
+// ======================================================
+// TAMAÑO
+// ======================================================
+
+function formatSize(bytes) {
+
+   if (
+      !bytes ||
+      Number.isNaN(
+         Number(bytes)
+      )
    ) {
       return '—'
    }
 
-   const size = Number(bytes)
-   const units = ['B', 'KB', 'MB', 'GB']
-   let value = size
-   let unitIndex = 0
+   const value =
+      Number(bytes)
 
-   while (value >= 1024 && unitIndex < units.length - 1) {
-      value /= 1024
-      unitIndex += 1
+   if (
+      value >=
+      1024 * 1024 * 1024
+   ) {
+
+      return (
+         (
+            value /
+            1024 /
+            1024 /
+            1024
+         ).toFixed(1) +
+         ' GB'
+      )
    }
 
-   return `${value.toFixed(value >= 10 || unitIndex === 0 ? 0 : 1)} ${units[unitIndex]}`
+   if (
+      value >=
+      1024 * 1024
+   ) {
+
+      return (
+         (
+            value /
+            1024 /
+            1024
+         ).toFixed(1) +
+         ' MB'
+      )
+   }
+
+   if (
+      value >=
+      1024
+   ) {
+
+      return (
+         (
+            value /
+            1024
+         ).toFixed(1) +
+         ' KB'
+      )
+   }
+
+   return (
+      value +
+      ' B'
+   )
 }
 
-function getFormatType(formatItem) {
-   const videoCodec = normalizeValue(formatItem?.vcodec, 'none')
-   const audioCodec = normalizeValue(formatItem?.acodec, 'none')
+// ======================================================
+// TIPO
+// ======================================================
 
-   if (videoCodec !== 'none' && audioCodec !== 'none') {
+function getType(format) {
+
+   const video =
+      format.vcodec &&
+      format.vcodec !== 'none'
+
+   const audio =
+      format.acodec &&
+      format.acodec !== 'none'
+
+   if (
+      video &&
+      audio
+   ) {
       return 'VIDEO+AUDIO'
    }
 
-   if (videoCodec !== 'none') {
+   if (video) {
       return 'VIDEO'
    }
 
-   if (audioCodec !== 'none') {
+   if (audio) {
       return 'AUDIO'
    }
 
    return 'UNKNOWN'
 }
 
-function scoreFormat(formatItem) {
-   const idRaw = String(formatItem?.format_id || '0')
-   const isMp4 = String(formatItem?.ext || '').toLowerCase() === 'mp4'
-   const isM4a = String(formatItem?.ext || '').toLowerCase() === 'm4a'
-   const isWebm = String(formatItem?.ext || '').toLowerCase() === 'webm'
-   const isVideo = getFormatType(formatItem) !== 'AUDIO'
+// ======================================================
+// FORMATO PARA MOSTRAR
+// ======================================================
 
-   let score = 0
+function formatRow(format) {
 
-   if (isMp4) score += 40
-   if (isM4a) score += 25
-   if (isWebm) score -= 10
-   if (isVideo) score += 10
+   const id =
+      format.format_id ||
+      '—'
 
-   const idNumber = Number.parseInt(idRaw, 10)
-   if (!Number.isNaN(idNumber)) {
-      score += idNumber > 0 ? 1 : 0
+   const ext =
+      format.ext ||
+      '—'
+
+   let resolution =
+      '—'
+
+   if (
+      format.height
+   ) {
+
+      resolution =
+         `${format.height}p`
    }
 
-   return score
-}
+   const fps =
+      format.fps ||
+      '—'
 
-function pickRelevantFormats(formats) {
-   return formats
-      .filter((formatItem) => {
-         if (!formatItem || !formatItem.format_id) {
-            return false
-         }
+   const vcodec =
+      format.vcodec &&
+      format.vcodec !== 'none'
+         ? format.vcodec
+         : '—'
 
-         const type = getFormatType(formatItem)
-         return type !== 'UNKNOWN'
-      })
-      .sort((a, b) => scoreFormat(b) - scoreFormat(a))
-      .slice(0, 40)
-}
+   const acodec =
+      format.acodec &&
+      format.acodec !== 'none'
+         ? format.acodec
+         : '—'
 
-function buildFormatTable(rows) {
-   if (!rows.length) {
-      return 'No se encontraron formatos útiles para diagnosticar.'
-   }
+   const size =
+      format.filesize ||
+      format.filesize_approx
 
-   const header = ['ID', 'EXT', 'RES', 'FPS', 'VIDEO', 'AUDIO', 'SIZE']
-   const lines = [header.join(' ')]
+   const sizeText =
+      formatSize(size)
 
-   for (const row of rows) {
-      const res = row.resolution || '—'
-      const fps = row.fps || '—'
-      const video = row.videoCodec || '—'
-      const audio = row.audioCodec || '—'
-      const size = row.size || '—'
-
-      lines.push(
-         [row.id, row.ext, res, fps, video, audio, size]
-            .map((value) => normalizeValue(value, '—'))
-            .join(' ')
-      )
-   }
-
-   return lines.join('\n')
-}
-
-function findVideoAudioCandidates(formats) {
-   const videoFormats = formats
-      .filter((formatItem) => {
-         const type = getFormatType(formatItem)
-         return type === 'VIDEO' || type === 'VIDEO+AUDIO'
-      })
-      .filter((formatItem) => {
-         const ext = String(formatItem?.ext || '').toLowerCase()
-         return ext === 'mp4' || ext === 'm4v' || ext === 'webm'
-      })
-      .sort((a, b) => Number(b?.tbr || 0) - Number(a?.tbr || 0))
-
-   const audioFormats = formats
-      .filter((formatItem) => {
-         const type = getFormatType(formatItem)
-         return type === 'AUDIO' || type === 'VIDEO+AUDIO'
-      })
-      .filter((formatItem) => {
-         const ext = String(formatItem?.ext || '').toLowerCase()
-         return ext === 'm4a' || ext === 'mp4' || ext === 'webm' || ext === 'aac' || ext === 'opus'
-      })
-      .sort((a, b) => Number(b?.tbr || 0) - Number(a?.tbr || 0))
-
-   const candidates = []
-
-   for (const video of videoFormats.slice(0, 8)) {
-      const videoId = normalizeValue(video?.format_id, '—')
-      const audio = audioFormats.find((item) => {
-         const itemExt = String(item?.ext || '').toLowerCase()
-         return itemExt === 'm4a' || itemExt === 'aac' || itemExt === 'mp4' || itemExt === 'opus'
-      })
-
-      if (audio) {
-         candidates.push(
-            `${videoId} + ${normalizeValue(audio.format_id, '—')} → ${normalizeValue(video?.vcodec, '—')} + ${normalizeValue(audio?.acodec, '—')}`
-         )
-      }
-   }
-
-   if (!candidates.length) {
-      const fallbackVideo = videoFormats.slice(0, 4)
-      const fallbackAudio = audioFormats.slice(0, 4)
-      for (const video of fallbackVideo) {
-         for (const audio of fallbackAudio) {
-            candidates.push(
-               `${normalizeValue(video?.format_id, '—')} + ${normalizeValue(audio?.format_id, '—')} → posible ${normalizeValue(video?.vcodec, '—')} + ${normalizeValue(audio?.acodec, '—')}`
-            )
-            if (candidates.length >= 10) break
-         }
-         if (candidates.length >= 10) break
-      }
-   }
-
-   return candidates.slice(0, 10)
-}
-
-function getWarningFlags(formats) {
-   const warnings = new Set()
-
-   for (const formatItem of formats) {
-      const vcodec = String(formatItem?.vcodec || '').toLowerCase()
-      const acodec = String(formatItem?.acodec || '').toLowerCase()
-      const ext = String(formatItem?.ext || '').toLowerCase()
-
-      if (vcodec.includes('vp9')) warnings.add('⚠️ VP9')
-      if (vcodec.includes('av1')) warnings.add('⚠️ AV1')
-      if (ext === 'webm') warnings.add('⚠️ WEBM')
-      if (acodec.includes('opus')) warnings.add('⚠️ OPUS')
-   }
-
-   return [...warnings]
-}
-
-async function resolveVideoFromQuery(query) {
-   if (!query) {
-      throw new Error('Debes indicar una búsqueda o una URL de YouTube.')
-   }
-
-   if (query.includes('youtube.com') || query.includes('youtu.be')) {
-      return {
-         url: query,
-         title: 'YouTube URL'
-      }
-   }
-
-   const results = await youtubedl('ytsearch1:' + query, {
-      ...buildYtDlpOptions(),
-      flatPlaylist: true,
-      playlistEnd: 1
-   })
-
-   if (!results || !Array.isArray(results.entries) || !results.entries.length) {
-      throw new Error('No se encontraron resultados para esa búsqueda.')
-   }
-
-   const selected = results.entries[0]
-   const url = selected.webpage_url || `https://www.youtube.com/watch?v=${selected.id}`
+   const type =
+      getType(format)
 
    return {
-      url,
-      title: selected.title || query
+      id,
+      ext,
+      resolution,
+      fps,
+      vcodec,
+      acodec,
+      size:
+         sizeText,
+      type
    }
 }
 
-function compactFormats(formats) {
+// ======================================================
+// SELECCIONAR FORMATOS RELEVANTES
+// ======================================================
+
+function getRelevantFormats(
+   formats
+) {
+
    return formats
-      .map((formatItem) => {
-         const type = getFormatType(formatItem)
-         const videoCodec = normalizeValue(formatItem?.vcodec, '—')
-         const audioCodec = normalizeValue(formatItem?.acodec, '—')
-         const resolution =
-            formatItem?.height && formatItem?.width
-               ? `${formatItem.height}p`
-               : formatItem?.height
-                  ? `${formatItem.height}p`
-                  : '—'
-
-         const ext = normalizeValue(formatItem?.ext, '—')
-         const fps = formatItem?.fps ? String(formatItem.fps) : '—'
-         const size = formatItem?.filesize_approx
-            ? formatBytes(formatItem.filesize_approx)
-            : formatItem?.tbr
-               ? `${Number(formatItem.tbr).toFixed(0)} kb/s`
-               : '—'
-
-         return {
-            id: normalizeValue(formatItem?.format_id, '—'),
-            ext,
-            resolution,
-            fps,
-            videoCodec: videoCodec === 'none' ? '—' : videoCodec,
-            audioCodec: audioCodec === 'none' ? '—' : audioCodec,
-            size,
-            type,
-            score: scoreFormat(formatItem),
-            raw: formatItem
-         }
-      })
-      .sort((a, b) => b.score - a.score || a.id.localeCompare(b.id, undefined, { numeric: true }))
-}
-
-function parseRawListFormats(output) {
-   if (!output || typeof output !== 'string') {
-      return []
-   }
-
-   return output
-      .split(/\r?\n/)
-      .map((line) => line.trim())
-      .filter((line) => line.length > 0)
-      .filter((line) => /^\d+\s/.test(line) || /^format code\s+/i.test(line))
-      .slice(0, 80)
-}
-
-async function getAvailableFormats(url) {
-   try {
-      const info = await youtubedl(url, buildYtDlpOptions())
-
-      if (info && Array.isArray(info.formats) && info.formats.length) {
-         return {
-            formats: compactFormats(info.formats),
-            rawList: null
-         }
-      }
-   } catch (error) {
-      console.warn('[FORMATOS] JSON fallback:', error?.stderr || error?.message || error)
-   }
-
-   try {
-      const ytDlpCommand = process.env.YT_DLP_BIN || 'yt-dlp'
-      const output = execFileSync(
-         ytDlpCommand,
-         [
-            '--list-formats',
-            '--no-warnings',
-            '--no-playlist',
-            '--skip-download',
-            '--no-check-certificates',
-            String(url)
-         ],
-         {
-            encoding: 'utf8',
-            timeout: 60000,
-            maxBuffer: 1024 * 1024 * 8
-         }
+      .filter(
+         format =>
+            format &&
+            format.format_id
       )
-
-      const rawList = parseRawListFormats(output)
-
-      if (rawList.length) {
-         return {
-            formats: [],
-            rawList
-         }
-      }
-   } catch (error) {
-      console.warn('[FORMATOS] yt-dlp list-format fallback:', error?.stderr || error?.message || error)
-   }
-
-   throw new Error('No se pudo obtener la lista de formatos.')
+      .map(
+         formatRow
+      )
 }
 
-async function formatsCommand(sock, chatId, message) {
+// ======================================================
+// CANDIDATOS
+// ======================================================
+
+function getCandidates(
+   formats
+) {
+
+   const videos =
+      formats
+         .filter(
+            format =>
+               format.format_id &&
+               format.vcodec &&
+               format.vcodec !== 'none'
+         )
+         .filter(
+            format => {
+
+               const ext =
+                  String(
+                     format.ext ||
+                     ''
+                  ).toLowerCase()
+
+               return (
+                  ext === 'mp4' ||
+                  ext === 'webm'
+               )
+            }
+         )
+         .sort(
+            (
+               a,
+               b
+            ) =>
+               Number(
+                  b.height ||
+                  0
+               ) -
+               Number(
+                  a.height ||
+                  0
+               )
+         )
+
+   const audios =
+      formats
+         .filter(
+            format =>
+               format.format_id &&
+               format.acodec &&
+               format.acodec !== 'none'
+         )
+         .filter(
+            format => {
+
+               const ext =
+                  String(
+                     format.ext ||
+                     ''
+                  ).toLowerCase()
+
+               return (
+                  ext === 'm4a' ||
+                  ext === 'webm'
+               )
+            }
+         )
+         .sort(
+            (
+               a,
+               b
+            ) =>
+               Number(
+                  b.abr ||
+                  b.tbr ||
+                  0
+               ) -
+               Number(
+                  a.abr ||
+                  a.tbr ||
+                  0
+               )
+         )
+
+   const result = []
+
+   for (
+      const video of
+      videos.slice(0, 10)
+   ) {
+
+      const audio =
+         audios.find(
+            item =>
+               item.ext ===
+               'm4a'
+         ) ||
+         audios[0]
+
+      if (!audio) {
+         continue
+      }
+
+      result.push({
+
+         video:
+            video.format_id,
+
+         audio:
+            audio.format_id,
+
+         videoExt:
+            video.ext,
+
+         audioExt:
+            audio.ext,
+
+         videoCodec:
+            video.vcodec,
+
+         audioCodec:
+            audio.acodec,
+
+         resolution:
+            video.height
+               ? `${video.height}p`
+               : '—'
+      })
+   }
+
+   return result
+}
+
+// ======================================================
+// COMANDO
+// ======================================================
+
+async function formatsCommand(
+   sock,
+   chatId,
+   message
+) {
+
    const text =
       message?.message?.conversation ||
       message?.message?.extendedTextMessage?.text ||
       ''
 
-   const query = text
-      .split(' ')
-      .slice(1)
-      .join(' ')
-      .trim()
+   const query =
+      text
+         .split(' ')
+         .slice(1)
+         .join(' ')
+         .trim()
 
    if (!query) {
+
       await sock.sendMessage(
          chatId,
          {
-            text: '🔬 Escribe una canción o una URL de YouTube para diagnosticar formatos.\n\nEjemplo:\n.formatos figaratto buhodermia\n.formatos https://www.youtube.com/watch?v=...'
+            text:
+`🔬 *FELBOT FORMAT TEST*
+
+Escribe una canción o URL de YouTube.
+
+Ejemplo:
+
+.formatos figaratto buhodermia
+
+o
+
+.formatos https://www.youtube.com/watch?v=...`
          },
-         { quoted: message }
+         {
+            quoted:
+               message
+         }
       )
-      return
+
+      return true
    }
 
    try {
-      const target = await resolveVideoFromQuery(query)
-      const cookiesOn = getCookiesStatus()
-      const ffmpegReady = (() => {
-         try {
-            require('fluent-ffmpeg')
-            return true
-         } catch {
-            return false
-         }
-      })()
 
       await sock.sendMessage(
          chatId,
          {
-            text: '🔬 Reuniendo formatos disponibles...'
+            text:
+               '🔬 Analizando formatos disponibles...'
          },
-         { quoted: message }
+         {
+            quoted:
+               message
+         }
       )
 
-      const formatResult = await getAvailableFormats(target.url)
-      const formats = formatResult.formats || []
-      const rawList = formatResult.rawList || []
-      const visibleFormats = pickRelevantFormats(formats)
-      const warnings = getWarningFlags(formats)
-      const candidatePairs = findVideoAudioCandidates(formats)
+      // =================================================
+      // BUSCAR
+      // =================================================
 
-      const lines = []
-      lines.push('🔬 FELBOT FORMAT TEST')
-      lines.push('')
-      lines.push(`🎵 ${target.title || 'Título desconocido'}`)
-      lines.push('━━━━━━━━━━━━━━━━━━')
-      lines.push('')
+      const target =
+         await resolveVideo(
+            query
+         )
 
-      if (rawList.length) {
-         lines.push('📄 FORMATOS DISPONIBLES (yt-dlp -F)')
-         lines.push(rawList.join('\n'))
-      } else {
-         lines.push('ID EXT RES FPS VIDEO AUDIO SIZE')
+      console.log(
+         '[FORMATOS] VIDEO:',
+         target.url
+      )
 
-         for (const entry of visibleFormats) {
-            lines.push(
-               `${entry.id} ${entry.ext} ${entry.resolution} ${entry.fps} ${entry.videoCodec} ${entry.audioCodec} ${entry.size}`
-            )
-         }
+      // =================================================
+      // FORMATOS
+      // =================================================
 
-         lines.push('')
-         lines.push('━━━━━━━━━━━━━━━━━━')
-         lines.push('')
+      const info =
+         await getFormats(
+            target.url
+         )
 
-         const videoRows = visibleFormats.filter((entry) => entry.videoCodec !== '—')
-         const audioRows = visibleFormats.filter((entry) => entry.audioCodec !== '—')
+      const allFormats =
+         getRelevantFormats(
+            info.formats
+         )
 
-         if (videoRows.length) {
-            lines.push('🎬 VIDEO MP4')
-            lines.push(
-               videoRows
-                  .filter((entry) => String(entry.ext).toLowerCase() === 'mp4')
-                  .slice(0, 8)
-                  .map((entry) => `${entry.id} → ${entry.videoCodec}`)
-                  .join('\n') || 'No se detectaron video MP4 relevantes.'
-            )
-         }
+      if (
+         !allFormats.length
+      ) {
 
-         if (audioRows.length) {
-            lines.push('')
-            lines.push('🎵 AUDIO')
-            lines.push(
-               audioRows
-                  .slice(0, 8)
-                  .map((entry) => `${entry.id} → ${entry.audioCodec}`)
-                  .join('\n')
-            )
-         }
-
-         if (warnings.length) {
-            lines.push('')
-            lines.push('⚠️ FLAGS')
-            lines.push(warnings.join('\n'))
-         }
-
-         lines.push('')
-         lines.push('🧪 POSIBLES FORMATOS PARA WHATSAPP')
-         lines.push(candidatePairs.join('\n') || 'No se detectaron combinaciones claras para diagnóstico.')
-      }
-
-      lines.push('')
-      lines.push(`🍪 COOKIES: ${cookiesOn ? 'ON' : 'OFF'}`)
-      lines.push(`🔧 FFMPEG: ${ffmpegReady ? 'ON' : 'OFF'}`)
-      lines.push('')
-      lines.push(`⚠️ Se encontraron ${formats.length || rawList.length} formatos. Mostrando los más relevantes.`)
-
-      // keeps output readable by splitting if too long
-      const finalText = lines.join('\n')
-      const chunks = []
-      let current = ''
-
-      for (const line of finalText.split('\n')) {
-         if ((current + line + '\n').length > 3000) {
-            chunks.push(current.trim())
-            current = line + '\n'
-         } else {
-            current += line + '\n'
-         }
-      }
-
-      if (current.trim()) {
-         chunks.push(current.trim())
-      }
-
-      for (const chunk of chunks) {
-         await sock.sendMessage(
-            chatId,
-            { text: chunk },
-            { quoted: message }
+         throw new Error(
+            'No se encontraron formatos'
          )
       }
+
+      // =================================================
+      // CANDIDATOS
+      // =================================================
+
+      const candidates =
+         getCandidates(
+            info.formats
+         )
+
+      // =================================================
+      // SEPARAR
+      // =================================================
+
+      const videoFormats =
+         allFormats.filter(
+            item =>
+               item.type ===
+                  'VIDEO' ||
+               item.type ===
+                  'VIDEO+AUDIO'
+         )
+
+      const audioFormats =
+         allFormats.filter(
+            item =>
+               item.type ===
+                  'AUDIO' ||
+               item.type ===
+                  'VIDEO+AUDIO'
+         )
+
+      // =================================================
+      // MENSAJE
+      // =================================================
+
+      const lines = []
+
+      lines.push(
+         '🔬 *FELBOT FORMAT TEST*'
+      )
+
+      lines.push('')
+
+      lines.push(
+         `🎵 *${target.title}*`
+      )
+
+      lines.push('')
+
+      lines.push(
+         `📦 FORMATOS ENCONTRADOS: ${allFormats.length}`
+      )
+
+      lines.push(
+         `🍪 COOKIES: ${getCookiesStatus() ? 'ON' : 'OFF'}`
+      )
+
+      lines.push('')
+
+      lines.push(
+         '━━━━━━━━━━━━━━━━━━'
+      )
+
+      // =================================================
+      // VIDEO
+      // =================================================
+
+      lines.push(
+         '🎬 *VIDEO*'
+      )
+
+      lines.push('')
+
+      for (
+         const item of
+         videoFormats
+            .slice(0, 25)
+      ) {
+
+         lines.push(
+            `${item.id} | ${item.ext} | ${item.resolution} | ${item.fps}fps | ${item.vcodec} | ${item.size}`
+         )
+      }
+
+      // =================================================
+      // AUDIO
+      // =================================================
+
+      lines.push('')
+
+      lines.push(
+         '━━━━━━━━━━━━━━━━━━'
+      )
+
+      lines.push(
+         '🎵 *AUDIO*'
+      )
+
+      lines.push('')
+
+      for (
+         const item of
+         audioFormats
+            .slice(0, 15)
+      ) {
+
+         lines.push(
+            `${item.id} | ${item.ext} | ${item.acodec} | ${item.size}`
+         )
+      }
+
+      // =================================================
+      // CANDIDATOS
+      // =================================================
+
+      lines.push('')
+
+      lines.push(
+         '━━━━━━━━━━━━━━━━━━'
+      )
+
+      lines.push(
+         '🧪 *CANDIDATOS PARA PROBAR*'
+      )
+
+      lines.push('')
+
+      if (
+         candidates.length
+      ) {
+
+         for (
+            const candidate of
+            candidates.slice(
+               0,
+               10
+            )
+         ) {
+
+            lines.push(
+               `${candidate.video} + ${candidate.audio} → ${candidate.videoExt} + ${candidate.audioExt}`
+            )
+
+            lines.push(
+               `   🎬 ${candidate.videoCodec} | 🎵 ${candidate.audioCodec} | ${candidate.resolution}`
+            )
+         }
+
+      } else {
+
+         lines.push(
+            'No se encontraron combinaciones.'
+         )
+      }
+
+      // =================================================
+      // FLAGS
+      // =================================================
+
+      const codecs =
+         new Set()
+
+      for (
+         const item of
+         allFormats
+      ) {
+
+         if (
+            item.vcodec !==
+            '—'
+         ) {
+            codecs.add(
+               item.vcodec
+            )
+         }
+
+         if (
+            item.acodec !==
+            '—'
+         ) {
+            codecs.add(
+               item.acodec
+            )
+         }
+      }
+
+      lines.push('')
+
+      lines.push(
+         '━━━━━━━━━━━━━━━━━━'
+      )
+
+      lines.push(
+         '🔎 *CODECS DETECTADOS*'
+      )
+
+      lines.push('')
+
+      lines.push(
+         [...codecs]
+            .slice(0, 20)
+            .join('\n')
+      )
+
+      const finalText =
+         lines.join('\n')
+
+      // =================================================
+      // DIVIDIR MENSAJE
+      // =================================================
+
+      const chunks = []
+
+      let current =
+         ''
+
+      for (
+         const line of
+         finalText.split('\n')
+      ) {
+
+         if (
+            (
+               current +
+               line +
+               '\n'
+            ).length >
+            3500
+         ) {
+
+            chunks.push(
+               current.trim()
+            )
+
+            current =
+               line +
+               '\n'
+
+         } else {
+
+            current +=
+               line +
+               '\n'
+         }
+      }
+
+      if (
+         current.trim()
+      ) {
+
+         chunks.push(
+            current.trim()
+         )
+      }
+
+      for (
+         const chunk of
+         chunks
+      ) {
+
+         await sock.sendMessage(
+            chatId,
+            {
+               text:
+                  chunk
+            },
+            {
+               quoted:
+                  message
+            }
+         )
+      }
+
+      console.log(
+         `[FORMATOS] ${allFormats.length} formatos encontrados`
+      )
+
+      return true
+
    } catch (error) {
-      console.error('[FORMATOS] Error:', error?.stderr || error?.message || error)
+
+      console.error(
+         '[FORMATOS] ERROR:',
+         error?.stderr ||
+         error?.message ||
+         error
+      )
 
       await sock.sendMessage(
          chatId,
          {
-            text: '❌ No se pudo diagnosticar ese video.\n\nVerifica la URL o la búsqueda e inténtalo otra vez.\n\n🍪 COOKIES: ' + (getCookiesStatus() ? 'ON' : 'OFF')
+            text:
+`❌ *No se pudieron obtener los formatos.*
+
+> ${error?.message || 'Error desconocido'}
+
+🍪 Cookies: ${getCookiesStatus() ? 'ON' : 'OFF'}`
          },
-         { quoted: message }
+         {
+            quoted:
+               message
+         }
       )
+
+      return true
    }
 }
 
-module.exports = formatsCommand
-module.exports.formatsCommand = formatsCommand
+// ======================================================
+// EXPORTS
+// ======================================================
+
+module.exports =
+   formatsCommand
+
+module.exports.formatsCommand =
+   formatsCommand
