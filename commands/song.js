@@ -1,10 +1,8 @@
 
 const youtubedl = require('youtube-dl-exec')
-const ffmpegPath = require('ffmpeg-static')
 const fs = require('fs')
 const path = require('path')
 const os = require('os')
-const { toAudio } = require('../lib/converter')
 
 // ======================================================
 // CACHE
@@ -16,16 +14,14 @@ function limitMapSize(map, max = 100) {
    while (map.size > max) {
       const firstKey = map.keys().next().value
 
-      if (!firstKey) {
-         break
-      }
+      if (!firstKey) break
 
       map.delete(firstKey)
    }
 }
 
 // ======================================================
-// LIMPIEZA DE MEMORIA
+// LIMPIEZA
 // ======================================================
 
 function cleanMemory() {
@@ -78,18 +74,25 @@ function createBar(percent) {
 // ======================================================
 
 const cookiesPath =
-   path.join(
-      process.cwd(),
-      'cookies.txt'
-   )
+   '/home/container/cookies.txt'
 
-const hasCookies =
-   fs.existsSync(
-      cookiesPath
-   )
+function getCookiesStatus() {
+
+   try {
+
+      return (
+         fs.existsSync(cookiesPath) &&
+         fs.statSync(cookiesPath).size > 0
+      )
+
+   } catch {
+
+      return false
+   }
+}
 
 console.log(
-   hasCookies
+   getCookiesStatus()
       ? '🍪 YOUTUBE COOKIES: ENCONTRADAS'
       : '⚠️ YOUTUBE COOKIES: NO ENCONTRADAS'
 )
@@ -106,9 +109,6 @@ const BASE_OPTIONS = {
    noPlaylist:
       true,
 
-   ffmpegLocation:
-      ffmpegPath,
-
    retries:
       1,
 
@@ -124,7 +124,6 @@ const BASE_OPTIONS = {
 // ======================================================
 
 function youtubeOptions({
-   client = null,
    cookies = false,
    format = null
 } = {}) {
@@ -133,16 +132,14 @@ function youtubeOptions({
       ...BASE_OPTIONS
    }
 
-   if (client) {
+   // Un solo cliente = menos tiempo
+   options.extractorArgs =
+      'youtube:player_client=default'
 
-      options.extractorArgs =
-         'youtube:player_client=' +
-         client
-   }
-
+   // Cookies en tiempo real
    if (
       cookies &&
-      hasCookies
+      getCookiesStatus()
    ) {
 
       options.cookies =
@@ -159,7 +156,7 @@ function youtubeOptions({
 }
 
 // ======================================================
-// FORMATO DURACIÓN
+// DURACIÓN
 // ======================================================
 
 function formatDuration(seconds) {
@@ -167,9 +164,7 @@ function formatDuration(seconds) {
    if (
       seconds === undefined ||
       seconds === null ||
-      Number.isNaN(
-         Number(seconds)
-      )
+      Number.isNaN(Number(seconds))
    ) {
       return 'Unknown'
    }
@@ -190,102 +185,11 @@ function formatDuration(seconds) {
    return (
       String(minutes) +
       ':' +
-      String(
-         remaining
-      ).padStart(
+      String(remaining).padStart(
          2,
          '0'
       )
    )
-}
-
-// ======================================================
-// INFORMACIÓN DEL VIDEO
-// ======================================================
-//
-// IMPORTANTE:
-// Se usa directamente cookies.
-// No hacemos:
-//
-// default OFF
-// android OFF
-// web OFF
-// tv_embedded OFF
-//
-// Tus logs demostraron que:
-//
-// default + cookies = FUNCIONA
-// ======================================================
-
-async function getVideoInfo(url) {
-
-   console.log(
-      '🔎 INFO YOUTUBE | 🍪 COOKIES: ' +
-      (
-         hasCookies
-            ? 'ON'
-            : 'OFF'
-      )
-   )
-
-   try {
-
-      const options =
-         youtubeOptions({
-            client:
-               'default',
-
-            cookies:
-               hasCookies,
-
-            format:
-               'bestaudio/best'
-         })
-
-      const info =
-         await youtubedl(
-            url,
-            {
-               ...options,
-
-               dumpSingleJson:
-                  true,
-
-               skipDownload:
-                  true
-            }
-         )
-
-      if (
-         info &&
-         info.title
-      ) {
-
-         console.log(
-            '✅ INFO FUNCIONAL'
-         )
-
-         return info
-      }
-
-      throw new Error(
-         'Información de YouTube vacía'
-      )
-
-   } catch (error) {
-
-      console.log(
-         '⚠️ INFO YOUTUBE FALLÓ'
-      )
-
-      console.log(
-         error?.stderr ||
-         error?.message ||
-         ''
-      )
-
-      throw error
-   }
 }
 
 // ======================================================
@@ -296,29 +200,21 @@ async function searchYouTube(query) {
 
    console.log(`
 ╭──────────────────────⬣
-│ 🔎 BUSCANDO CON YT-DLP
+│ 🔎 BUSCANDO YOUTUBE
 ├──────────────────────⬣
 │ 🎵 ${query}
+│ ⚡ SEARCH RÁPIDO
 ╰──────────────────────⬣
 `)
 
    try {
 
-      console.log(
-         '🔎 SEARCH CLIENT: default'
-      )
-
       const results =
          await youtubedl(
-            'ytsearch5:' +
-            query,
+            'ytsearch1:' + query,
             {
                ...youtubeOptions({
-                  client:
-                     'default',
-
-                  cookies:
-                     false
+                  cookies: false
                }),
 
                flatPlaylist:
@@ -328,15 +224,16 @@ async function searchYouTube(query) {
                   true,
 
                skipDownload:
-                  true
+                  true,
+
+               playlistEnd:
+                  1
             }
          )
 
       if (
          !results ||
-         !Array.isArray(
-            results.entries
-         ) ||
+         !Array.isArray(results.entries) ||
          !results.entries.length
       ) {
 
@@ -345,76 +242,35 @@ async function searchYouTube(query) {
          )
       }
 
-      console.log(
-         '✅ SEARCH FUNCIONAL'
-      )
-
       const selected =
-         results.entries.find(
-            video =>
-               video &&
-               video.title &&
-               !video.title
-                  .toLowerCase()
-                  .includes(
-                     'playlist'
-                  ) &&
-               (
-                  !video.duration ||
-                  (
-                     Number(
-                        video.duration
-                     ) > 30 &&
-                     Number(
-                        video.duration
-                     ) < 1800
-                  )
-               )
-         ) ||
-         results.entries.find(
-            video =>
-               video &&
-               video.title
-         ) ||
          results.entries[0]
 
-      if (!selected) {
+      if (
+         !selected ||
+         !selected.id
+      ) {
 
          throw new Error(
-            'No se encontró una canción'
+            'Resultado de YouTube inválido'
          )
       }
 
       const videoUrl =
          selected.webpage_url ||
          (
+            'https://www.youtube.com/watch?v=' +
             selected.id
-               ? 'https://www.youtube.com/watch?v=' +
-                 selected.id
-               : null
          )
-
-      if (!videoUrl) {
-
-         throw new Error(
-            'No se pudo obtener la URL del video'
-         )
-      }
 
       console.log(
-         '🎯 VIDEO SELECCIONADO: ' +
-         videoUrl
+         '✅ VIDEO:',
+         selected.title
       )
 
-      // ==================================================
-      // USAR INFORMACIÓN DEL SEARCH
-      // ==================================================
-      //
-      // Primero devolvemos lo que ya tenemos.
-      // Esto evita una consulta adicional lenta.
-      //
-      // La descarga posteriormente usa cookies.
-      // ==================================================
+      console.log(
+         '🎯 URL:',
+         videoUrl
+      )
 
       return {
 
@@ -473,18 +329,7 @@ async function searchYouTube(query) {
 }
 
 // ======================================================
-// DESCARGAR AUDIO
-// ======================================================
-//
-// MÉTODO RÁPIDO:
-//
-// SEARCH
-//    ↓
-// DOWNLOAD CON COOKIES
-//    ↓
-// FFMPEG
-//
-// No hacemos múltiples clientes.
+// DESCARGA ULTRA RÁPIDA
 // ======================================================
 
 async function downloadAudio(url) {
@@ -504,8 +349,7 @@ async function downloadAudio(url) {
       fs.mkdirSync(
          tempDir,
          {
-            recursive:
-               true
+            recursive: true
          }
       )
    }
@@ -515,48 +359,39 @@ async function downloadAudio(url) {
       '-' +
       Math.random()
          .toString(36)
-         .slice(2)
+         .slice(2, 8)
 
    const outputTemplate =
       path.join(
          tempDir,
-         fileId +
-         '.%(ext)s'
+         fileId + '.%(ext)s'
       )
+
+   const cookiesEnabled =
+      getCookiesStatus()
 
    console.log(`
 ╭──────────────────────⬣
-│ 🚀 DESCARGANDO AUDIO
+│ 🚀 DESCARGA RÁPIDA
 ├──────────────────────⬣
-│ 🎵 YT-DLP LOCAL
-│ 🎬 FFMPEG LOCAL
-│ 🧠 NODE JS RUNTIME
-│ 🍪 COOKIES DIRECTAS
-│ 🎧 BEST AUDIO
+│ 🎵 YT-DLP
+│ ⚡ MODO M4A
+│ 🍪 COOKIES: ${cookiesEnabled ? 'ON' : 'OFF'}
+│ 🎯 CLIENT: default
+│ 🚫 SIN CONVERSIÓN
 ╰──────────────────────⬣
 `)
 
    try {
 
-      console.log(
-         '🎯 DOWNLOAD CLIENT: default | COOKIES: ' +
-         (
-            hasCookies
-               ? 'ON'
-               : 'OFF'
-         )
-      )
-
       const options =
          youtubeOptions({
-            client:
-               'default',
-
             cookies:
-               hasCookies,
+               cookiesEnabled,
 
+            // M4A directo = no necesita FFmpeg
             format:
-               'bestaudio[ext=m4a]/bestaudio/best'
+               'bestaudio[ext=m4a]/bestaudio'
          })
 
       options.output =
@@ -565,15 +400,27 @@ async function downloadAudio(url) {
       options.quiet =
          true
 
+      options.noProgress =
+         true
+
+      options.noWarnings =
+         true
+
       options.noPlaylist =
          true
+
+      options.concurrentFragments =
+         4
+
+      options.retries =
+         1
 
       await youtubedl(
          url,
          options,
          {
             timeout:
-               120000
+               90000
          }
       )
 
@@ -582,9 +429,7 @@ async function downloadAudio(url) {
             tempDir
          ).filter(
             file =>
-               file.startsWith(
-                  fileId
-               )
+               file.startsWith(fileId)
          )
 
       if (!files.length) {
@@ -610,7 +455,7 @@ async function downloadAudio(url) {
       ) {
 
          throw new Error(
-            'El archivo descargado no existe'
+            'Archivo descargado inexistente'
          )
       }
 
@@ -619,12 +464,10 @@ async function downloadAudio(url) {
             outputFile
          )
 
-      if (
-         !stats.size
-      ) {
+      if (!stats.size) {
 
          throw new Error(
-            'El archivo descargado está vacío'
+            'Archivo descargado vacío'
          )
       }
 
@@ -635,14 +478,15 @@ async function downloadAudio(url) {
 
       console.log(`
 ╭──────────────────────⬣
-│ ✅ AUDIO DESCARGADO
+│ ✅ DESCARGA COMPLETADA
 ├──────────────────────⬣
-│ 🎯 CLIENT: default
-│ 🍪 COOKIES: ${hasCookies ? 'ON' : 'OFF'}
+│ 🍪 COOKIES: ${getCookiesStatus() ? 'ON' : 'OFF'}
 │ 📦 ${(stats.size / 1024 / 1024).toFixed(2)} MB
+│ ⚡ SIN FFMPEG
 ╰──────────────────────⬣
 `)
 
+      // Eliminar temporal inmediatamente
       try {
          fs.unlinkSync(
             outputFile
@@ -660,10 +504,7 @@ async function downloadAudio(url) {
          error
       )
 
-      // ================================================
-      // LIMPIAR TEMPORALES
-      // ================================================
-
+      // Limpiar archivos temporales
       try {
 
          const files =
@@ -671,9 +512,7 @@ async function downloadAudio(url) {
                tempDir
             ).filter(
                file =>
-                  file.startsWith(
-                     fileId
-                  )
+                  file.startsWith(fileId)
             )
 
          for (
@@ -759,33 +598,13 @@ async function songCommand(
       // ==================================================
 
       if (
-         query.includes(
-            'youtube.com'
-         ) ||
-         query.includes(
-            'youtu.be'
-         )
+         query.includes('youtube.com') ||
+         query.includes('youtu.be')
       ) {
 
          console.log(
-            '🔗 URL DIRECTA DE YOUTUBE'
+            '🔗 URL DIRECTA'
          )
-
-         let directInfo = null
-
-         try {
-
-            directInfo =
-               await getVideoInfo(
-                  query
-               )
-
-         } catch {
-
-            console.log(
-               '⚡ INFO DIRECTA NO DISPONIBLE'
-            )
-         }
 
          video = {
 
@@ -793,33 +612,20 @@ async function songCommand(
                query,
 
             title:
-               directInfo?.title ||
                'YouTube Audio',
 
             thumbnail:
-               directInfo?.thumbnail ||
                'https://i.imgur.com/AfFp7pu.png',
 
             timestamp:
-               directInfo?.duration_string ||
-               (
-                  directInfo?.duration
-                     ? formatDuration(
-                          directInfo.duration
-                       )
-                     : 'Unknown'
-               ),
+               'Unknown',
 
             author: {
-
                name:
-                  directInfo?.uploader ||
-                  directInfo?.channel ||
-                  'Unknown'
+                  'YouTube'
             },
 
             views:
-               directInfo?.view_count ||
                0
          }
 
@@ -841,7 +647,7 @@ async function songCommand(
          ) {
 
             console.log(
-               '⚡ USANDO SEARCH CACHE'
+               '⚡ SEARCH CACHE'
             )
 
             video =
@@ -901,8 +707,8 @@ async function songCommand(
    video.views || 0
 ).toLocaleString()}
 
-> 🚀 Buscando canción...
-> ${createBar(10)} 10%`
+> ⚡ Descarga rápida...
+> ${createBar(25)} 25%`
             },
             {
                quoted:
@@ -911,7 +717,7 @@ async function songCommand(
          )
 
       // ==================================================
-      // DESCARGA
+      // DESCARGAR
       // ==================================================
 
       const audioBuffer =
@@ -929,110 +735,8 @@ async function songCommand(
          )
       }
 
-      console.log(
-         'FIRST BYTES:',
-         audioBuffer
-            .slice(
-               0,
-               32
-            )
-            .toString(
-               'hex'
-            )
-      )
-
       // ==================================================
-      // PROCESAR
-      // ==================================================
-
-      try {
-
-         await sock.sendMessage(
-            chatId,
-            {
-               edit:
-                  loading.key,
-
-               image: {
-                  url:
-                     video.thumbnail
-               },
-
-               caption:
-`🔄 *PROCESANDO AUDIO*
-
-> ❀ Título: ${video.title}
-
-> ⚡ Convirtiendo audio...
-> ${createBar(90)} 90%`
-            }
-         )
-
-      } catch {}
-
-      let finalBuffer
-
-      try {
-
-         const firstBytes =
-            audioBuffer
-               .slice(
-                  0,
-                  64
-               )
-               .toString(
-                  'hex'
-               )
-
-         let inputExt =
-            'mp3'
-
-         // ftyp = MP4 / M4A
-         if (
-            firstBytes.includes(
-               '66747970'
-            )
-         ) {
-
-            inputExt =
-               'mp4'
-         }
-
-         console.log(
-            '🔍 INPUT EXT: ' +
-            inputExt
-         )
-
-         finalBuffer =
-            await toAudio(
-               audioBuffer,
-               inputExt
-            )
-
-      } catch (error) {
-
-         console.log(
-            '⚠️ Conversión no necesaria:',
-            error?.message ||
-            error
-         )
-
-         finalBuffer =
-            audioBuffer
-      }
-
-      if (
-         !finalBuffer ||
-         finalBuffer.length < 50000
-      ) {
-
-         throw new Error(
-            'Conversion failed'
-         )
-      }
-
-      // ==================================================
-      // NOMBRE SEGURO
+      // NOMBRE
       // ==================================================
 
       const safeTitle =
@@ -1052,21 +756,50 @@ async function songCommand(
          'song'
 
       // ==================================================
-      // ENVIAR AUDIO
+      // ACTUALIZAR MENSAJE
+      // ==================================================
+
+      try {
+
+         await sock.sendMessage(
+            chatId,
+            {
+               edit:
+                  loading.key,
+
+               image: {
+                  url:
+                     video.thumbnail
+               },
+
+               caption:
+`⚡ *AUDIO LISTO*
+
+> ❀ Título: ${safeTitle}
+
+> 🚀 Enviando audio...
+> ${createBar(90)} 90%`
+            }
+         )
+
+      } catch {}
+
+      // ==================================================
+      // ENVIAR M4A
       // ==================================================
 
       await sock.sendMessage(
          chatId,
          {
             audio:
-               finalBuffer,
+               audioBuffer,
 
             mimetype:
-               'audio/mpeg',
+               'audio/mp4',
 
             fileName:
                safeTitle +
-               '.mp3',
+               '.m4a',
 
             ptt:
                false
@@ -1080,6 +813,15 @@ async function songCommand(
       // ==================================================
       // FINALIZADO
       // ==================================================
+
+      const totalTime =
+         (
+            (
+               Date.now() -
+               startTime
+            ) /
+            1000
+         ).toFixed(1)
 
       try {
 
@@ -1101,13 +843,7 @@ async function songCommand(
 > ❀ Autor: ${video.author?.name || 'Unknown'}
 > ❀ Duración: ${video.timestamp || 'Unknown'}
 
-> 🚀 Completado en ${(
-   (
-      Date.now() -
-      startTime
-   ) /
-   1000
-).toFixed(1)}s
+> ⚡ Completado en ${totalTime}s
 > ${createBar(100)} 100%`
             }
          )
@@ -1116,16 +852,12 @@ async function songCommand(
 
       console.log(`
 ╭──────────────────────⬣
-│ ✅ DESCARGA COMPLETADA
+│ ✅ PLAY COMPLETADO
 ├──────────────────────⬣
 │ 🎧 ${safeTitle}
-│ ⏱️ ${(
-   (
-      Date.now() -
-      startTime
-   ) /
-   1000
-).toFixed(1)}s
+│ ⚡ MODO RÁPIDO
+│ 📦 M4A DIRECTO
+│ ⏱️ ${totalTime}s
 ╰──────────────────────⬣
 `)
 
@@ -1166,3 +898,4 @@ async function songCommand(
 
 module.exports =
    songCommand
+
