@@ -1,4 +1,5 @@
 const fs = require('fs')
+const { execFileSync } = require('child_process')
 const youtubedl = require('youtube-dl-exec')
 
 const cookiesPath = '/home/container/cookies.txt'
@@ -302,14 +303,65 @@ function compactFormats(formats) {
       .sort((a, b) => b.score - a.score || a.id.localeCompare(b.id, undefined, { numeric: true }))
 }
 
-async function getAvailableFormats(url) {
-   const info = await youtubedl(url, buildYtDlpOptions())
-
-   if (!info || !Array.isArray(info.formats)) {
-      throw new Error('No se pudo obtener la lista de formatos.')
+function parseRawListFormats(output) {
+   if (!output || typeof output !== 'string') {
+      return []
    }
 
-   return compactFormats(info.formats)
+   return output
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0)
+      .filter((line) => /^\d+\s/.test(line) || /^format code\s+/i.test(line))
+      .slice(0, 80)
+}
+
+async function getAvailableFormats(url) {
+   try {
+      const info = await youtubedl(url, buildYtDlpOptions())
+
+      if (info && Array.isArray(info.formats) && info.formats.length) {
+         return {
+            formats: compactFormats(info.formats),
+            rawList: null
+         }
+      }
+   } catch (error) {
+      console.warn('[FORMATOS] JSON fallback:', error?.stderr || error?.message || error)
+   }
+
+   try {
+      const ytDlpCommand = process.env.YT_DLP_BIN || 'yt-dlp'
+      const output = execFileSync(
+         ytDlpCommand,
+         [
+            '--list-formats',
+            '--no-warnings',
+            '--no-playlist',
+            '--skip-download',
+            '--no-check-certificates',
+            String(url)
+         ],
+         {
+            encoding: 'utf8',
+            timeout: 60000,
+            maxBuffer: 1024 * 1024 * 8
+         }
+      )
+
+      const rawList = parseRawListFormats(output)
+
+      if (rawList.length) {
+         return {
+            formats: [],
+            rawList
+         }
+      }
+   } catch (error) {
+      console.warn('[FORMATOS] yt-dlp list-format fallback:', error?.stderr || error?.message || error)
+   }
+
+   throw new Error('No se pudo obtener la lista de formatos.')
 }
 
 async function formatsCommand(sock, chatId, message) {
@@ -355,7 +407,9 @@ async function formatsCommand(sock, chatId, message) {
          { quoted: message }
       )
 
-      const formats = await getAvailableFormats(target.url)
+      const formatResult = await getAvailableFormats(target.url)
+      const formats = formatResult.formats || []
+      const rawList = formatResult.rawList || []
       const visibleFormats = pickRelevantFormats(formats)
       const warnings = getWarningFlags(formats)
       const candidatePairs = findVideoAudioCandidates(formats)
@@ -366,57 +420,64 @@ async function formatsCommand(sock, chatId, message) {
       lines.push(`🎵 ${target.title || 'Título desconocido'}`)
       lines.push('━━━━━━━━━━━━━━━━━━')
       lines.push('')
-      lines.push('ID EXT RES FPS VIDEO AUDIO SIZE')
 
-      for (const entry of visibleFormats) {
-         lines.push(
-            `${entry.id} ${entry.ext} ${entry.resolution} ${entry.fps} ${entry.videoCodec} ${entry.audioCodec} ${entry.size}`
-         )
-      }
+      if (rawList.length) {
+         lines.push('📄 FORMATOS DISPONIBLES (yt-dlp -F)')
+         lines.push(rawList.join('\n'))
+      } else {
+         lines.push('ID EXT RES FPS VIDEO AUDIO SIZE')
 
-      lines.push('')
-      lines.push('━━━━━━━━━━━━━━━━━━')
-      lines.push('')
+         for (const entry of visibleFormats) {
+            lines.push(
+               `${entry.id} ${entry.ext} ${entry.resolution} ${entry.fps} ${entry.videoCodec} ${entry.audioCodec} ${entry.size}`
+            )
+         }
 
-      const videoRows = visibleFormats.filter((entry) => entry.videoCodec !== '—')
-      const audioRows = visibleFormats.filter((entry) => entry.audioCodec !== '—')
-
-      if (videoRows.length) {
-         lines.push('🎬 VIDEO MP4')
-         lines.push(
-            videoRows
-               .filter((entry) => String(entry.ext).toLowerCase() === 'mp4')
-               .slice(0, 8)
-               .map((entry) => `${entry.id} → ${entry.videoCodec}`)
-               .join('\n') || 'No se detectaron video MP4 relevantes.'
-         )
-      }
-
-      if (audioRows.length) {
          lines.push('')
-         lines.push('🎵 AUDIO')
-         lines.push(
-            audioRows
-               .slice(0, 8)
-               .map((entry) => `${entry.id} → ${entry.audioCodec}`)
-               .join('\n')
-         )
-      }
-
-      if (warnings.length) {
+         lines.push('━━━━━━━━━━━━━━━━━━')
          lines.push('')
-         lines.push('⚠️ FLAGS')
-         lines.push(warnings.join('\n'))
+
+         const videoRows = visibleFormats.filter((entry) => entry.videoCodec !== '—')
+         const audioRows = visibleFormats.filter((entry) => entry.audioCodec !== '—')
+
+         if (videoRows.length) {
+            lines.push('🎬 VIDEO MP4')
+            lines.push(
+               videoRows
+                  .filter((entry) => String(entry.ext).toLowerCase() === 'mp4')
+                  .slice(0, 8)
+                  .map((entry) => `${entry.id} → ${entry.videoCodec}`)
+                  .join('\n') || 'No se detectaron video MP4 relevantes.'
+            )
+         }
+
+         if (audioRows.length) {
+            lines.push('')
+            lines.push('🎵 AUDIO')
+            lines.push(
+               audioRows
+                  .slice(0, 8)
+                  .map((entry) => `${entry.id} → ${entry.audioCodec}`)
+                  .join('\n')
+            )
+         }
+
+         if (warnings.length) {
+            lines.push('')
+            lines.push('⚠️ FLAGS')
+            lines.push(warnings.join('\n'))
+         }
+
+         lines.push('')
+         lines.push('🧪 POSIBLES FORMATOS PARA WHATSAPP')
+         lines.push(candidatePairs.join('\n') || 'No se detectaron combinaciones claras para diagnóstico.')
       }
 
-      lines.push('')
-      lines.push('🧪 POSIBLES FORMATOS PARA WHATSAPP')
-      lines.push(candidatePairs.join('\n') || 'No se detectaron combinaciones claras para diagnóstico.')
       lines.push('')
       lines.push(`🍪 COOKIES: ${cookiesOn ? 'ON' : 'OFF'}`)
       lines.push(`🔧 FFMPEG: ${ffmpegReady ? 'ON' : 'OFF'}`)
       lines.push('')
-      lines.push(`⚠️ Se encontraron ${formats.length} formatos. Mostrando los más relevantes.`)
+      lines.push(`⚠️ Se encontraron ${formats.length || rawList.length} formatos. Mostrando los más relevantes.`)
 
       // keeps output readable by splitting if too long
       const finalText = lines.join('\n')
