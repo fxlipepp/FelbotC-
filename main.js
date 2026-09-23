@@ -131,7 +131,9 @@ const facebookCommand = require('./commands/facebook');
 const spotifyCommand = require('./commands/spotify');
 const playCommand = require('./commands/play');
 const tiktokCommand = require('./commands/tiktok');
-const songCommand = require('./commands/song');
+const songModule = require('./commands/song');
+const songCommand = songModule.songCommand || songModule;
+const { handleSongButton } = songModule;
 const aiCommand = require('./commands/ai');
 const { handleTranslateCommand } = require('./commands/translate');
 const { addCommandReaction, handleAreactCommand } = require('./lib/reactions');
@@ -349,6 +351,10 @@ if (userData?.banned) {
                 return;
             } else if (buttonId.startsWith('panel::')) {
                 await handlePanelButton(sock, senderId, buttonId, message);
+                return;
+            } else if (buttonId.startsWith('song::')) {
+                const handled = await handleSongButton(sock, chatId, senderId, buttonId, message);
+                if (handled) return;
                 return;
             }
         }

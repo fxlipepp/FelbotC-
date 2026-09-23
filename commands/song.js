@@ -1,4 +1,3 @@
-
 const youtubedl = require('youtube-dl-exec')
 const fs = require('fs')
 const path = require('path')
@@ -70,20 +69,37 @@ function createBar(percent) {
 }
 
 // ======================================================
-// COOKIES
+// COOKIES YOUTUBE
 // ======================================================
 
 const cookiesPath =
    '/home/container/cookies.txt'
 
+// User-Agent fijo para que búsqueda y descarga
+// trabajen con la misma identidad del navegador.
+const YOUTUBE_USER_AGENT =
+   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36'
+
 function getCookiesStatus() {
 
    try {
 
-      return (
-         fs.existsSync(cookiesPath) &&
-         fs.statSync(cookiesPath).size > 0
-      )
+      if (!fs.existsSync(cookiesPath)) {
+         return false
+      }
+
+      const stats =
+         fs.statSync(cookiesPath)
+
+      if (!stats.isFile()) {
+         return false
+      }
+
+      if (stats.size <= 100) {
+         return false
+      }
+
+      return true
 
    } catch {
 
@@ -91,10 +107,64 @@ function getCookiesStatus() {
    }
 }
 
+// ======================================================
+// VALIDAR FORMATO DE COOKIES
+// ======================================================
+
+function validateCookiesFile() {
+
+   try {
+
+      if (!getCookiesStatus()) {
+         return false
+      }
+
+      const content =
+         fs.readFileSync(
+            cookiesPath,
+            'utf8'
+         )
+
+      const firstLine =
+         content
+            .split(/\r?\n/)
+            .find(
+               line =>
+                  line.trim().length > 0
+            )
+
+      if (!firstLine) {
+         return false
+      }
+
+      const validHeader =
+         firstLine === '# HTTP Cookie File' ||
+         firstLine === '# Netscape HTTP Cookie File'
+
+      if (!validHeader) {
+
+         console.log(
+            '⚠️ COOKIES: encabezado Netscape inválido'
+         )
+
+         return false
+      }
+
+      return true
+
+   } catch {
+
+      return false
+   }
+}
+
+const cookiesAvailable =
+   validateCookiesFile()
+
 console.log(
-   getCookiesStatus()
-      ? '🍪 YOUTUBE COOKIES: ENCONTRADAS'
-      : '⚠️ YOUTUBE COOKIES: NO ENCONTRADAS'
+   cookiesAvailable
+      ? '🍪 YOUTUBE COOKIES: ENCONTRADAS Y VÁLIDAS'
+      : '⚠️ YOUTUBE COOKIES: NO DISPONIBLES O INVÁLIDAS'
 )
 
 // ======================================================
@@ -116,7 +186,10 @@ const BASE_OPTIONS = {
       true,
 
    jsRuntimes:
-      'node'
+      'node',
+
+   userAgent:
+      YOUTUBE_USER_AGENT
 }
 
 // ======================================================
@@ -124,7 +197,6 @@ const BASE_OPTIONS = {
 // ======================================================
 
 function youtubeOptions({
-   cookies = false,
    format = null
 } = {}) {
 
@@ -132,15 +204,13 @@ function youtubeOptions({
       ...BASE_OPTIONS
    }
 
-   // Un solo cliente = menos tiempo
+   // Un solo cliente = menos intentos y menor latencia
    options.extractorArgs =
       'youtube:player_client=default'
 
-   // Cookies en tiempo real
-   if (
-      cookies &&
-      getCookiesStatus()
-   ) {
+   // SIEMPRE usar las mismas cookies
+   // tanto para búsqueda como para descarga.
+   if (cookiesAvailable) {
 
       options.cookies =
          cookiesPath
@@ -192,6 +262,56 @@ function formatDuration(seconds) {
    )
 }
 
+function sanitizeSongTitle(title = 'song') {
+   return (
+      String(title)
+         .replace(
+            /[^\w\s-]/g,
+            ''
+         )
+         .trim()
+         .slice(
+            0,
+            100
+         ) ||
+      'song'
+   )
+}
+
+function getSongSelectionMap() {
+   if (!global.songSelections) {
+      global.songSelections = new Map()
+   }
+
+   return global.songSelections
+}
+
+function registerSongSelection(selection) {
+   const selections = getSongSelectionMap()
+   const selectionId =
+      Date.now() +
+      '-' +
+      Math.random()
+         .toString(36)
+         .slice(2, 8)
+
+   selections.set(
+      selectionId,
+      selection
+   )
+
+   setTimeout(
+      () => {
+         selections.delete(
+            selectionId
+         )
+      },
+      1000 * 60 * 10
+   )
+
+   return selectionId
+}
+
 // ======================================================
 // BUSCAR YOUTUBE
 // ======================================================
@@ -204,6 +324,9 @@ async function searchYouTube(query) {
 ├──────────────────────⬣
 │ 🎵 ${query}
 │ ⚡ SEARCH RÁPIDO
+│ 🍪 COOKIES: ${cookiesAvailable ? 'ON' : 'OFF'}
+│ 🌐 USER-AGENT: FIJO
+│ 🎯 CLIENT: default
 ╰──────────────────────⬣
 `)
 
@@ -213,9 +336,7 @@ async function searchYouTube(query) {
          await youtubedl(
             'ytsearch1:' + query,
             {
-               ...youtubeOptions({
-                  cookies: false
-               }),
+               ...youtubeOptions(),
 
                flatPlaylist:
                   true,
@@ -332,6 +453,172 @@ async function searchYouTube(query) {
 // DESCARGA ULTRA RÁPIDA
 // ======================================================
 
+async function downloadVideo(url) {
+
+   const tempDir =
+      path.join(
+         os.tmpdir(),
+         'felbot-play'
+      )
+
+   if (
+      !fs.existsSync(
+         tempDir
+      )
+   ) {
+
+      fs.mkdirSync(
+         tempDir,
+         {
+            recursive: true
+         }
+      )
+   }
+
+   const fileId =
+      Date.now() +
+      '-' +
+      Math.random()
+         .toString(36)
+         .slice(2, 8)
+
+   const outputTemplate =
+      path.join(
+         tempDir,
+         fileId + '.%(ext)s'
+      )
+
+   try {
+
+      const options =
+         youtubeOptions({
+            format:
+               'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best'
+         })
+
+      options.output =
+         outputTemplate
+
+      options.quiet =
+         true
+
+      options.noProgress =
+         true
+
+      options.noWarnings =
+         true
+
+      options.noPlaylist =
+         true
+
+      options.concurrentFragments =
+         4
+
+      options.retries =
+         1
+
+      await youtubedl(
+         url,
+         options,
+         {
+            timeout:
+               90000
+         }
+      )
+
+      const files =
+         fs.readdirSync(
+            tempDir
+         ).filter(
+            file =>
+               file.startsWith(fileId)
+         )
+
+      if (!files.length) {
+         throw new Error(
+            'No se descargó ningún video'
+         )
+      }
+
+      const downloadedFile =
+         files[0]
+
+      const outputFile =
+         path.join(
+            tempDir,
+            downloadedFile
+         )
+
+      if (
+         !fs.existsSync(
+            outputFile
+         )
+      ) {
+         throw new Error(
+            'Video descargado inexistente'
+         )
+      }
+
+      const stats =
+         fs.statSync(
+            outputFile
+         )
+
+      if (!stats.size) {
+         throw new Error(
+            'Video descargado vacío'
+         )
+      }
+
+      const buffer =
+         fs.readFileSync(
+            outputFile
+         )
+
+      try {
+         fs.unlinkSync(
+            outputFile
+         )
+      } catch {}
+
+      return buffer
+
+   } catch (error) {
+
+      console.log(
+         '❌ VIDEO DOWNLOAD ERROR:',
+         error?.stderr ||
+         error?.message ||
+         error
+      )
+
+      try {
+         const files =
+            fs.readdirSync(
+               tempDir
+            ).filter(
+               file =>
+                  file.startsWith(fileId)
+            )
+
+         for (
+            const file of files
+         ) {
+            try {
+               fs.unlinkSync(
+                  path.join(
+                     tempDir,
+                     file
+                  )
+               )
+            } catch {}
+         }
+      } catch {}
+
+      throw error
+   }
+}
+
 async function downloadAudio(url) {
 
    const tempDir =
@@ -367,16 +654,14 @@ async function downloadAudio(url) {
          fileId + '.%(ext)s'
       )
 
-   const cookiesEnabled =
-      getCookiesStatus()
-
    console.log(`
 ╭──────────────────────⬣
 │ 🚀 DESCARGA RÁPIDA
 ├──────────────────────⬣
 │ 🎵 YT-DLP
 │ ⚡ MODO M4A
-│ 🍪 COOKIES: ${cookiesEnabled ? 'ON' : 'OFF'}
+│ 🍪 COOKIES: ${cookiesAvailable ? 'ON' : 'OFF'}
+│ 🌐 USER-AGENT: FIJO
 │ 🎯 CLIENT: default
 │ 🚫 SIN CONVERSIÓN
 ╰──────────────────────⬣
@@ -386,10 +671,6 @@ async function downloadAudio(url) {
 
       const options =
          youtubeOptions({
-            cookies:
-               cookiesEnabled,
-
-            // M4A directo = no necesita FFmpeg
             format:
                'bestaudio[ext=m4a]/bestaudio'
          })
@@ -480,7 +761,8 @@ async function downloadAudio(url) {
 ╭──────────────────────⬣
 │ ✅ DESCARGA COMPLETADA
 ├──────────────────────⬣
-│ 🍪 COOKIES: ${getCookiesStatus() ? 'ON' : 'OFF'}
+│ 🍪 COOKIES: ${cookiesAvailable ? 'ON' : 'OFF'}
+│ 🌐 USER-AGENT: FIJO
 │ 📦 ${(stats.size / 1024 / 1024).toFixed(2)} MB
 │ ⚡ SIN FFMPEG
 ╰──────────────────────⬣
@@ -535,6 +817,158 @@ async function downloadAudio(url) {
 
       throw error
    }
+}
+
+async function sendSongMedia(sock, chatId, selection, mediaType, message) {
+   const safeTitle =
+      sanitizeSongTitle(
+         selection.title ||
+         'song'
+      )
+
+   try {
+      const mediaBuffer =
+         mediaType === 'video'
+            ? await downloadVideo(selection.url)
+            : await downloadAudio(selection.url)
+
+      if (
+         !mediaBuffer ||
+         mediaBuffer.length < (
+            mediaType === 'video'
+               ? 50000
+               : 50000
+         )
+      ) {
+         throw new Error(
+            'Archivo inválido'
+         )
+      }
+
+      if (mediaType === 'video') {
+         await sock.sendMessage(
+            chatId,
+            {
+               video:
+                  mediaBuffer,
+
+               mimetype:
+                  'video/mp4',
+
+               fileName:
+                  safeTitle +
+                  '.mp4',
+
+               caption:
+                  `🎬 *${selection.title || 'Canción'}*\n\n> ❀ Autor: ${selection.author?.name || 'Unknown'}\n> ❀ Duración: ${selection.timestamp || 'Unknown'}`
+            },
+            {
+               quoted:
+                  message
+            }
+         )
+
+         return true
+      }
+
+      await sock.sendMessage(
+         chatId,
+         {
+            audio:
+               mediaBuffer,
+
+            mimetype:
+               'audio/mp4',
+
+            fileName:
+               safeTitle +
+               '.m4a',
+
+            ptt:
+               false
+         },
+         {
+            quoted:
+               message
+         }
+      )
+
+      return true
+   } catch (error) {
+      console.error(
+         '❌ SONG MEDIA ERROR:',
+         error?.stderr ||
+         error?.message ||
+         error
+      )
+
+      await sock.sendMessage(
+         chatId,
+         {
+            text:
+               `❌ Error enviando ${mediaType === 'video' ? 'el video' : 'el audio'} 😭`
+         },
+         {
+            quoted:
+               message
+         }
+      )
+
+      return false
+   }
+}
+
+async function handleSongButton(sock, chatId, senderId, buttonId, message) {
+   const buttonMatch =
+      String(buttonId || '')
+         .match(
+            /^song::(video|audio)::([A-Za-z0-9_-]+)$/
+         )
+
+   if (!buttonMatch) {
+      return false
+   }
+
+   const [, mediaType, selectionId] =
+      buttonMatch
+
+   const selections =
+      getSongSelectionMap()
+
+   const selection =
+      selections.get(
+         selectionId
+      )
+
+   if (!selection) {
+      await sock.sendMessage(
+         chatId,
+         {
+            text:
+               '⏳ Este botón expiró. Busca la canción otra vez.'
+         },
+         {
+            quoted:
+               message
+         }
+      )
+
+      return true
+   }
+
+   selections.delete(
+      selectionId
+   )
+
+   await sendSongMedia(
+      sock,
+      chatId,
+      selection,
+      mediaType,
+      message
+   )
+
+   return true
 }
 
 // ======================================================
@@ -684,125 +1118,78 @@ async function songCommand(
          }
       }
 
-      // ==================================================
-      // LOADING
-      // ==================================================
+      const selectionId =
+         registerSongSelection({
+            url:
+               video.url,
 
-      const loading =
-         await sock.sendMessage(
-            chatId,
-            {
-               image: {
-                  url:
-                     video.thumbnail
-               },
+            title:
+               video.title,
 
-               caption:
-`🎶 *DESCARGANDO AUDIO*
+            thumbnail:
+               video.thumbnail,
 
-> ❀ Título: ${video.title}
+            author:
+               video.author,
+
+            timestamp:
+               video.timestamp,
+
+            views:
+               video.views
+         })
+
+      await sock.sendMessage(
+         chatId,
+         {
+            image: {
+               url:
+                  video.thumbnail
+            },
+
+            caption:
+`🎵 *${video.title || 'Canción'}*
+
 > ❀ Autor: ${video.author?.name || 'Unknown'}
 > ❀ Duración: ${video.timestamp || 'Unknown'}
 > ❀ Vistas: ${Number(
    video.views || 0
 ).toLocaleString()}
 
-> ⚡ Descarga rápida...
-> ${createBar(25)} 25%`
-            },
-            {
-               quoted:
-                  message
-            }
-         )
+Elige cómo quieres escucharla:`,
 
-      // ==================================================
-      // DESCARGAR
-      // ==================================================
+            footer:
+               'FelbotC',
 
-      const audioBuffer =
-         await downloadAudio(
-            video.url
-         )
+            buttons: [
+               {
+                  buttonId:
+                     `song::video::${selectionId}`,
 
-      if (
-         !audioBuffer ||
-         audioBuffer.length < 50000
-      ) {
+                  buttonText: {
+                     displayText:
+                        '🎬 Video'
+                  },
 
-         throw new Error(
-            'Audio inválido'
-         )
-      }
-
-      // ==================================================
-      // NOMBRE
-      // ==================================================
-
-      const safeTitle =
-         (
-            video.title ||
-            'song'
-         )
-            .replace(
-               /[^\w\s-]/g,
-               ''
-            )
-            .trim()
-            .slice(
-               0,
-               100
-            ) ||
-         'song'
-
-      // ==================================================
-      // ACTUALIZAR MENSAJE
-      // ==================================================
-
-      try {
-
-         await sock.sendMessage(
-            chatId,
-            {
-               edit:
-                  loading.key,
-
-               image: {
-                  url:
-                     video.thumbnail
+                  type:
+                     1
                },
+               {
+                  buttonId:
+                     `song::audio::${selectionId}`,
 
-               caption:
-`⚡ *AUDIO LISTO*
+                  buttonText: {
+                     displayText:
+                        '🎵 Audio'
+                  },
 
-> ❀ Título: ${safeTitle}
+                  type:
+                     1
+               }
+            ],
 
-> 🚀 Enviando audio...
-> ${createBar(90)} 90%`
-            }
-         )
-
-      } catch {}
-
-      // ==================================================
-      // ENVIAR M4A
-      // ==================================================
-
-      await sock.sendMessage(
-         chatId,
-         {
-            audio:
-               audioBuffer,
-
-            mimetype:
-               'audio/mp4',
-
-            fileName:
-               safeTitle +
-               '.m4a',
-
-            ptt:
-               false
+            headerType:
+               1
          },
          {
             quoted:
@@ -810,54 +1197,13 @@ async function songCommand(
          }
       )
 
-      // ==================================================
-      // FINALIZADO
-      // ==================================================
-
-      const totalTime =
-         (
-            (
-               Date.now() -
-               startTime
-            ) /
-            1000
-         ).toFixed(1)
-
-      try {
-
-         await sock.sendMessage(
-            chatId,
-            {
-               edit:
-                  loading.key,
-
-               image: {
-                  url:
-                     video.thumbnail
-               },
-
-               caption:
-`✅ *AUDIO ENVIADO*
-
-> ❀ Título: ${safeTitle}
-> ❀ Autor: ${video.author?.name || 'Unknown'}
-> ❀ Duración: ${video.timestamp || 'Unknown'}
-
-> ⚡ Completado en ${totalTime}s
-> ${createBar(100)} 100%`
-            }
-         )
-
-      } catch {}
-
       console.log(`
 ╭──────────────────────⬣
-│ ✅ PLAY COMPLETADO
+│ ✅ SELECCIÓN DE CANCIÓN
 ├──────────────────────⬣
-│ 🎧 ${safeTitle}
-│ ⚡ MODO RÁPIDO
-│ 📦 M4A DIRECTO
-│ ⏱️ ${totalTime}s
+│ 🎵 ${video.title || 'Canción'}
+│ 🎬 BOTONES: VIDEO / AUDIO
+│ 🍪 COOKIES: ${cookiesAvailable ? 'ON' : 'OFF'}
 ╰──────────────────────⬣
 `)
 
@@ -899,3 +1245,8 @@ async function songCommand(
 module.exports =
    songCommand
 
+module.exports.songCommand =
+   songCommand
+
+module.exports.handleSongButton =
+   handleSongButton
