@@ -30,9 +30,7 @@ const searchCache = new Map()
 function limitMapSize(map, max = 100) {
    while (map.size > max) {
       const firstKey = map.keys().next().value
-
       if (!firstKey) break
-
       map.delete(firstKey)
    }
 }
@@ -42,9 +40,7 @@ function limitMapSize(map, max = 100) {
 // ======================================================
 
 function cleanMemory() {
-
    try {
-
       if (searchCache.size > 70) {
          searchCache.clear()
       }
@@ -55,7 +51,6 @@ function cleanMemory() {
       ) {
          global.gc()
       }
-
    } catch {}
 }
 
@@ -69,7 +64,6 @@ setInterval(
 // ======================================================
 
 function createBar(percent) {
-
    const total = 10
 
    const filled =
@@ -102,13 +96,11 @@ const YOUTUBE_USER_AGENT =
    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36'
 
 // ======================================================
-// ESTADO COOKIES
+// COOKIES
 // ======================================================
 
 function getCookiesStatus() {
-
    try {
-
       if (!fs.existsSync(cookiesPath)) {
          return false
       }
@@ -125,20 +117,13 @@ function getCookiesStatus() {
       }
 
       return true
-
    } catch {
       return false
    }
 }
 
-// ======================================================
-// VALIDAR COOKIES
-// ======================================================
-
 function validateCookiesFile() {
-
    try {
-
       if (!getCookiesStatus()) {
          return false
       }
@@ -166,7 +151,6 @@ function validateCookiesFile() {
          firstLine === '# Netscape HTTP Cookie File'
 
       if (!validHeader) {
-
          console.log(
             '⚠️ COOKIES: encabezado Netscape inválido'
          )
@@ -175,7 +159,6 @@ function validateCookiesFile() {
       }
 
       return true
-
    } catch {
       return false
    }
@@ -195,19 +178,12 @@ console.log(
 // ======================================================
 
 const BASE_OPTIONS = {
-
    noWarnings: true,
-
    noPlaylist: true,
-
    retries: 1,
-
    noCheckCertificates: true,
-
    jsRuntimes: 'node',
-
-   userAgent:
-      YOUTUBE_USER_AGENT
+   userAgent: YOUTUBE_USER_AGENT
 }
 
 // ======================================================
@@ -226,19 +202,16 @@ function youtubeOptions({
       'youtube:player_client=default'
 
    if (cookiesAvailable) {
-
       options.cookies =
          cookiesPath
    }
 
    if (ffmpegPath) {
-
       options.ffmpegLocation =
          ffmpegPath
    }
 
    if (format) {
-
       options.format =
          format
    }
@@ -329,7 +302,6 @@ function getUserId(message) {
 function getSongSelectionMap() {
 
    if (!global.songSelections) {
-
       global.songSelections =
          new Map()
    }
@@ -358,11 +330,9 @@ function registerSongSelection(
 
    setTimeout(
       () => {
-
          selections.delete(
             selectionId
          )
-
       },
       1000 * 60 * 10
    )
@@ -440,7 +410,6 @@ async function searchYouTube(
          ) ||
          !results.entries.length
       ) {
-
          throw new Error(
             'No se encontraron resultados'
          )
@@ -453,7 +422,6 @@ async function searchYouTube(
          !selected ||
          !selected.id
       ) {
-
          throw new Error(
             'Resultado de YouTube inválido'
          )
@@ -502,7 +470,6 @@ async function searchYouTube(
             ),
 
          author: {
-
             name:
                selected.uploader ||
                selected.channel ||
@@ -547,7 +514,6 @@ async function downloadVideo(
          tempDir
       )
    ) {
-
       fs.mkdirSync(
          tempDir,
          {
@@ -577,7 +543,6 @@ async function downloadVideo(
    try {
 
       if (onStage) {
-
          await onStage(
             20,
             '🔎 Analizando formatos...'
@@ -585,23 +550,17 @@ async function downloadVideo(
       }
 
       /*
-       * Primero intenta:
+       * MP4 + M4A:
+       * primero intenta video MP4 y audio M4A.
        *
-       * video MP4 + audio M4A
-       *
-       * Después:
-       *
-       * video MP4 combinado
-       *
-       * Finalmente:
-       *
-       * cualquier formato disponible.
+       * Si existe un MP4 combinado,
+       * utiliza ese como alternativa.
        */
 
       const options =
          youtubeOptions({
             format:
-               'bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]/b'
+               'bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]'
          })
 
       options.output =
@@ -636,15 +595,9 @@ async function downloadVideo(
 
          options.mergeOutputFormat =
             'mp4'
-
-         options.postprocessorArgs = [
-            '-movflags',
-            '+faststart'
-         ]
       }
 
       if (onStage) {
-
          await onStage(
             40,
             '⬇️ Descargando video MP4...'
@@ -661,7 +614,6 @@ async function downloadVideo(
       )
 
       if (onStage) {
-
          await onStage(
             80,
             '🔧 Preparando MP4...'
@@ -669,7 +621,7 @@ async function downloadVideo(
       }
 
       // =================================================
-      // BUSCAR ARCHIVO
+      // BUSCAR ARCHIVO FINAL
       // =================================================
 
       const files =
@@ -685,31 +637,34 @@ async function downloadVideo(
          )
 
       if (!files.length) {
-
          throw new Error(
             'No se descargó ningún video'
          )
       }
 
       // =================================================
-      // PRIORIZAR MP4
+      // BUSCAR MP4
       // =================================================
 
-      const preferredFile =
+      const mp4File =
          files.find(
             file =>
-               file.endsWith('.mp4')
-         ) ||
-         files.find(
-            file =>
-               /\.(mkv|webm|mov|avi)$/i.test(file)
-         ) ||
-         files[0]
+               file
+                  .toLowerCase()
+                  .endsWith('.mp4')
+         )
+
+      if (!mp4File) {
+
+         throw new Error(
+            `FFmpeg no generó MP4. Archivos: ${files.join(', ')}`
+         )
+      }
 
       const outputFile =
          path.join(
             tempDir,
-            preferredFile
+            mp4File
          )
 
       if (
@@ -719,7 +674,7 @@ async function downloadVideo(
       ) {
 
          throw new Error(
-            'Video descargado inexistente'
+            'Video MP4 inexistente'
          )
       }
 
@@ -731,20 +686,7 @@ async function downloadVideo(
       if (!stats.size) {
 
          throw new Error(
-            'Video descargado vacío'
-         )
-      }
-
-      // =================================================
-      // DEBE SER MP4
-      // =================================================
-
-      if (
-         !preferredFile.endsWith('.mp4')
-      ) {
-
-         throw new Error(
-            `El resultado no es MP4: ${preferredFile}`
+            'Video MP4 vacío'
          )
       }
 
@@ -756,12 +698,11 @@ async function downloadVideo(
       if (!buffer.length) {
 
          throw new Error(
-            'Buffer de video vacío'
+            'Buffer MP4 vacío'
          )
       }
 
       if (onStage) {
-
          await onStage(
             95,
             '📤 MP4 listo para enviar...'
@@ -773,7 +714,7 @@ async function downloadVideo(
       )
 
       // =================================================
-      // LIMPIAR ARCHIVOS
+      // LIMPIAR
       // =================================================
 
       for (
@@ -802,10 +743,6 @@ async function downloadVideo(
          error?.message ||
          error
       )
-
-      // =================================================
-      // LIMPIEZA
-      // =================================================
 
       try {
 
@@ -1445,7 +1382,7 @@ async function handleSongButton(
    }
 
    // ===================================================
-   // DUEÑO DEL BOTÓN
+   // VERIFICAR DUEÑO
    // ===================================================
 
    const clickedBy =
@@ -1564,7 +1501,7 @@ Escribe una canción.
       }
 
       // =================================================
-      // USUARIO QUE EJECUTÓ PLAY
+      // USUARIO
       // =================================================
 
       const ownerId =
@@ -1658,11 +1595,9 @@ Escribe una canción.
 
             setTimeout(
                () => {
-
                   searchCache.delete(
                      cacheKey
                   )
-
                },
                1000 * 60 * 5
             )
@@ -1676,7 +1611,7 @@ Escribe una canción.
       )
 
       // =================================================
-      // REGISTRAR
+      // REGISTRAR SELECCIÓN
       // =================================================
 
       const selectionId =
