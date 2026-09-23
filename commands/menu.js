@@ -1,8 +1,8 @@
-
 const fs = require('fs')
 const path = require('path')
 const {
-    generateWAMessageFromContent
+    generateWAMessageFromContent,
+    prepareWAMessageMedia
 } = require('@whiskeysockets/baileys')
 
 const FELBOT_WEB = 'https://fxlipe.skyultraplus.online/'
@@ -478,28 +478,27 @@ async function handleMenuButton(sock, chatId, buttonId, message) {
 
         try {
 
-            const filePath = path.join(
+            const imagePath = path.join(
                 __dirname,
                 '..',
                 'assets',
-                'gifs',
+                 'gifs',
                 'menucompleto',
                 'menu.mp4'
             )
 
-            if (!fs.existsSync(filePath)) {
+            if (!fs.existsSync(imagePath)) {
                 throw new Error(
-                    `No existe el archivo: ${filePath}`
+                    `No existe la imagen: ${imagePath}`
                 )
             }
 
-            const videoBuffer = fs.readFileSync(filePath)
+            const imageBuffer = fs.readFileSync(imagePath)
 
             await sock.sendMessage(
                 chatId,
                 {
-                    video: videoBuffer,
-                    gifPlayback: true,
+                    image: imageBuffer,
                     caption: fullMenu
                 },
                 {
@@ -545,22 +544,31 @@ Aquí encontrarás herramientas, administración, entretenimiento y mucho más.
 
     try {
 
-        const filePath = path.join(
+        const imagePath = path.join(
             __dirname,
-            '..',
-            'assets',
-            'gifs',
-            'menucompleto',
-            'menu.mp4'
+             '..',
+                'assets',
+                'gifs',
+                'menucompleto',
+                'menu.mp4'
         )
 
-        if (!fs.existsSync(filePath)) {
+        if (!fs.existsSync(imagePath)) {
             throw new Error(
-                `Menu video not found: ${filePath}`
+                `Menu image not found: ${imagePath}`
             )
         }
 
-        const videoBuffer = fs.readFileSync(filePath)
+        const imageBuffer = fs.readFileSync(imagePath)
+
+        const preparedImage = await prepareWAMessageMedia(
+            {
+                image: imageBuffer
+            },
+            {
+                upload: sock.waUploadToServer
+            }
+        )
 
         const buttons = [
             [
@@ -594,6 +602,16 @@ Aquí encontrarás herramientas, administración, entretenimiento y mucho más.
 
         }))
 
+        /*
+         * Configuración experimental.
+         *
+         * WhatsApp/Baileys no documenta que el
+         * header.title sea un enlace clicable.
+         *
+         * La dejamos porque algunos forks de Baileys
+         * reconocen tap_target_configuration.
+         */
+
         const messageParams = {
 
             tap_target_configuration: {
@@ -610,24 +628,6 @@ Aquí encontrarás herramientas, administración, entretenimiento y mucho más.
             }
         }
 
-        /*
-         * Primero enviamos el MP4 exactamente como
-         * se hace en .besar:
-         *
-         * video + gifPlayback: true
-         */
-
-        await sock.sendMessage(
-            chatId,
-            {
-                video: videoBuffer,
-                gifPlayback: true
-            },
-            {
-                quoted: message
-            }
-        )
-
         const menuMessage = generateWAMessageFromContent(
             chatId,
             {
@@ -639,7 +639,9 @@ Aquí encontrarás herramientas, administración, entretenimiento y mucho más.
 
                         subtitle: 'Menú interactivo',
 
-                        hasMediaAttachment: false
+                        hasMediaAttachment: true,
+
+                        ...preparedImage
                     },
 
                     body: {
