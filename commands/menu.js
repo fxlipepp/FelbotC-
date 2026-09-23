@@ -1,11 +1,11 @@
+
 const fs = require('fs')
 const path = require('path')
+
 const {
     generateWAMessageFromContent,
     prepareWAMessageMedia
 } = require('@whiskeysockets/baileys')
-
-const FELBOT_WEB = 'https://fxlipe.skyultraplus.online/'
 
 function formatUptime(seconds) {
 
@@ -32,9 +32,14 @@ function buildIntroHeader(uptimeSeconds, version = '2.0.0') {
 
 function buildMenuText(uptimeSeconds, version = '2.0.0') {
 
-    const introHeader = buildIntroHeader(uptimeSeconds, version)
+    const introHeader = buildIntroHeader(
+        uptimeSeconds,
+        version
+    )
 
     const helpMessage = `
+${introHeader}
+
 ╭━━〔 👑 OWNER 〕━━⬣
 > ✦ Comandos de administracion.
 
@@ -189,7 +194,7 @@ function buildMenuText(uptimeSeconds, version = '2.0.0') {
 ╰━━━━━━━━━━━━━━━━⬣
 
 ╭━━〔 🔞 NSFW 〕━━⬣
-> ✦ Comandos Pornograficos .
+> ✦ Comandos Pornograficos.
 
 ❀ \`.xxnx\` + <texto>
 > Busqueda porno (Para descarga).
@@ -444,30 +449,72 @@ function buildMenuText(uptimeSeconds, version = '2.0.0') {
 > Descargar videos de YouTube.
 ╰━━━━━━━━━━━━━━━━⬣
 
-╭━〔  𝕱𝖊𝖑𝖇𝖔𝖙 夜  〕━⬣
+╭━〔 𝕱𝖊𝖑𝖇𝖔𝖙 夜 〕━⬣
 > *🚀 Powered By Fxlipe 夜*
 ╰━━━━━━━━━━━━⬣`
 
-    return `${helpMessage.trim()}`
+    return helpMessage.trim()
 }
+
+
+// ==========================================
+// ACCIONES DE LOS BOTONES
+// ==========================================
 
 function getMenuButtonAction(buttonId) {
 
     switch (buttonId) {
 
         case 'view_full_menu':
-            return { type: 'send_full_menu' }
+            return {
+                type: 'send_full_menu'
+            }
+
+        case 'owner':
+            return {
+                type: 'owner'
+            }
+
+        case 'report_error':
+            return {
+                type: 'report_error'
+            }
+
+        case 'request_command':
+            return {
+                type: 'request_command'
+            }
+
+        case 'buy_bot':
+            return {
+                type: 'buy_bot'
+            }
 
         default:
             return null
     }
 }
 
-async function handleMenuButton(sock, chatId, buttonId, message) {
+
+// ==========================================
+// MANEJAR BOTÓN
+// ==========================================
+
+async function handleMenuButton(
+    sock,
+    chatId,
+    buttonId,
+    message
+) {
 
     const action = getMenuButtonAction(buttonId)
 
     if (!action) return false
+
+
+    // ======================================
+    // MENU COMPLETO
+    // ======================================
 
     if (action.type === 'send_full_menu') {
 
@@ -482,23 +529,28 @@ async function handleMenuButton(sock, chatId, buttonId, message) {
                 __dirname,
                 '..',
                 'assets',
-                 'gifs',
+                'gifs',
                 'menu',
                 'menu.mp4'
             )
 
             if (!fs.existsSync(gifsPath)) {
+
                 throw new Error(
-                    `No existe la imagen: ${gifsPath}`
+                    `No existe el archivo: ${gifsPath}`
                 )
             }
 
-            const imageBuffer = fs.readFileSync(gifsPath)
+            const videoBuffer =
+                fs.readFileSync(gifsPath)
 
             await sock.sendMessage(
                 chatId,
                 {
-                    image: imageBuffer,
+                    video: videoBuffer,
+
+                    gifPlayback: true,
+
                     caption: fullMenu
                 },
                 {
@@ -527,10 +579,24 @@ async function handleMenuButton(sock, chatId, buttonId, message) {
         return true
     }
 
+
+    // ======================================
+    // LOS DEMÁS BOTONES
+    // ======================================
+
     return false
 }
 
-async function helpCommand(sock, chatId, message) {
+
+// ==========================================
+// COMANDO .MENU
+// ==========================================
+
+async function helpCommand(
+    sock,
+    chatId,
+    message
+) {
 
     const introCaption = `${buildIntroHeader(
         process.uptime(),
@@ -542,159 +608,173 @@ Aquí encontrarás herramientas, administración, entretenimiento y mucho más.
 
 👇 Elige una opción para continuar.`
 
+
     try {
 
         const gifsPath = path.join(
             __dirname,
-             '..',
-                'assets',
-                'gifs',
-                'menu',
-                'menu.mp4'
+            '..',
+            'assets',
+            'gifs',
+            'menu',
+            'menu.mp4'
         )
 
+
         if (!fs.existsSync(gifsPath)) {
+
             throw new Error(
-                `Menu image not found: ${gifsPath}`
+                `No existe el archivo del menú: ${gifsPath}`
             )
         }
 
-        const imageBuffer = fs.readFileSync(gifsPath)
 
-        const preparedImage = await prepareWAMessageMedia(
-            {
-                image: imageBuffer
-            },
-            {
-                upload: sock.waUploadToServer
-            }
-        )
+        const videoBuffer =
+            fs.readFileSync(gifsPath)
+
+
+        // ======================================
+        // PREPARAR VIDEO
+        // ======================================
+
+        const preparedVideo =
+            await prepareWAMessageMedia(
+                {
+                    video: videoBuffer,
+
+                    gifPlayback: true
+                },
+                {
+                    upload:
+                        sock.waUploadToServer
+                }
+            )
+
+
+        // ======================================
+        // BOTONES NATIVOS
+        // ======================================
 
         const buttons = [
+
             [
                 'VER MENU COMPLETO',
                 'view_full_menu'
             ],
+
             [
                 'CONTACTAME 夜',
                 'owner'
             ],
+
             [
                 'REPORTAR ERROR ❗',
                 'report_error'
             ],
+
             [
                 'SOLICITUD DE COMANDO 🕸️',
                 'request_command'
             ],
+
             [
                 'ADQUIRIR BOT 💵',
                 'buy_bot'
             ]
-        ].map(([display_text, id]) => ({
 
-            name: 'quick_reply',
+        ].map(
+            ([display_text, id]) => ({
 
-            buttonParamsJson: JSON.stringify({
-                display_text,
-                id
+                name: 'quick_reply',
+
+                buttonParamsJson:
+                    JSON.stringify({
+
+                        display_text,
+
+                        id
+
+                    })
             })
-
-        }))
-
-        /*
-         * Configuración experimental.
-         *
-         * WhatsApp/Baileys no documenta que el
-         * header.title sea un enlace clicable.
-         *
-         * La dejamos porque algunos forks de Baileys
-         * reconocen tap_target_configuration.
-         */
-
-        const messageParams = {
-
-            tap_target_configuration: {
-
-                title: '𝕱𝖊𝖑𝖇𝖔𝖙 夜',
-
-                description: 'Menú interactivo',
-
-                canonical_url: FELBOT_WEB,
-
-                domain: 'fxlipe.skyultraplus.online',
-
-                button_index: 0
-            }
-        }
-
-        const menuMessage = generateWAMessageFromContent(
-            chatId,
-            {
-                interactiveMessage: {
-
-                    header: {
-
-                        title: '𝕱𝖊𝖑𝖇𝖔𝖙 夜',
-
-                        subtitle: 'Menú interactivo',
-
-                        hasMediaAttachment: true,
-
-                        ...preparedImage
-                    },
-
-                    body: {
-                        text: introCaption
-                    },
-
-                    footer: {
-                        text: '𝕱𝖊𝖑𝖇𝖔𝖙 夜 • Menú interactivo'
-                    },
-
-                    nativeFlowMessage: {
-
-                        buttons,
-
-                        messageParamsJson:
-                            JSON.stringify(messageParams)
-                    },
-
-                    contextInfo: {
-
-                        externalAdReply: {
-
-                            title: '𝕱𝖊𝖑𝖇𝖔𝖙 夜',
-
-                            body: 'Menú interactivo',
-
-                            mediaType: 1,
-
-                            sourceUrl: FELBOT_WEB,
-
-                            thumbnailUrl: FELBOT_WEB,
-
-                            renderLargerThumbnail: false,
-
-                            showAdAttribution: false
-                        }
-                    }
-                }
-            },
-            {
-                quoted: message
-            }
         )
 
+
+        // ======================================
+        // MENSAJE INTERACTIVO
+        // ======================================
+
+        const menuMessage =
+            generateWAMessageFromContent(
+
+                chatId,
+
+                {
+
+                    interactiveMessage: {
+
+                        header: {
+
+                            title:
+                                '𝕱𝖊𝖑𝖇𝖔𝖙 夜',
+
+                            subtitle:
+                                'Menú interactivo',
+
+                            hasMediaAttachment:
+                                true,
+
+                            ...preparedVideo
+                        },
+
+
+                        body: {
+
+                            text:
+                                introCaption
+                        },
+
+
+                        footer: {
+
+                            text:
+                                '𝕱𝖊𝖑𝖇𝖔𝖙 夜 • Menú interactivo'
+                        },
+
+
+                        nativeFlowMessage: {
+
+                            buttons
+                        }
+                    }
+
+                },
+
+                {
+
+                    quoted: message
+                }
+            )
+
+
+        // ======================================
+        // ENVIAR
+        // ======================================
+
         await sock.relayMessage(
+
             menuMessage.key.remoteJid,
+
             menuMessage.message,
+
             {
-                messageId: menuMessage.key.id,
+
+                messageId:
+                    menuMessage.key.id,
 
                 additionalNodes: [
 
                     {
+
                         tag: 'biz',
 
                         attrs: {},
@@ -702,21 +782,31 @@ Aquí encontrarás herramientas, administración, entretenimiento y mucho más.
                         content: [
 
                             {
-                                tag: 'interactive',
+
+                                tag:
+                                    'interactive',
 
                                 attrs: {
-                                    type: 'native_flow',
+
+                                    type:
+                                        'native_flow',
+
                                     v: '1'
                                 },
 
                                 content: [
 
                                     {
-                                        tag: 'native_flow',
+
+                                        tag:
+                                            'native_flow',
 
                                         attrs: {
+
                                             v: '9',
-                                            name: 'mixed'
+
+                                            name:
+                                                'mixed'
                                         }
                                     }
                                 ]
@@ -727,6 +817,7 @@ Aquí encontrarás herramientas, administración, entretenimiento y mucho más.
             }
         )
 
+
     } catch (error) {
 
         console.error(
@@ -734,23 +825,53 @@ Aquí encontrarás herramientas, administración, entretenimiento y mucho más.
             error
         )
 
+
+        // ======================================
+        // FALLBACK
+        // ======================================
+
         await sock.sendMessage(
+
             chatId,
+
             {
-                text: introCaption
+
+                text:
+                    introCaption
+
             },
+
             {
-                quoted: message
+
+                quoted:
+                    message
             }
         )
     }
 }
 
-helpCommand.buildMenuText = buildMenuText
-helpCommand.getMenuButtonAction = getMenuButtonAction
-helpCommand.handleMenuButton = handleMenuButton
 
-module.exports = helpCommand
-module.exports.buildMenuText = buildMenuText
-module.exports.getMenuButtonAction = getMenuButtonAction
-module.exports.handleMenuButton = handleMenuButton
+// ==========================================
+// EXPORTACIONES
+// ==========================================
+
+helpCommand.buildMenuText =
+    buildMenuText
+
+helpCommand.getMenuButtonAction =
+    getMenuButtonAction
+
+helpCommand.handleMenuButton =
+    handleMenuButton
+
+module.exports =
+    helpCommand
+
+module.exports.buildMenuText =
+    buildMenuText
+
+module.exports.getMenuButtonAction =
+    getMenuButtonAction
+
+module.exports.handleMenuButton =
+    handleMenuButton
