@@ -8,58 +8,66 @@ const COOKIES_PATH = '/home/container/cookies.txt'
 const USER_AGENT =
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36'
 
-function getCookies() {
+
+function cookiesAvailable() {
     try {
-        if (!fs.existsSync(COOKIES_PATH)) return null
+        if (!fs.existsSync(COOKIES_PATH)) return false
 
         const stat = fs.statSync(COOKIES_PATH)
 
-        if (stat.size < 100) return null
+        if (stat.size < 100) return false
 
-        const content = fs.readFileSync(COOKIES_PATH, 'utf8')
+        const firstLines = fs
+            .readFileSync(COOKIES_PATH, 'utf8')
+            .split(/\r?\n/)
+            .filter(Boolean)
+            .slice(0, 5)
 
-        if (
-            !content.includes('# HTTP Cookie File') &&
-            !content.includes('# Netscape HTTP Cookie File')
-        ) {
-            return null
-        }
-
-        return COOKIES_PATH
+        return firstLines.some(line =>
+            line.includes('# HTTP Cookie File') ||
+            line.includes('# Netscape HTTP Cookie File')
+        )
     } catch {
-        return null
+        return false
     }
 }
+
 
 function getYtDlpPath() {
-    try {
-        // youtube-dl-exec normalmente expone el ejecutable mediante su paquete
-        const packageMain = require.resolve('youtube-dl-exec')
-        const packageDir = path.dirname(packageMain)
+    const possiblePaths = []
 
-        const possible = [
+    try {
+        const resolved = require.resolve('youtube-dl-exec')
+
+        const packageDir = path.dirname(resolved)
+
+        possiblePaths.push(
             path.join(packageDir, 'bin', 'yt-dlp'),
             path.join(packageDir, '..', 'bin', 'yt-dlp'),
-            path.join(process.cwd(), 'node_modules', 'youtube-dl-exec', 'bin', 'yt-dlp')
-        ]
+            path.join(packageDir, '..', '..', 'bin', 'yt-dlp')
+        )
+    } catch {}
 
-        for (const file of possible) {
-            if (fs.existsSync(file)) {
+    possiblePaths.push(
+        path.join(process.cwd(), 'node_modules', 'youtube-dl-exec', 'bin', 'yt-dlp'),
+        path.join(process.cwd(), 'node_modules', 'youtube-dl-exec', 'bin', 'yt-dlp.exe')
+    )
+
+    if (youtubedl.path) {
+        possiblePaths.push(youtubedl.path)
+    }
+
+    for (const file of possiblePaths) {
+        try {
+            if (file && fs.existsSync(file)) {
                 return file
             }
-        }
-
-        // Último intento: propiedad interna
-        if (youtubedl && youtubedl.path) {
-            return youtubedl.path
-        }
-
-        return null
-    } catch (error) {
-        console.log('[FORMATOS] ERROR BUSCANDO YT-DLP:', error.message)
-        return null
+        } catch {}
     }
+
+    return null
 }
+
 
 function runYtDlp(args) {
     return new Promise((resolve, reject) => {
@@ -67,23 +75,23 @@ function runYtDlp(args) {
 
         if (!ytDlpPath) {
             return reject(
-                new Error(
-                    'No se encontró el ejecutable yt-dlp dentro de youtube-dl-exec'
-                )
+                new Error('No se encontró el ejecutable de yt-dlp de youtube-dl-exec')
             )
         }
-
-        console.log('[FORMATOS] YT-DLP:', ytDlpPath)
 
         execFile(
             ytDlpPath,
             args,
             {
-                maxBuffer: 20 * 1024 * 1024
+                maxBuffer: 30 * 1024 * 1024
             },
             (error, stdout, stderr) => {
                 if (error) {
-                    const details = stderr || stdout || error.message
+                    const details =
+                        stderr?.trim() ||
+                        stdout?.trim() ||
+                        error.message
+
                     return reject(new Error(details))
                 }
 
@@ -93,12 +101,14 @@ function runYtDlp(args) {
     })
 }
 
-function parseFormats(output) {
-    const lines = output.split('\n')
 
-    const formats = []
+function cleanFormatOutput(output) {
+    const lines = output
+        .split(/\r?\n/)
+        .map(line => line.trimEnd())
+        .filter(Boolean)
 
-    let insideTable = false
+    const useful = []
 
     for (const line of lines) {
         if (
@@ -106,156 +116,70 @@ function parseFormats(output) {
             line.includes('EXT') &&
             line.includes('RESOLUTION')
         ) {
-            insideTable = true
+            useful.push(line)
             continue
         }
-
-        if (!insideTable) continue
-
-        if (!line.trim()) continue
 
         if (
-            line.includes('---') ||
-            line.includes('Available formats')
+            /^\d+\s+/.test(line) ||
+            line.startsWith('────────────────')
         ) {
-            continue
+            useful.push(line)
         }
-
-        const clean = line.replace(/\x1b\[[0-9;]*m/g, '').trim()
-
-        const match = clean.match(
-            /^(\S+)\s+(\S+)\s+(.+?)\s+(\S+)\s+(.+)$/
-        )
-
-        if (!match) continue
-
-        const id = match[1]
-        const ext = match[2]
-        const resolution = match[3]
-        const fps = match[4]
-        const rest = match[5]
-
-        formats.push({
-            id,
-            ext,
-            resolution,
-            fps,
-            info: rest
-        })
     }
 
-    return formats
+    return useful.length ? useful.join('\n') : output.trim()
 }
 
-function formatOutput(videoUrl, rawOutput) {
-    const formats = parseFormats(rawOutput)
 
-    let text = `╭─「 📋 FORMATOS YOUTUBE 」\n`
-    text += `│ 🎬 VIDEO\n`
-    text += `│ ${videoUrl}\n`
-    text += `│ 🍪 COOKIES: ${getCookies() ? 'ON' : 'OFF'}\n`
-    text += `╰────────────────────⬣\n\n`
-
-    if (!formats.length) {
-        text += `❌ No pude interpretar la tabla de formatos.\n\n`
-        text += `📄 SALIDA ORIGINAL:\n`
-        text += rawOutput.slice(0, 12000)
-
-        return text
-    }
-
-    const video = []
-    const audio = []
-    const other = []
-
-    for (const format of formats) {
-        const info = format.info.toLowerCase()
-
-        const isAudio =
-            info.includes('audio only') ||
-            info.includes('audio')
-
-        const isVideo =
-            info.includes('video only') ||
-            /\d+x\d+/.test(format.resolution)
-
-        if (isAudio) {
-            audio.push(format)
-        } else if (isVideo) {
-            video.push(format)
-        } else {
-            other.push(format)
-        }
-    }
-
-    text += `🎥 VIDEO: ${video.length}\n`
-    text += `🎵 AUDIO: ${audio.length}\n`
-    text += `📦 OTROS: ${other.length}\n\n`
-
-    if (video.length) {
-        text += `╭─「 🎥 VIDEO 」\n`
-
-        for (const f of video) {
-            text += `│ ${f.id} | ${f.ext} | ${f.resolution} | ${f.fps}\n`
-            text += `│    ${f.info.slice(0, 100)}\n`
-        }
-
-        text += `╰────────────────────⬣\n\n`
-    }
-
-    if (audio.length) {
-        text += `╭─「 🎵 AUDIO 」\n`
-
-        for (const f of audio) {
-            text += `│ ${f.id} | ${f.ext} | ${f.resolution}\n`
-            text += `│    ${f.info.slice(0, 100)}\n`
-        }
-
-        text += `╰────────────────────⬣\n\n`
-    }
-
-    if (other.length) {
-        text += `╭─「 📦 OTROS 」\n`
-
-        for (const f of other) {
-            text += `│ ${f.id} | ${f.ext} | ${f.resolution}\n`
-            text += `│    ${f.info.slice(0, 100)}\n`
-        }
-
-        text += `╰────────────────────⬣\n\n`
-    }
-
-    text += `🔎 FORMATO TOTAL: ${formats.length}\n`
-
-    return text
-}
-
-async function formatosCommand(msg, text) {
+async function formatosCommand(sock, chatId, message, input = '') {
     try {
-        if (!text || !text.trim()) {
-            return msg.reply(
-                '❌ Usa:\n.formatos https://www.youtube.com/watch?v=ID'
+        const url = input.trim()
+
+        if (!url) {
+            return await sock.sendMessage(
+                chatId,
+                {
+                    text:
+                        '📋 *FELBOT FORMATOS*\n\n' +
+                        'Usa:\n' +
+                        '`.formatos <URL de YouTube>`'
+                },
+                { quoted: message }
             )
         }
 
-        let url = text.trim()
-
-        // Si pasan solamente el ID
-        if (/^[a-zA-Z0-9_-]{11}$/.test(url)) {
-            url = `https://www.youtube.com/watch?v=${url}`
+        if (
+            !url.includes('youtube.com/') &&
+            !url.includes('youtu.be/')
+        ) {
+            return await sock.sendMessage(
+                chatId,
+                {
+                    text: '❌ Esa no parece ser una URL válida de YouTube.'
+                },
+                { quoted: message }
+            )
         }
 
-        console.log('')
-        console.log('╭────────────────────────────')
-        console.log('│ 📋 FELBOT FORMATOS')
+        const hasCookies = cookiesAvailable()
+
+        console.log('\n────────────────────────────')
+        console.log('📋 FELBOT FORMATOS')
         console.log('├────────────────────────────')
-        console.log('│ 🎬 URL:', url)
-        console.log('│ 🍪 COOKIES:', getCookies() ? 'ON' : 'OFF')
+        console.log(`│ 🎬 URL: ${url}`)
+        console.log(`│ 🍪 COOKIES: ${hasCookies ? 'ON' : 'OFF'}`)
         console.log('╰────────────────────────────')
 
-        await msg.reply('🔎 Consultando formatos disponibles...')
-
-        const cookies = getCookies()
+        await sock.sendMessage(
+            chatId,
+            {
+                text:
+                    '🔎 *CONSULTANDO FORMATOS...*\n\n' +
+                    `🍪 Cookies: ${hasCookies ? 'ON' : 'OFF'}`
+            },
+            { quoted: message }
+        )
 
         const args = [
             '--list-formats',
@@ -269,30 +193,56 @@ async function formatosCommand(msg, text) {
             'youtube:player_client=default'
         ]
 
-        if (cookies) {
-            args.push('--cookies', cookies)
+        if (hasCookies) {
+            args.push('--cookies', COOKIES_PATH)
         }
 
         args.push(url)
 
-        console.log('[FORMATOS] Ejecutando lista real de formatos...')
-
         const output = await runYtDlp(args)
+
+        const formats = cleanFormatOutput(output)
 
         console.log('[FORMATOS] LISTA OBTENIDA')
 
-        const response = formatOutput(url, output)
+        const maxLength = 11000
 
-        return msg.reply(response)
+        let finalText =
+            '📋 *FORMATOS DISPONIBLES*\n' +
+            '────────────────────────────\n' +
+            `🎬 ${url}\n` +
+            `🍪 Cookies: ${hasCookies ? 'ON' : 'OFF'}\n` +
+            '────────────────────────────\n\n' +
+            formats
+
+        if (finalText.length > maxLength) {
+            finalText =
+                finalText.slice(0, maxLength) +
+                '\n\n⚠️ Lista recortada por límite de WhatsApp.'
+        }
+
+        await sock.sendMessage(
+            chatId,
+            {
+                text: finalText
+            },
+            { quoted: message }
+        )
 
     } catch (error) {
-        console.log('[FORMATOS] ERROR:', error.message)
+        console.error('[FORMATOS] ERROR:', error.message)
 
-        return msg.reply(
-            `❌ ERROR OBTENIENDO FORMATOS\n\n${error.message.slice(0, 5000)}`
+        await sock.sendMessage(
+            chatId,
+            {
+                text:
+                    '❌ *ERROR AL CONSULTAR FORMATOS*\n\n' +
+                    `\`\`\`${error.message.slice(0, 6000)}\`\`\``
+            },
+            { quoted: message }
         )
     }
 }
 
+
 module.exports = formatosCommand
-module.exports.formatosCommand = formatosCommand
