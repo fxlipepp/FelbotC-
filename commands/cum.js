@@ -6,7 +6,7 @@ const nsfwCheck = require('../lib/nsfwCheck')
 // ======================================
 // 🧠 CACHE POR GRUPO
 // evita repetir gifs
-// ======================================
+// ======================================a
 const usedFilesByChat = new Map()
 
 async function cumCommand(sock, chatId, message) {
