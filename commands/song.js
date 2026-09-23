@@ -1,20 +1,14 @@
-
 const fs = require('fs')
 const path = require('path')
 const os = require('os')
 const ytdl = require('youtube-dl-exec')
 
 const COOKIES_PATH = '/home/container/cookies.txt'
-
 const TEMP_DIR = path.join(os.tmpdir(), 'felbot-play')
 
 if (!fs.existsSync(TEMP_DIR)) {
     fs.mkdirSync(TEMP_DIR, { recursive: true })
 }
-
-// ─────────────────────────────────────────────
-// CONFIGURACIÓN
-// ─────────────────────────────────────────────
 
 const USER_AGENT =
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36'
@@ -25,33 +19,25 @@ const BASE_OPTIONS = {
     retries: 1,
     noCheckCertificates: true,
     jsRuntimes: 'node',
-    userAgent: USER_AGENT
+    userAgent: USER_AGENT,
+    socketTimeout: 90000
 }
-
-// ─────────────────────────────────────────────
-// COOKIES
-// ─────────────────────────────────────────────
 
 function cookiesAvailable() {
     try {
-        return fs.existsSync(COOKIES_PATH) &&
+        return (
+            fs.existsSync(COOKIES_PATH) &&
             fs.statSync(COOKIES_PATH).size > 100
+        )
     } catch {
         return false
     }
 }
 
-// ─────────────────────────────────────────────
-// OPCIONES YT-DLP
-// ─────────────────────────────────────────────
-
 function youtubeOptions(extra = {}) {
-
     const options = {
         ...BASE_OPTIONS,
-
         extractorArgs: 'youtube:player_client=default',
-
         ...extra
     }
 
@@ -62,12 +48,7 @@ function youtubeOptions(extra = {}) {
     return options
 }
 
-// ─────────────────────────────────────────────
-// FORMATO DE TIEMPO
-// ─────────────────────────────────────────────
-
 function formatDuration(seconds) {
-
     if (!seconds || isNaN(seconds)) {
         return 'Desconocida'
     }
@@ -85,56 +66,80 @@ function formatDuration(seconds) {
     return `${m}:${String(s).padStart(2, '0')}`
 }
 
-// ─────────────────────────────────────────────
-// BARRA DE PROGRESO
-// ─────────────────────────────────────────────
-
-function progressText(percent) {
-
-    const total = 12
-
-    const filled = Math.round((percent / 100) * total)
-
-    const empty = total - filled
-
-    return `${'▰'.repeat(filled)}${'▱'.repeat(empty)} ${percent}%`
-}
-
-// ─────────────────────────────────────────────
-// LIMPIAR NOMBRE
-// ─────────────────────────────────────────────
-
-function safeName(name) {
-
-    return String(name || 'felbot-audio')
-        .replace(/[<>:"/\\|?*\x00-\x1F]/g, '')
-        .replace(/\s+/g, ' ')
-        .trim()
-        .slice(0, 120)
-}
-
-// ─────────────────────────────────────────────
-// FORMATEAR VISTAS
-// ─────────────────────────────────────────────
-
 function formatViews(views) {
-
     const number = Number(views || 0)
 
     if (!number) {
         return 'Desconocidas'
     }
 
-    return number.toLocaleString('en-US')
+    return number.toLocaleString('es-CO')
 }
 
-// ─────────────────────────────────────────────
-// BUSCAR EN YOUTUBE
-// ─────────────────────────────────────────────
+function progressBar(percent) {
+    const total = 10
+    const filled = Math.round((percent / 100) * total)
+    const empty = total - filled
+
+    return `${'▰'.repeat(filled)}${'▱'.repeat(empty)} ${percent}%`
+}
+
+function safeName(name) {
+    return String(name || 'audio')
+        .replace(/[<>:"/\\|?*\x00-\x1F]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, 100)
+}
+
+function getThumbnail(id, thumbnail) {
+    if (id) {
+        return `https://i.ytimg.com/vi/${id}/hqdefault.jpg`
+    }
+
+    return thumbnail || null
+}
+
+function getCaption(video, status, percent, elapsed = null) {
+    const title = video.title || 'Canción'
+    const author = video.author?.name || 'YouTube'
+    const duration = video.timestamp || formatDuration(video.duration)
+    const views = formatViews(video.views)
+
+    let caption =
+`🎵 *${title}*
+
+> 👤 ${author}
+> ⏱️ ${duration}
+> 👁️ ${views} vistas
+
+${status}
+${progressBar(percent)}`
+
+    if (elapsed !== null) {
+        caption += `\n> ⚡ ${elapsed}s`
+    }
+
+    caption += `\n\n> 𝕱𝖊𝖑𝖇𝖔𝖙 夜`
+
+    return caption
+}
+
+async function react(sock, chatId, message, emoji) {
+    try {
+        if (!message?.key) return
+
+        await sock.sendMessage(chatId, {
+            react: {
+                text: emoji,
+                key: message.key
+            }
+        })
+    } catch {}
+}
 
 async function searchYouTube(query) {
-
-    console.log(`🔎 SEARCH YOUTUBE: ${query}`)
+    console.log(`🔎 SEARCH: ${query}`)
 
     const result = await ytdl(
         `ytsearch1:${query}`,
@@ -146,58 +151,39 @@ async function searchYouTube(query) {
         })
     )
 
-    let video = null
+    const video =
+        result?.entries?.[0] ||
+        result
 
-    if (result?.entries?.length) {
-        video = result.entries[0]
-    } else if (result?.id) {
-        video = result
-    }
-
-    if (!video) {
-        throw new Error('No se encontró ningún resultado')
-    }
-
-    let thumbnail = video.thumbnail
-
-    if (!thumbnail && video.id) {
-        thumbnail = `https://i.ytimg.com/vi/${video.id}/hqdefault.jpg`
+    if (!video || !video.id) {
+        throw new Error('No se encontró la canción')
     }
 
     return {
         id: video.id,
-        url: video.webpage_url ||
-            video.original_url ||
+        url:
+            video.webpage_url ||
             `https://www.youtube.com/watch?v=${video.id}`,
-
         title: video.title || 'Canción',
-
         author: {
             name:
                 video.uploader ||
                 video.channel ||
-                video.uploader_id ||
                 'YouTube'
         },
-
         timestamp:
             video.duration_string ||
             formatDuration(video.duration),
-
         duration: video.duration || 0,
-
         views: video.view_count || 0,
-
-        thumbnail
+        thumbnail: getThumbnail(
+            video.id,
+            video.thumbnail
+        )
     }
 }
 
-// ─────────────────────────────────────────────
-// OBTENER INFORMACIÓN DE URL
-// ─────────────────────────────────────────────
-
 async function getVideoInfo(url) {
-
     const result = await ytdl(
         url,
         youtubeOptions({
@@ -206,133 +192,101 @@ async function getVideoInfo(url) {
         })
     )
 
-    let thumbnail = result.thumbnail
-
-    if (!thumbnail && result.id) {
-        thumbnail =
-            `https://i.ytimg.com/vi/${result.id}/hqdefault.jpg`
+    if (!result?.id) {
+        throw new Error('No se pudo obtener la información del video')
     }
 
     return {
         id: result.id,
-
         url:
             result.webpage_url ||
             url,
-
         title:
             result.title ||
             'Canción',
-
         author: {
             name:
                 result.uploader ||
                 result.channel ||
                 'YouTube'
         },
-
         timestamp:
             result.duration_string ||
             formatDuration(result.duration),
-
         duration:
             result.duration || 0,
-
         views:
             result.view_count || 0,
-
-        thumbnail
+        thumbnail:
+            getThumbnail(
+                result.id,
+                result.thumbnail
+            )
     }
 }
 
-// ─────────────────────────────────────────────
-// DESCARGAR AUDIO
-// ─────────────────────────────────────────────
-
 async function downloadAudio(url, onProgress) {
-
     const fileId =
         `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
 
-    const outputTemplate =
+    const output =
         path.join(
             TEMP_DIR,
             `${fileId}.%(ext)s`
         )
 
     const options = youtubeOptions({
-
-        format:
-            'bestaudio[ext=m4a]/bestaudio',
-
-        output: outputTemplate,
-
+        format: 'bestaudio[ext=m4a]/bestaudio',
+        output,
         concurrentFragments: 4,
-
         noPart: true,
-
-        timeout: 90000,
-
         progress: true,
-
         newline: true
     })
 
     try {
-
         const process = ytdl.exec(
             url,
             options
         )
 
-        process.stdout?.on('data', data => {
-
+        const parseProgress = data => {
             const text = data.toString()
 
             const match =
                 text.match(/(\d+(?:\.\d+)?)%/)
 
-            if (match && onProgress) {
+            if (!match) return
 
-                let percent =
-                    Math.floor(Number(match[1]))
+            let percent =
+                Math.floor(
+                    Number(match[1])
+                )
 
-                percent =
-                    Math.max(
-                        10,
-                        Math.min(95, percent)
-                    )
+            percent =
+                Math.max(
+                    10,
+                    Math.min(95, percent)
+                )
 
+            if (onProgress) {
                 onProgress(percent)
             }
-        })
+        }
 
-        process.stderr?.on('data', data => {
+        process.stdout?.on(
+            'data',
+            parseProgress
+        )
 
-            const text = data.toString()
-
-            const match =
-                text.match(/(\d+(?:\.\d+)?)%/)
-
-            if (match && onProgress) {
-
-                let percent =
-                    Math.floor(Number(match[1]))
-
-                percent =
-                    Math.max(
-                        10,
-                        Math.min(95, percent)
-                    )
-
-                onProgress(percent)
-            }
-        })
+        process.stderr?.on(
+            'data',
+            parseProgress
+        )
 
         await process
 
     } catch (error) {
-
         console.error(
             '[PLAY DOWNLOAD ERROR]',
             error?.stderr ||
@@ -346,225 +300,82 @@ async function downloadAudio(url, onProgress) {
     const files =
         fs.readdirSync(TEMP_DIR)
             .filter(file =>
-                file.startsWith(fileId + '.')
+                file.startsWith(`${fileId}.`)
             )
 
     if (!files.length) {
         throw new Error(
-            'No se encontró el archivo descargado'
+            'No se encontró el audio descargado'
         )
     }
 
-    const file =
+    const audioFile =
         files.find(file =>
             file.endsWith('.m4a')
         ) || files[0]
 
     return path.join(
         TEMP_DIR,
-        file
+        audioFile
     )
 }
 
-// ─────────────────────────────────────────────
-// ELIMINAR ARCHIVO
-// ─────────────────────────────────────────────
-
 function deleteFile(file) {
-
     try {
-
         if (
             file &&
             fs.existsSync(file)
         ) {
             fs.unlinkSync(file)
         }
-
-    } catch (error) {
-
-        console.error(
-            '[PLAY CLEANUP]',
-            error.message
-        )
-    }
-}
-
-// ─────────────────────────────────────────────
-// LIMPIAR TEMPORAL
-// ─────────────────────────────────────────────
-
-function cleanTemp() {
-
-    try {
-
-        const files =
-            fs.readdirSync(TEMP_DIR)
-
-        for (const file of files) {
-
-            const full =
-                path.join(TEMP_DIR, file)
-
-            try {
-
-                fs.unlinkSync(full)
-
-            } catch {}
-        }
-
     } catch {}
 }
 
-// ─────────────────────────────────────────────
-// MENSAJE VISUAL
-// ─────────────────────────────────────────────
-
-function createCaption(
-    selection,
-    status,
-    percent,
-    elapsed = null
-) {
-
-    const title =
-        selection.title ||
-        'Canción'
-
-    const author =
-        selection.author?.name ||
-        'YouTube'
-
-    const duration =
-        selection.timestamp ||
-        formatDuration(selection.duration)
-
-    const views =
-        formatViews(selection.views)
-
-    let extra = ''
-
-    if (elapsed !== null) {
-
-        extra =
-            `\n│ ⚡ Tiempo: ${elapsed}s`
-    }
-
-    return (
-`╭─〔 🎵 𝐅𝐄𝐋𝐁𝐎𝐓 𝐏𝐋𝐀𝐘 〕─╮
-│
-│ 🎶 *${title}*
-│
-│ 👤 ${author}
-│ ⏱️ ${duration}
-│ 👁️ ${views} vistas
-│
-│ ${status}
-│
-│ ${progressText(percent)}${extra}
-│
-╰────────────────────╯
-> ⚡ 𝕱𝖊𝖑𝖇𝖔𝖙 夜`
-    )
-}
-
-// ─────────────────────────────────────────────
-// ACTUALIZAR MENSAJE
-// ─────────────────────────────────────────────
-
-async function updateLoading(
+async function updateMessage(
     sock,
     chatId,
     loading,
-    selection,
+    video,
     status,
     percent,
-    elapsed = null
+    elapsed
 ) {
-
     try {
-
         await sock.sendMessage(
             chatId,
             {
                 image: {
                     url:
-                        selection.thumbnail ||
-                        'https://i.imgur.com/AfFp7pu.png'
+                        video.thumbnail
                 },
-
                 caption:
-                    createCaption(
-                        selection,
+                    getCaption(
+                        video,
                         status,
                         percent,
                         elapsed
                     )
             },
             {
-                edit:
-                    loading.key
+                edit: loading.key
             }
         )
-
     } catch (error) {
-
-        console.error(
+        console.log(
             '[PLAY UPDATE]',
             error.message
         )
     }
 }
 
-// ─────────────────────────────────────────────
-// ENVIAR AUDIO
-// ─────────────────────────────────────────────
-
-async function sendSongAudio(
-    sock,
-    chatId,
-    message,
-    file,
-    selection
-) {
-
-    const fileName =
-        `${safeName(selection.title)}.m4a`
-
-    await sock.sendMessage(
-        chatId,
-        {
-            audio: {
-                url: file
-            },
-
-            mimetype:
-                'audio/mp4',
-
-            fileName,
-
-            ptt: false
-        },
-        {
-            quoted: message
-        }
-    )
-}
-
-// ─────────────────────────────────────────────
-// COMANDO .PLAY
-// ─────────────────────────────────────────────
-
 async function songCommand(
     sock,
     chatId,
     message
 ) {
-
-    const startTime = Date.now()
+    const start = Date.now()
 
     try {
-
         const text =
             message?.message?.conversation ||
             message?.message?.extendedTextMessage?.text ||
@@ -578,19 +389,18 @@ async function songCommand(
                 .trim()
 
         if (!query) {
-
             await sock.sendMessage(
                 chatId,
                 {
                     text:
-                        `╭─〔 🎵 𝐅𝐄𝐋𝐁𝐎𝐓 𝐏𝐋𝐀𝐘 〕─╮
-│
-│ ❌ Escribe el nombre de una canción.
-│
-│ Ejemplo:
-│ .play Querer Querernos
-│
-╰────────────────────╯`
+`🎵 *Uso de .play*
+
+> .play nombre de la canción
+
+Ejemplo:
+> .play Querer Querernos
+
+> 𝕱𝖊𝖑𝖇𝖔𝖙 夜`
                 },
                 {
                     quoted: message
@@ -600,41 +410,29 @@ async function songCommand(
             return
         }
 
-        console.log(
-            `🎶 PLAY | 🔎 ${query}`
+        await react(
+            sock,
+            chatId,
+            message,
+            '🔎'
         )
 
-        let selection
-
-        // ─────────────────────────────
-        // URL DIRECTA
-        // ─────────────────────────────
+        let video
 
         if (
             /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\//i
                 .test(query)
         ) {
-
-            selection =
+            video =
                 await getVideoInfo(query)
-
         } else {
-
-            // ─────────────────────────
-            // BÚSQUEDA
-            // ─────────────────────────
-
-            selection =
+            video =
                 await searchYouTube(query)
         }
 
         console.log(
-            `✅ VIDEO: ${selection.title}`
+            `🎵 ${video.title}`
         )
-
-        // ─────────────────────────────
-        // MENSAJE DE CARGA
-        // ─────────────────────────────
 
         const loading =
             await sock.sendMessage(
@@ -642,15 +440,13 @@ async function songCommand(
                 {
                     image: {
                         url:
-                            selection.thumbnail ||
-                            'https://i.imgur.com/AfFp7pu.png'
+                            video.thumbnail
                     },
-
                     caption:
-                        createCaption(
-                            selection,
+                        getCaption(
+                            video,
                             '⏳ Preparando audio...',
-                            10
+                            5
                         )
                 },
                 {
@@ -658,21 +454,21 @@ async function songCommand(
                 }
             )
 
-        // ─────────────────────────────
-        // PROGRESO
-        // ─────────────────────────────
+        await react(
+            sock,
+            chatId,
+            message,
+            '⬇️'
+        )
 
         let lastUpdate = 0
 
         const onProgress =
             async percent => {
+                const now = Date.now()
 
-                const now =
-                    Date.now()
-
-                // Evita editar demasiadas veces
                 if (
-                    now - lastUpdate < 1200 &&
+                    now - lastUpdate < 1500 &&
                     percent < 95
                 ) {
                     return
@@ -682,101 +478,95 @@ async function songCommand(
 
                 const elapsed =
                     (
-                        (now - startTime) /
+                        (now - start) /
                         1000
                     ).toFixed(1)
 
-                await updateLoading(
+                await updateMessage(
                     sock,
                     chatId,
                     loading,
-                    selection,
+                    video,
                     '⬇️ Descargando audio...',
                     percent,
                     elapsed
                 )
             }
 
-        // ─────────────────────────────
-        // DESCARGA
-        // ─────────────────────────────
-
         const file =
             await downloadAudio(
-                selection.url,
+                video.url,
                 onProgress
             )
 
         const elapsed =
             (
-                (Date.now() - startTime) /
+                (Date.now() - start) /
                 1000
             ).toFixed(1)
 
-        // ─────────────────────────────
-        // ACTUALIZAR A LISTO
-        // ─────────────────────────────
+        await react(
+            sock,
+            chatId,
+            message,
+            '🎧'
+        )
 
-        await updateLoading(
+        await updateMessage(
             sock,
             chatId,
             loading,
-            selection,
-            '✅ Audio preparado',
+            video,
+            '🎧 Audio preparado',
             100,
             elapsed
         )
 
-        // ─────────────────────────────
-        // ENVIAR AUDIO
-        // ─────────────────────────────
+        await sock.sendMessage(
+            chatId,
+            {
+                audio: {
+                    url: file
+                },
+                mimetype: 'audio/mp4',
+                fileName:
+                    `${safeName(video.title)}.m4a`,
+                ptt: false
+            },
+            {
+                quoted: message
+            }
+        )
 
-        await sendSongAudio(
+        await react(
             sock,
             chatId,
             message,
-            file,
-            selection
+            '✅'
         )
 
-        // ─────────────────────────────
-        // MENSAJE FINAL
-        // ─────────────────────────────
-
-        await updateLoading(
+        await updateMessage(
             sock,
             chatId,
             loading,
-            selection,
-            '🎧 Audio enviado correctamente',
+            video,
+            '✅ Audio enviado correctamente',
             100,
             (
-                (Date.now() - startTime) /
+                (Date.now() - start) /
                 1000
             ).toFixed(1)
         )
 
-        // ─────────────────────────────
-        // LIMPIAR
-        // ─────────────────────────────
-
         setTimeout(() => {
-
             deleteFile(file)
-
         }, 5000)
 
         console.log(
-            `✅ PLAY LISTO | ${selection.title} | ⚡ ${
-                (
-                    (Date.now() - startTime) /
-                    1000
-                ).toFixed(1)
-            }s`
+            `✅ PLAY LISTO | ${video.title}`
         )
 
     } catch (error) {
-
         console.error(
             '[PLAY ERROR]',
             error?.stderr ||
@@ -784,32 +574,34 @@ async function songCommand(
             error
         )
 
-        try {
+        await react(
+            sock,
+            chatId,
+            message,
+            '❌'
+        )
 
+        try {
             await sock.sendMessage(
                 chatId,
                 {
                     text:
-                        `╭─〔 ❌ 𝐅𝐄𝐋𝐁𝐎𝐓 𝐏𝐋𝐀𝐘 〕─╮
-│
-│ No pude descargar el audio.
-│
-│ 🔎 ${error?.message || 'Error desconocido'}
-│
-╰────────────────────╯`
+`❌ *No se pudo descargar el audio.*
+
+> ${error?.message || 'Error desconocido'}
+
+> 𝕱𝖊𝖑𝖇𝖔𝖙 夜`
                 },
                 {
                     quoted: message
                 }
             )
-
         } catch {}
-
     }
 }
 
-// ─────────────────────────────────────────────
-// EXPORTACIÓN
-// ─────────────────────────────────────────────
-
 module.exports = songCommand
+module.exports.songCommand = songCommand
+
+// Compatibilidad con main.js antiguo
+module.exports.handleSongButton = async () => false
