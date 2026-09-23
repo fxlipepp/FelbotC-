@@ -487,13 +487,13 @@ async function handleMenuButton(sock, chatId, buttonId, message) {
                 'menu.mp4'
             )
 
-            if (!fs.existsSync(imagePath)) {
+            if (!fs.existsSync(gifsPath)) {
                 throw new Error(
-                    `No existe la imagen: ${imagePath}`
+                    `No existe la imagen: ${gifsPath}`
                 )
             }
 
-            const imageBuffer = fs.readFileSync(imagePath)
+            const imageBuffer = fs.readFileSync(gifsPath)
 
             await sock.sendMessage(
                 chatId,
@@ -553,13 +553,13 @@ Aquí encontrarás herramientas, administración, entretenimiento y mucho más.
                 'menu.mp4'
         )
 
-        if (!fs.existsSync(imagePath)) {
+        if (!fs.existsSync(gifsPath)) {
             throw new Error(
-                `Menu image not found: ${imagePath}`
+                `Menu image not found: ${gifsPath}`
             )
         }
 
-        const imageBuffer = fs.readFileSync(imagePath)
+        const imageBuffer = fs.readFileSync(gifsPath)
 
         const preparedImage = await prepareWAMessageMedia(
             {
