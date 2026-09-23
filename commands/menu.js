@@ -478,7 +478,7 @@ async function handleMenuButton(sock, chatId, buttonId, message) {
 
         try {
 
-            const imagePath = path.join(
+            const gifsPath = path.join(
                 __dirname,
                 '..',
                 'assets',
@@ -544,7 +544,7 @@ Aquí encontrarás herramientas, administración, entretenimiento y mucho más.
 
     try {
 
-        const imagePath = path.join(
+        const gifsPath = path.join(
             __dirname,
              '..',
                 'assets',
