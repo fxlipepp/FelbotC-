@@ -30,7 +30,9 @@ const searchCache = new Map()
 function limitMapSize(map, max = 100) {
    while (map.size > max) {
       const firstKey = map.keys().next().value
+
       if (!firstKey) break
+
       map.delete(firstKey)
    }
 }
@@ -40,7 +42,9 @@ function limitMapSize(map, max = 100) {
 // ======================================================
 
 function cleanMemory() {
+
    try {
+
       if (searchCache.size > 70) {
          searchCache.clear()
       }
@@ -51,6 +55,7 @@ function cleanMemory() {
       ) {
          global.gc()
       }
+
    } catch {}
 }
 
@@ -64,6 +69,7 @@ setInterval(
 // ======================================================
 
 function createBar(percent) {
+
    const total = 10
 
    const filled =
@@ -100,7 +106,9 @@ const YOUTUBE_USER_AGENT =
 // ======================================================
 
 function getCookiesStatus() {
+
    try {
+
       if (!fs.existsSync(cookiesPath)) {
          return false
       }
@@ -117,6 +125,7 @@ function getCookiesStatus() {
       }
 
       return true
+
    } catch {
       return false
    }
@@ -127,7 +136,9 @@ function getCookiesStatus() {
 // ======================================================
 
 function validateCookiesFile() {
+
    try {
+
       if (!getCookiesStatus()) {
          return false
       }
@@ -155,6 +166,7 @@ function validateCookiesFile() {
          firstLine === '# Netscape HTTP Cookie File'
 
       if (!validHeader) {
+
          console.log(
             '⚠️ COOKIES: encabezado Netscape inválido'
          )
@@ -183,12 +195,19 @@ console.log(
 // ======================================================
 
 const BASE_OPTIONS = {
+
    noWarnings: true,
+
    noPlaylist: true,
+
    retries: 1,
+
    noCheckCertificates: true,
+
    jsRuntimes: 'node',
-   userAgent: YOUTUBE_USER_AGENT
+
+   userAgent:
+      YOUTUBE_USER_AGENT
 }
 
 // ======================================================
@@ -207,16 +226,19 @@ function youtubeOptions({
       'youtube:player_client=default'
 
    if (cookiesAvailable) {
+
       options.cookies =
          cookiesPath
    }
 
    if (ffmpegPath) {
+
       options.ffmpegLocation =
          ffmpegPath
    }
 
    if (format) {
+
       options.format =
          format
    }
@@ -307,6 +329,7 @@ function getUserId(message) {
 function getSongSelectionMap() {
 
    if (!global.songSelections) {
+
       global.songSelections =
          new Map()
    }
@@ -335,9 +358,11 @@ function registerSongSelection(
 
    setTimeout(
       () => {
+
          selections.delete(
             selectionId
          )
+
       },
       1000 * 60 * 10
    )
@@ -382,14 +407,9 @@ async function searchYouTube(
    query
 ) {
 
-   console.log(`
-🎶 FELBOT PLAY
-├─ 🔎 ${query}
-├─ ⚡ SEARCH RÁPIDO
-├─ 🍪 COOKIES: ${cookiesAvailable ? 'ON' : 'OFF'}
-├─ 🌐 USER-AGENT: FIJO
-└─ 🎯 CLIENT: default
-`)
+   console.log(
+      `🎶 PLAY | 🔎 ${query} | 🍪 ${cookiesAvailable ? 'ON' : 'OFF'}`
+   )
 
    try {
 
@@ -420,6 +440,7 @@ async function searchYouTube(
          ) ||
          !results.entries.length
       ) {
+
          throw new Error(
             'No se encontraron resultados'
          )
@@ -432,6 +453,7 @@ async function searchYouTube(
          !selected ||
          !selected.id
       ) {
+
          throw new Error(
             'Resultado de YouTube inválido'
          )
@@ -480,6 +502,7 @@ async function searchYouTube(
             ),
 
          author: {
+
             name:
                selected.uploader ||
                selected.channel ||
@@ -505,7 +528,7 @@ async function searchYouTube(
 }
 
 // ======================================================
-// DESCARGAR VIDEO
+// DESCARGAR VIDEO MP4
 // ======================================================
 
 async function downloadVideo(
@@ -524,6 +547,7 @@ async function downloadVideo(
          tempDir
       )
    ) {
+
       fs.mkdirSync(
          tempDir,
          {
@@ -546,18 +570,14 @@ async function downloadVideo(
          '.%(ext)s'
       )
 
-   console.log(`
-🎬 FELBOT VIDEO
-├─ ⚡ MODO VIDEO
-├─ 🍪 COOKIES: ${cookiesAvailable ? 'ON' : 'OFF'}
-├─ 🌐 USER-AGENT: FIJO
-├─ 🎯 CLIENT: default
-└─ 🔧 FFMPEG: ${ffmpegPath ? 'ON' : 'OFF'}
-`)
+   console.log(
+      `🎬 VIDEO | 🍪 ${cookiesAvailable ? 'ON' : 'OFF'} | 🔧 FFMPEG ${ffmpegPath ? 'ON' : 'OFF'}`
+   )
 
    try {
 
       if (onStage) {
+
          await onStage(
             20,
             '🔎 Analizando formatos...'
@@ -565,17 +585,23 @@ async function downloadVideo(
       }
 
       /*
-       * bv* = mejor formato que contenga video
-       * ba  = mejor audio
-       * /b  = fallback a formato combinado
+       * Primero intenta:
        *
-       * Esta es la selección general recomendada
-       * por yt-dlp para video.
+       * video MP4 + audio M4A
+       *
+       * Después:
+       *
+       * video MP4 combinado
+       *
+       * Finalmente:
+       *
+       * cualquier formato disponible.
        */
+
       const options =
          youtubeOptions({
             format:
-               'bv*+ba/b'
+               'bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]/b'
          })
 
       options.output =
@@ -599,19 +625,29 @@ async function downloadVideo(
       options.retries =
          1
 
-      /*
-       * Si yt-dlp necesita unir video + audio,
-       * el resultado será MP4.
-       */
+      // =================================================
+      // FFMPEG
+      // =================================================
+
       if (ffmpegPath) {
+
+         options.ffmpegLocation =
+            ffmpegPath
+
          options.mergeOutputFormat =
             'mp4'
+
+         options.postprocessorArgs = [
+            '-movflags',
+            '+faststart'
+         ]
       }
 
       if (onStage) {
+
          await onStage(
             40,
-            '⬇️ Descargando video...'
+            '⬇️ Descargando video MP4...'
          )
       }
 
@@ -625,13 +661,16 @@ async function downloadVideo(
       )
 
       if (onStage) {
+
          await onStage(
             80,
-            ffmpegPath
-               ? '🔧 Preparando MP4...'
-               : '📦 Preparando video...'
+            '🔧 Preparando MP4...'
          )
       }
+
+      // =================================================
+      // BUSCAR ARCHIVO
+      // =================================================
 
       const files =
          fs.readdirSync(
@@ -640,18 +679,22 @@ async function downloadVideo(
             file =>
                file.startsWith(
                   fileId
-               )
+               ) &&
+               !file.endsWith('.part') &&
+               !file.endsWith('.ytdl')
          )
 
       if (!files.length) {
+
          throw new Error(
             'No se descargó ningún video'
          )
       }
 
-      /*
-       * Preferimos MP4 si existe.
-       */
+      // =================================================
+      // PRIORIZAR MP4
+      // =================================================
+
       const preferredFile =
          files.find(
             file =>
@@ -659,7 +702,7 @@ async function downloadVideo(
          ) ||
          files.find(
             file =>
-               !file.endsWith('.part')
+               /\.(mkv|webm|mov|avi)$/i.test(file)
          ) ||
          files[0]
 
@@ -674,6 +717,7 @@ async function downloadVideo(
             outputFile
          )
       ) {
+
          throw new Error(
             'Video descargado inexistente'
          )
@@ -685,8 +729,22 @@ async function downloadVideo(
          )
 
       if (!stats.size) {
+
          throw new Error(
             'Video descargado vacío'
+         )
+      }
+
+      // =================================================
+      // DEBE SER MP4
+      // =================================================
+
+      if (
+         !preferredFile.endsWith('.mp4')
+      ) {
+
+         throw new Error(
+            `El resultado no es MP4: ${preferredFile}`
          )
       }
 
@@ -695,35 +753,42 @@ async function downloadVideo(
             outputFile
          )
 
-      if (onStage) {
-         await onStage(
-            95,
-            '📤 Video listo para enviar...'
+      if (!buffer.length) {
+
+         throw new Error(
+            'Buffer de video vacío'
          )
       }
 
-      console.log(`
-✅ VIDEO COMPLETADO
-├─ 📦 ${(stats.size / 1024 / 1024).toFixed(2)} MB
-├─ 🎬 ${preferredFile}
-├─ 🍪 COOKIES: ${cookiesAvailable ? 'ON' : 'OFF'}
-└─ 🔧 FFMPEG: ${ffmpegPath ? 'ON' : 'OFF'}
-`)
+      if (onStage) {
 
-      /*
-       * Limpiar todos los archivos de esta descarga.
-       */
+         await onStage(
+            95,
+            '📤 MP4 listo para enviar...'
+         )
+      }
+
+      console.log(
+         `✅ VIDEO MP4 | ${(stats.size / 1024 / 1024).toFixed(2)} MB`
+      )
+
+      // =================================================
+      // LIMPIAR ARCHIVOS
+      // =================================================
+
       for (
          const file of files
       ) {
 
          try {
+
             fs.unlinkSync(
                path.join(
                   tempDir,
                   file
                )
             )
+
          } catch {}
       }
 
@@ -732,11 +797,15 @@ async function downloadVideo(
    } catch (error) {
 
       console.log(
-         '❌ VIDEO DOWNLOAD ERROR:',
+         '❌ VIDEO MP4 ERROR:',
          error?.stderr ||
          error?.message ||
          error
       )
+
+      // =================================================
+      // LIMPIEZA
+      // =================================================
 
       try {
 
@@ -755,12 +824,14 @@ async function downloadVideo(
          ) {
 
             try {
+
                fs.unlinkSync(
                   path.join(
                      tempDir,
                      file
                   )
                )
+
             } catch {}
          }
 
@@ -790,6 +861,7 @@ async function downloadAudio(
          tempDir
       )
    ) {
+
       fs.mkdirSync(
          tempDir,
          {
@@ -812,17 +884,14 @@ async function downloadAudio(
          '.%(ext)s'
       )
 
-   console.log(`
-🎵 FELBOT AUDIO
-├─ ⚡ MODO M4A
-├─ 🍪 COOKIES: ${cookiesAvailable ? 'ON' : 'OFF'}
-├─ 🌐 USER-AGENT: FIJO
-└─ 🎯 CLIENT: default
-`)
+   console.log(
+      `🎵 AUDIO | 🍪 ${cookiesAvailable ? 'ON' : 'OFF'}`
+   )
 
    try {
 
       if (onStage) {
+
          await onStage(
             20,
             '🔎 Preparando audio...'
@@ -857,6 +926,7 @@ async function downloadAudio(
          1
 
       if (onStage) {
+
          await onStage(
             40,
             '⬇️ Descargando audio...'
@@ -873,6 +943,7 @@ async function downloadAudio(
       )
 
       if (onStage) {
+
          await onStage(
             80,
             '📦 Preparando audio...'
@@ -890,6 +961,7 @@ async function downloadAudio(
          )
 
       if (!files.length) {
+
          throw new Error(
             'No se descargó ningún audio'
          )
@@ -913,6 +985,7 @@ async function downloadAudio(
             outputFile
          )
       ) {
+
          throw new Error(
             'Audio inexistente'
          )
@@ -924,6 +997,7 @@ async function downloadAudio(
          )
 
       if (!stats.size) {
+
          throw new Error(
             'Audio vacío'
          )
@@ -935,30 +1009,30 @@ async function downloadAudio(
          )
 
       if (onStage) {
+
          await onStage(
             95,
             '📤 Audio listo para enviar...'
          )
       }
 
-      console.log(`
-✅ AUDIO COMPLETADO
-├─ 📦 ${(stats.size / 1024 / 1024).toFixed(2)} MB
-├─ 🍪 COOKIES: ${cookiesAvailable ? 'ON' : 'OFF'}
-└─ ⚡ SIN CONVERSIÓN
-`)
+      console.log(
+         `✅ AUDIO | ${(stats.size / 1024 / 1024).toFixed(2)} MB`
+      )
 
       for (
          const file of files
       ) {
 
          try {
+
             fs.unlinkSync(
                path.join(
                   tempDir,
                   file
                )
             )
+
          } catch {}
       }
 
@@ -967,7 +1041,7 @@ async function downloadAudio(
    } catch (error) {
 
       console.log(
-         '❌ AUDIO DOWNLOAD ERROR:',
+         '❌ AUDIO ERROR:',
          error?.stderr ||
          error?.message ||
          error
@@ -990,12 +1064,14 @@ async function downloadAudio(
          ) {
 
             try {
+
                fs.unlinkSync(
                   path.join(
                      tempDir,
                      file
                   )
                )
+
             } catch {}
          }
 
@@ -1077,14 +1153,12 @@ async function sendSongMedia(
 
    try {
 
-      // Reacción inicial
       await reactToSong(
          sock,
          message,
          '⏳'
       )
 
-      // Mensaje inicial
       loading =
          await sock.sendMessage(
             chatId,
@@ -1132,7 +1206,6 @@ ${progressText(10)}
             )
          }
 
-      // Descargar
       const mediaBuffer =
          mediaType === 'video'
             ? await downloadVideo(
@@ -1148,19 +1221,19 @@ ${progressText(10)}
          !mediaBuffer ||
          mediaBuffer.length < 50000
       ) {
+
          throw new Error(
             'Archivo inválido'
          )
       }
 
-      // 100%
       await onStage(
          100,
          '✅ Descarga completada'
       )
 
       // =================================================
-      // VIDEO
+      // VIDEO MP4
       // =================================================
 
       if (
@@ -1223,14 +1296,12 @@ ${progressText(10)}
          )
       }
 
-      // Reacción final
       await reactToSong(
          sock,
          message,
          '✅'
       )
 
-      // Editar estado
       try {
 
          await sock.sendMessage(
@@ -1253,13 +1324,14 @@ ${progressText(10)}
 ${progressText(100)}
 
 > ⚡ ${mediaType === 'video'
-   ? 'Video enviado correctamente'
+   ? 'Video MP4 enviado correctamente'
    : 'Audio enviado correctamente'}
 
 > ⏱️ ${(
    (Date.now() - startTime) /
    1000
 ).toFixed(1)}s
+
 > 🍪 Cookies: ${cookiesAvailable ? 'ON' : 'OFF'}`
             }
          )
@@ -1346,7 +1418,7 @@ async function handleSongButton(
       )
 
    // ===================================================
-   // BOTÓN EXPIRADO
+   // EXPIRADO
    // ===================================================
 
    if (!selection) {
@@ -1373,7 +1445,7 @@ async function handleSongButton(
    }
 
    // ===================================================
-   // VERIFICAR DUEÑO
+   // DUEÑO DEL BOTÓN
    // ===================================================
 
    const clickedBy =
@@ -1451,9 +1523,9 @@ async function songCommand(
 
    try {
 
-      console.log(`
-🎶 NUEVA DESCARGA
-`)
+      console.log(
+         '🎶 NUEVO .PLAY'
+      )
 
       // =================================================
       // TEXTO
@@ -1586,9 +1658,11 @@ Escribe una canción.
 
             setTimeout(
                () => {
+
                   searchCache.delete(
                      cacheKey
                   )
+
                },
                1000 * 60 * 5
             )
@@ -1602,7 +1676,7 @@ Escribe una canción.
       )
 
       // =================================================
-      // REGISTRAR SELECCIÓN
+      // REGISTRAR
       // =================================================
 
       const selectionId =
@@ -1626,7 +1700,6 @@ Escribe una canción.
             views:
                video.views,
 
-            // IMPORTANTE
             owner:
                ownerId
          })
@@ -1816,17 +1889,12 @@ Selecciona una opción:`
          }
       )
 
-      console.log(`
-✅ PLAY LISTO
-├─ 🎵 ${video.title || 'Canción'}
-├─ 🎬 VIDEO / AUDIO
-├─ 🔒 BOTONES PRIVADOS
-├─ 🍪 COOKIES: ${cookiesAvailable ? 'ON' : 'OFF'}
-└─ ⚡ ${(
-   (Date.now() - startTime) /
-   1000
-).toFixed(1)}s
-`)
+      console.log(
+         `✅ PLAY LISTO | 🎵 ${video.title || 'Canción'} | 🔒 PRIVADO | ⚡ ${(
+            (Date.now() - startTime) /
+            1000
+         ).toFixed(1)}s`
+      )
 
       cleanMemory()
 
