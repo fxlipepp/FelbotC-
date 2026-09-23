@@ -1,3 +1,4 @@
+
 const fs = require('fs')
 const path = require('path')
 const {
@@ -456,7 +457,9 @@ function getMenuButtonAction(buttonId) {
     switch (buttonId) {
 
         case 'view_full_menu':
-            return { type: 'send_full_menu' }
+            return {
+                type: 'send_full_menu'
+            }
 
         default:
             return null
@@ -478,7 +481,7 @@ async function handleMenuButton(sock, chatId, buttonId, message) {
 
         try {
 
-            const imagePath = path.join(
+            const videoPath = path.join(
                 __dirname,
                 '..',
                 'assets',
@@ -487,18 +490,20 @@ async function handleMenuButton(sock, chatId, buttonId, message) {
                 'menu.mp4'
             )
 
-            if (!fs.existsSync(imagePath)) {
+            if (!fs.existsSync(videoPath)) {
                 throw new Error(
-                    `No existe la imagen: ${imagePath}`
+                    `No existe el GIF/video: ${videoPath}`
                 )
             }
 
-            const imageBuffer = fs.readFileSync(imagePath)
+            const videoBuffer = fs.readFileSync(videoPath)
 
             await sock.sendMessage(
                 chatId,
                 {
-                    image: imageBuffer,
+                    video: videoBuffer,
+                    mimetype: 'video/mp4',
+                    gifPlayback: true,
                     caption: fullMenu
                 },
                 {
@@ -540,78 +545,88 @@ async function helpCommand(sock, chatId, message) {
 Bienvenido a Felbot 夜.
 Aquí encontrarás herramientas, administración, entretenimiento y mucho más.
 
-🌍 Nuestra Pagina Web: https://fxlipe.skyultraplus.online/
+🌍 Nuestra Pagina Web:
+${FELBOT_WEB}
 
 👇 Elige una opción para continuar.`
 
     try {
 
-        const imagePath = path.join(
+        const videoPath = path.join(
             __dirname,
-             '..',
-                'assets',
-                'gifs',
-                'menucompleto',
-                'menu.mp4'
+            '..',
+            'assets',
+            'gifs',
+            'menucompleto',
+            'menu.mp4'
         )
 
-        if (!fs.existsSync(imagePath)) {
+        if (!fs.existsSync(videoPath)) {
             throw new Error(
-                `Menu image not found: ${imagePath}`
+                `Menu video not found: ${videoPath}`
             )
         }
 
-        const imageBuffer = fs.readFileSync(imagePath)
-
-        const preparedImage = await prepareWAMessageMedia(
-            {
-                image: imageBuffer
-            },
-            {
-                upload: sock.waUploadToServer
-            }
-        )
-
-        const buttons = [
-            [
-                'VER MENU COMPLETO',
-                'view_full_menu'
-            ],
-            [
-                'CONTACTAME 夜',
-                'owner'
-            ],
-            [
-                'REPORTAR ERROR ❗',
-                'report_error'
-            ],
-            [
-                'SOLICITUD DE COMANDO 🕸️',
-                'request_command'
-            ],
-            [
-                'ADQUIRIR BOT 💵',
-                'buy_bot'
-            ]
-        ].map(([display_text, id]) => ({
-
-            name: 'quick_reply',
-
-            buttonParamsJson: JSON.stringify({
-                display_text,
-                id
-            })
-
-        }))
+        const videoBuffer = fs.readFileSync(videoPath)
 
         /*
-         * Configuración experimental.
+         * IMPORTANTE:
          *
-         * WhatsApp/Baileys no documenta que el
-         * header.title sea un enlace clicable.
-         *
-         * La dejamos porque algunos forks de Baileys
-         * reconocen tap_target_configuration.
+         * El video del menú NO se prepara como IMAGE.
+         * Se envía como VIDEO/GIF.
+         */
+
+        const buttons = [
+
+            {
+                name: 'quick_reply',
+
+                buttonParamsJson: JSON.stringify({
+                    display_text: 'VER MENU COMPLETO',
+                    id: 'view_full_menu'
+                })
+            },
+
+            {
+                name: 'quick_reply',
+
+                buttonParamsJson: JSON.stringify({
+                    display_text: 'CONTACTAME 夜',
+                    id: 'owner'
+                })
+            },
+
+            {
+                name: 'quick_reply',
+
+                buttonParamsJson: JSON.stringify({
+                    display_text: 'REPORTAR ERROR ❗',
+                    id: 'report_error'
+                })
+            },
+
+            {
+                name: 'quick_reply',
+
+                buttonParamsJson: JSON.stringify({
+                    display_text: 'SOLICITUD DE COMANDO 🕸️',
+                    id: 'request_command'
+                })
+            },
+
+            {
+                name: 'quick_reply',
+
+                buttonParamsJson: JSON.stringify({
+                    display_text: 'ADQUIRIR BOT 💵',
+                    id: 'buy_bot'
+                })
+            }
+        ]
+
+        /*
+         * El menú interactivo mantiene
+         * la información de la página.
          */
 
         const messageParams = {
@@ -630,24 +645,37 @@ Aquí encontrarás herramientas, administración, entretenimiento y mucho más.
             }
         }
 
+        /*
+         * Para evitar que WhatsApp rechace el mensaje
+         * por intentar meter un MP4 como imagen,
+         * el menú principal se manda como texto
+         * interactivo y el video se manda después.
+         */
+
+        await sock.sendMessage(
+            chatId,
+            {
+                video: videoBuffer,
+                mimetype: 'video/mp4',
+                gifPlayback: true,
+                caption: introCaption
+            },
+            {
+                quoted: message
+            }
+        )
+
+        /*
+         * Menú interactivo separado.
+         */
+
         const menuMessage = generateWAMessageFromContent(
             chatId,
             {
                 interactiveMessage: {
 
-                    header: {
-
-                        title: '𝕱𝖊𝖑𝖇𝖔𝖙 夜',
-
-                        subtitle: 'Menú interactivo',
-
-                        hasMediaAttachment: true,
-
-                        ...preparedImage
-                    },
-
                     body: {
-                        text: introCaption
+                        text: '👇 Selecciona una opción:'
                     },
 
                     footer: {
@@ -668,7 +696,7 @@ Aquí encontrarás herramientas, administración, entretenimiento y mucho más.
 
                             title: '𝕱𝖊𝖑𝖇𝖔𝖙 夜',
 
-                            body: 'Menú interactivo',
+                            body: 'Abrir página web',
 
                             mediaType: 1,
 
@@ -736,15 +764,70 @@ Aquí encontrarás herramientas, administración, entretenimiento y mucho más.
             error
         )
 
-        await sock.sendMessage(
-            chatId,
-            {
-                text: introCaption
-            },
-            {
-                quoted: message
+        /*
+         * FALLBACK:
+         * Si falla el menú interactivo,
+         * se manda únicamente el GIF/video.
+         */
+
+        try {
+
+            const videoPath = path.join(
+                __dirname,
+                '..',
+                'assets',
+                'gifs',
+                'menucompleto',
+                'menu.mp4'
+            )
+
+            if (fs.existsSync(videoPath)) {
+
+                const videoBuffer = fs.readFileSync(videoPath)
+
+                await sock.sendMessage(
+                    chatId,
+                    {
+                        video: videoBuffer,
+                        mimetype: 'video/mp4',
+                        gifPlayback: true,
+                        caption: introCaption
+                    },
+                    {
+                        quoted: message
+                    }
+                )
+
+            } else {
+
+                await sock.sendMessage(
+                    chatId,
+                    {
+                        text: introCaption
+                    },
+                    {
+                        quoted: message
+                    }
+                )
             }
-        )
+
+        } catch (fallbackError) {
+
+            console.error(
+                '❌ ERROR EN FALLBACK:',
+                fallbackError
+            )
+
+            await sock.sendMessage(
+                chatId,
+                {
+                    text: introCaption
+                },
+                {
+                    quoted: message
+                }
+            )
+        }
     }
 }
 
