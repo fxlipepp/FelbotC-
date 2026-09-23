@@ -530,7 +530,7 @@ async function handleMenuButton(
                 '..',
                 'assets',
                 'gifs',
-                'menu',
+                'menucompleto',
                 'menu.mp4'
             )
 
@@ -616,7 +616,7 @@ Aquí encontrarás herramientas, administración, entretenimiento y mucho más.
             '..',
             'assets',
             'gifs',
-            'menu',
+            'menucompleto',
             'menu.mp4'
         )
 
