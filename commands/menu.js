@@ -483,7 +483,7 @@ async function handleMenuButton(sock, chatId, buttonId, message) {
                 '..',
                 'assets',
                  'gifs',
-                'menucompleto',
+                'menu',
                 'menu.mp4'
             )
 
@@ -549,7 +549,7 @@ Aquí encontrarás herramientas, administración, entretenimiento y mucho más.
              '..',
                 'assets',
                 'gifs',
-                'menucompleto',
+                'menu',
                 'menu.mp4'
         )
 
