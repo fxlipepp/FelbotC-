@@ -36,26 +36,23 @@ function limitMapSize(map, max = 100) {
    }
 }
 
-setInterval(
-   () => {
-      try {
-         if (searchCache.size > 70) {
-            searchCache.clear()
-         }
+setInterval(() => {
+   try {
+      if (searchCache.size > 70) {
+         searchCache.clear()
+      }
 
-         if (
-            global.gc &&
-            typeof global.gc === 'function'
-         ) {
-            global.gc()
-         }
-      } catch {}
-   },
-   1000 * 60 * 20
-)
+      if (
+         global.gc &&
+         typeof global.gc === 'function'
+      ) {
+         global.gc()
+      }
+   } catch {}
+}, 1000 * 60 * 20)
 
 // ======================================================
-// BARRA
+// PROGRESO
 // ======================================================
 
 function createBar(percent) {
@@ -80,7 +77,7 @@ function progressText(percent) {
 }
 
 // ======================================================
-// COOKIES YOUTUBE
+// COOKIES
 // ======================================================
 
 const cookiesPath =
@@ -88,10 +85,6 @@ const cookiesPath =
 
 const YOUTUBE_USER_AGENT =
    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36'
-
-// ======================================================
-// VALIDAR COOKIES
-// ======================================================
 
 function getCookiesStatus() {
    try {
@@ -102,15 +95,10 @@ function getCookiesStatus() {
       const stats =
          fs.statSync(cookiesPath)
 
-      if (!stats.isFile()) {
-         return false
-      }
-
-      if (stats.size <= 100) {
-         return false
-      }
-
-      return true
+      return (
+         stats.isFile() &&
+         stats.size > 100
+      )
    } catch {
       return false
    }
@@ -135,10 +123,6 @@ function validateCookiesFile() {
                line =>
                   line.trim().length > 0
             )
-
-      if (!firstLine) {
-         return false
-      }
 
       return (
          firstLine === '# HTTP Cookie File' ||
@@ -172,7 +156,7 @@ const BASE_OPTIONS = {
 }
 
 // ======================================================
-// OPCIONES YT-DLP
+// YT-DLP
 // ======================================================
 
 function youtubeOptions({
@@ -209,6 +193,7 @@ function youtubeOptions({
 // ======================================================
 
 function formatDuration(seconds) {
+
    if (
       seconds === undefined ||
       seconds === null ||
@@ -233,9 +218,7 @@ function formatDuration(seconds) {
    return (
       String(minutes) +
       ':' +
-      String(
-         remaining
-      ).padStart(
+      String(remaining).padStart(
          2,
          '0'
       )
@@ -243,12 +226,13 @@ function formatDuration(seconds) {
 }
 
 // ======================================================
-// LIMPIAR TÍTULO
+// TÍTULO
 // ======================================================
 
 function sanitizeSongTitle(
    title = 'song'
 ) {
+
    return (
       String(title)
          .replace(
@@ -269,6 +253,7 @@ function sanitizeSongTitle(
 // ======================================================
 
 function getUserId(message) {
+
    return (
       message?.key?.participant ||
       message?.participant ||
@@ -477,7 +462,162 @@ async function searchYouTube(
 }
 
 // ======================================================
-// DESCARGAR + CONVERTIR VIDEO MP4
+// FFMPEG REMUX RÁPIDO
+// ======================================================
+
+function remuxMp4(
+   videoPath,
+   audioPath,
+   outputPath
+) {
+
+   return new Promise(
+      (
+         resolve,
+         reject
+      ) => {
+
+         const args = [
+
+            '-y',
+
+            '-i',
+            videoPath,
+
+            '-i',
+            audioPath,
+
+            '-map',
+            '0:v:0',
+
+            '-map',
+            '1:a:0',
+
+            // SIN RECODIFICAR
+            '-c:v',
+            'copy',
+
+            '-c:a',
+            'copy',
+
+            '-movflags',
+            '+faststart',
+
+            outputPath
+         ]
+
+         execFile(
+            ffmpegPath,
+            args,
+            {
+               timeout:
+                  120000,
+
+               maxBuffer:
+                  10 * 1024 * 1024
+            },
+            (
+               error,
+               stdout,
+               stderr
+            ) => {
+
+               if (error) {
+
+                  return reject({
+                     error,
+                     stderr
+                  })
+               }
+
+               resolve()
+            }
+         )
+      }
+   )
+}
+
+// ======================================================
+// CONVERSIÓN H264 FALLBACK
+// ======================================================
+
+function convertToCompatibleMp4(
+   sourcePath,
+   outputPath
+) {
+
+   return new Promise(
+      (
+         resolve,
+         reject
+      ) => {
+
+         const args = [
+
+            '-y',
+
+            '-i',
+            sourcePath,
+
+            // VIDEO COMPATIBLE
+            '-c:v',
+            'libx264',
+
+            '-preset',
+            'veryfast',
+
+            '-crf',
+            '23',
+
+            '-pix_fmt',
+            'yuv420p',
+
+            // AUDIO COMPATIBLE
+            '-c:a',
+            'aac',
+
+            '-b:a',
+            '128k',
+
+            '-movflags',
+            '+faststart',
+
+            outputPath
+         ]
+
+         execFile(
+            ffmpegPath,
+            args,
+            {
+               timeout:
+                  180000,
+
+               maxBuffer:
+                  20 * 1024 * 1024
+            },
+            (
+               error,
+               stdout,
+               stderr
+            ) => {
+
+               if (error) {
+
+                  return reject({
+                     error,
+                     stderr
+                  })
+               }
+
+               resolve()
+            }
+         )
+      }
+   )
+}
+
+// ======================================================
+// DESCARGAR VIDEO
 // ======================================================
 
 async function downloadVideo(
@@ -496,6 +636,7 @@ async function downloadVideo(
          tempDir
       )
    ) {
+
       fs.mkdirSync(
          tempDir,
          {
@@ -511,14 +652,21 @@ async function downloadVideo(
          .toString(36)
          .slice(2, 8)
 
-   const downloadTemplate =
+   const outputTemplate =
       path.join(
          tempDir,
          fileId +
          '.%(ext)s'
       )
 
-   const finalFile =
+   const remuxFile =
+      path.join(
+         tempDir,
+         fileId +
+         '-remux.mp4'
+      )
+
+   const compatibleFile =
       path.join(
          tempDir,
          fileId +
@@ -555,11 +703,11 @@ async function downloadVideo(
       const options =
          youtubeOptions({
             format:
-               'bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]/b'
+               'bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]'
          })
 
       options.output =
-         downloadTemplate
+         outputTemplate
 
       options.quiet =
          true
@@ -579,11 +727,13 @@ async function downloadVideo(
       options.retries =
          1
 
-      options.ffmpegLocation =
-         ffmpegPath
+      /*
+       * Importante:
+       * descargamos video y audio por separado.
+       * El merge lo controlamos nosotros.
+       */
 
-      options.mergeOutputFormat =
-         'mp4'
+      delete options.mergeOutputFormat
 
       if (onStage) {
          await onStage(
@@ -597,15 +747,15 @@ async function downloadVideo(
          options,
          {
             timeout:
-               180000
+               120000
          }
       )
 
       // =================================================
-      // BUSCAR ARCHIVO
+      // ARCHIVOS
       // =================================================
 
-      const downloadedFiles =
+      const files =
          fs.readdirSync(
             tempDir
          ).filter(
@@ -613,246 +763,283 @@ async function downloadVideo(
                file.startsWith(
                   fileId
                ) &&
-               !file.includes(
-                  '-whatsapp.mp4'
-               ) &&
                !file.endsWith('.part') &&
                !file.endsWith('.ytdl')
          )
 
-      if (
-         !downloadedFiles.length
-      ) {
+      if (!files.length) {
          throw new Error(
-            'yt-dlp no generó ningún archivo'
+            'No se descargó ningún archivo'
          )
       }
 
-      const sourceFile =
-         downloadedFiles.find(
+      const videoFile =
+         files.find(
             file =>
                file
                   .toLowerCase()
                   .endsWith('.mp4')
          )
 
-      if (!sourceFile) {
+      const audioFile =
+         files.find(
+            file =>
+               file
+                  .toLowerCase()
+                  .endsWith('.m4a')
+         )
+
+      if (!videoFile) {
          throw new Error(
-            `No se encontró MP4 descargado: ${downloadedFiles.join(', ')}`
+            `No se encontró video MP4: ${files.join(', ')}`
          )
       }
 
-      const sourcePath =
+      const videoPath =
          path.join(
             tempDir,
-            sourceFile
+            videoFile
          )
-
-      if (
-         !fs.existsSync(
-            sourcePath
-         )
-      ) {
-         throw new Error(
-            'Archivo descargado inexistente'
-         )
-      }
-
-      const sourceStats =
-         fs.statSync(
-            sourcePath
-         )
-
-      if (!sourceStats.size) {
-         throw new Error(
-            'Archivo descargado vacío'
-         )
-      }
-
-      console.log(
-         `📦 DESCARGADO | ${(sourceStats.size / 1024 / 1024).toFixed(2)} MB`
-      )
 
       // =================================================
-      // CONVERSIÓN WHATSAPP
+      // YA VIENE COMBINADO
       // =================================================
 
-      if (onStage) {
-         await onStage(
-            60,
-            '🔧 Convirtiendo a MP4 compatible...'
+      if (!audioFile) {
+
+         console.log(
+            '⚡ MP4 COMBINADO | SIN CONVERSIÓN'
          )
-      }
 
-      console.log(
-         '🔧 CONVERSIÓN | H.264 + AAC + YUV420P'
-      )
+         const buffer =
+            fs.readFileSync(
+               videoPath
+            )
 
-      await new Promise(
-         (
-            resolve,
-            reject
-         ) => {
+         for (
+            const file of files
+         ) {
 
-            const args = [
+            try {
 
-               '-y',
+               fs.unlinkSync(
+                  path.join(
+                     tempDir,
+                     file
+                  )
+               )
 
-               '-i',
-               sourcePath,
+            } catch {}
+         }
 
-               // VIDEO
-               '-c:v',
-               'libx264',
-
-               '-preset',
-               'veryfast',
-
-               '-crf',
-               '23',
-
-               // COMPATIBILIDAD
-               '-pix_fmt',
-               'yuv420p',
-
-               // AUDIO
-               '-c:a',
-               'aac',
-
-               '-b:a',
-               '128k',
-
-               // OPTIMIZAR PARA STREAMING
-               '-movflags',
-               '+faststart',
-
-               finalFile
-            ]
-
-            execFile(
-               ffmpegPath,
-               args,
-               {
-                  timeout:
-                     180000,
-
-                  maxBuffer:
-                     20 * 1024 * 1024
-               },
-               (
-                  error,
-                  stdout,
-                  stderr
-               ) => {
-
-                  if (error) {
-
-                     console.log(
-                        '❌ FFMPEG CONVERSION ERROR:'
-                     )
-
-                     console.log(
-                        stderr ||
-                        error.message
-                     )
-
-                     return reject(
-                        error
-                     )
-                  }
-
-                  resolve()
-               }
+         if (onStage) {
+            await onStage(
+               100,
+               '📤 MP4 listo...'
             )
          }
-      )
 
-      // =================================================
-      // VALIDAR MP4 FINAL
-      // =================================================
-
-      if (
-         !fs.existsSync(
-            finalFile
-         )
-      ) {
-         throw new Error(
-            'FFmpeg no creó el MP4 final'
-         )
+         return buffer
       }
 
-      const finalStats =
-         fs.statSync(
-            finalFile
+      const audioPath =
+         path.join(
+            tempDir,
+            audioFile
          )
 
-      if (!finalStats.size) {
-         throw new Error(
-            'MP4 final vacío'
-         )
-      }
+      // =================================================
+      // REMUX RÁPIDO
+      // =================================================
 
-      const buffer =
-         fs.readFileSync(
-            finalFile
-         )
-
-      if (!buffer.length) {
-         throw new Error(
-            'Buffer MP4 vacío'
+      if (onStage) {
+         await onStage(
+            70,
+            '⚡ Preparando MP4...'
          )
       }
 
       console.log(
-         `✅ VIDEO MP4 COMPATIBLE | ${(finalStats.size / 1024 / 1024).toFixed(2)} MB`
+         '⚡ REMUX | VIDEO SIN RECODIFICAR'
       )
 
-      if (onStage) {
-         await onStage(
-            95,
-            '📤 MP4 listo para WhatsApp...'
+      try {
+
+         await remuxMp4(
+            videoPath,
+            audioPath,
+            remuxFile
          )
-      }
 
-      // =================================================
-      // LIMPIAR DESCARGA ORIGINAL
-      // =================================================
+         if (
+            !fs.existsSync(
+               remuxFile
+            )
+         ) {
+            throw new Error(
+               'Remux no creó archivo'
+            )
+         }
 
-      for (
-         const file of downloadedFiles
-      ) {
-
-         try {
-
-            fs.unlinkSync(
-               path.join(
-                  tempDir,
-                  file
-               )
+         const remuxStats =
+            fs.statSync(
+               remuxFile
             )
 
+         if (!remuxStats.size) {
+            throw new Error(
+               'Remux generó archivo vacío'
+            )
+         }
+
+         console.log(
+            `✅ REMUX OK | ${(remuxStats.size / 1024 / 1024).toFixed(2)} MB`
+         )
+
+         /*
+          * Si el MP4 ya está en un formato
+          * compatible, no hacemos ninguna
+          * conversión adicional.
+          */
+
+         const buffer =
+            fs.readFileSync(
+               remuxFile
+            )
+
+         if (onStage) {
+            await onStage(
+               100,
+               '📤 MP4 listo para WhatsApp...'
+            )
+         }
+
+         // Limpiar
+         for (
+            const file of files
+         ) {
+
+            try {
+
+               fs.unlinkSync(
+                  path.join(
+                     tempDir,
+                     file
+                  )
+               )
+
+            } catch {}
+         }
+
+         try {
+            fs.unlinkSync(
+               remuxFile
+            )
          } catch {}
+
+         return buffer
+
+      } catch (remuxError) {
+
+         console.log(
+            '⚠️ REMUX FALLÓ | CONVIRTIENDO...'
+         )
+
+         if (remuxError.stderr) {
+            console.log(
+               remuxError.stderr
+            )
+         }
+
+         // ==============================================
+         // FALLBACK
+         // ==============================================
+
+         if (onStage) {
+            await onStage(
+               75,
+               '🔧 Ajustando formato...'
+            )
+         }
+
+         /*
+          * Primero intentamos usar el video MP4
+          * como fuente y convertirlo.
+          */
+
+         await convertToCompatibleMp4(
+            videoPath,
+            compatibleFile
+         )
+
+         if (
+            !fs.existsSync(
+               compatibleFile
+            )
+         ) {
+            throw new Error(
+               'FFmpeg no generó MP4 compatible'
+            )
+         }
+
+         const finalStats =
+            fs.statSync(
+               compatibleFile
+            )
+
+         if (!finalStats.size) {
+            throw new Error(
+               'MP4 compatible vacío'
+            )
+         }
+
+         const buffer =
+            fs.readFileSync(
+               compatibleFile
+            )
+
+         console.log(
+            `✅ VIDEO CONVERTIDO | ${(finalStats.size / 1024 / 1024).toFixed(2)} MB`
+         )
+
+         if (onStage) {
+            await onStage(
+               100,
+               '📤 MP4 compatible listo...'
+            )
+         }
+
+         // Limpiar
+         for (
+            const file of files
+         ) {
+
+            try {
+
+               fs.unlinkSync(
+                  path.join(
+                     tempDir,
+                     file
+                  )
+               )
+
+            } catch {}
+         }
+
+         try {
+            fs.unlinkSync(
+               remuxFile
+            )
+         } catch {}
+
+         try {
+            fs.unlinkSync(
+               compatibleFile
+            )
+         } catch {}
+
+         return buffer
       }
-
-      // =================================================
-      // DEVOLVER BUFFER
-      // =================================================
-
-      const finalBuffer =
-         Buffer.from(
-            buffer
-         )
-
-      // Borramos el archivo después
-      // de tenerlo completamente en memoria.
-
-      try {
-         fs.unlinkSync(
-            finalFile
-         )
-      } catch {}
-
-      return finalBuffer
 
    } catch (error) {
 
@@ -862,10 +1049,6 @@ async function downloadVideo(
          error?.message ||
          error
       )
-
-      // =================================================
-      // LIMPIEZA
-      // =================================================
 
       try {
 
@@ -902,7 +1085,7 @@ async function downloadVideo(
 }
 
 // ======================================================
-// DESCARGAR AUDIO
+// AUDIO
 // ======================================================
 
 async function downloadAudio(
@@ -921,6 +1104,7 @@ async function downloadAudio(
          tempDir
       )
    ) {
+
       fs.mkdirSync(
          tempDir,
          {
@@ -1066,8 +1250,8 @@ async function downloadAudio(
 
       if (onStage) {
          await onStage(
-            95,
-            '📤 Audio listo para enviar...'
+            100,
+            '📤 Audio listo...'
          )
       }
 
@@ -1276,14 +1460,13 @@ ${progressText(10)}
          !mediaBuffer ||
          mediaBuffer.length < 50000
       ) {
-
          throw new Error(
             'Archivo multimedia inválido'
          )
       }
 
       // =================================================
-      // VIDEO
+      // VIDEO MP4
       // =================================================
 
       if (
@@ -1317,13 +1500,11 @@ ${progressText(10)}
             }
          )
 
-      }
+      } else {
 
-      // =================================================
-      // AUDIO
-      // =================================================
-
-      else {
+         // =================================================
+         // AUDIO
+         // =================================================
 
          await sock.sendMessage(
             chatId,
@@ -1469,10 +1650,6 @@ async function handleSongButton(
          selectionId
       )
 
-   // =================================================
-   // BOTÓN EXPIRADO
-   // =================================================
-
    if (!selection) {
 
       await reactToSong(
@@ -1495,10 +1672,6 @@ async function handleSongButton(
 
       return true
    }
-
-   // =================================================
-   // DUEÑO DEL BOTÓN
-   // =================================================
 
    const clickedBy =
       senderId ||
@@ -1535,10 +1708,6 @@ Solo puede utilizarlo la persona que ejecutó el comando.`
       return true
    }
 
-   // =================================================
-   // DESCARGAR
-   // =================================================
-
    await sendSongMedia(
       sock,
       chatId,
@@ -1551,7 +1720,7 @@ Solo puede utilizarlo la persona que ejecutó el comando.`
 }
 
 // ======================================================
-// COMANDO .PLAY
+// COMANDO PLAY
 // ======================================================
 
 async function songCommand(
@@ -1568,10 +1737,6 @@ async function songCommand(
       console.log(
          '🎶 NUEVO .PLAY'
       )
-
-      // =================================================
-      // TEXTO
-      // =================================================
 
       const text =
          message?.message?.conversation ||
@@ -1605,10 +1770,6 @@ Escribe una canción.
          )
       }
 
-      // =================================================
-      // USUARIO
-      // =================================================
-
       const ownerId =
          getUserId(message)
 
@@ -1621,7 +1782,7 @@ Escribe una canción.
       let video
 
       // =================================================
-      // URL DIRECTA
+      // URL
       // =================================================
 
       if (
@@ -1866,7 +2027,7 @@ Selecciona una opción:`
          )
 
       // =================================================
-      // ENVIAR
+      // RELAY
       // =================================================
 
       await sock.relayMessage(
@@ -1936,7 +2097,6 @@ Selecciona una opción:`
          ).toFixed(1)}s`
       )
 
-      // Limpiar memoria
       if (searchCache.size > 70) {
          searchCache.clear()
       }
