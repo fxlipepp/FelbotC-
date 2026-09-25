@@ -2,7 +2,7 @@ const User = require('../models/User')
 const isAdmin = require('../lib/isAdmin')
 const isOwnerOrSudo = require('../lib/isOwner')
 
-async function protegerCommand(sock, chatId, senderId, message) {
+async function desprotegerCommand(sock, chatId, senderId, message) {
    if (!chatId.endsWith('@g.us')) {
       return sock.sendMessage(chatId, {
          text: '❌ Este comando funciona solo dentro de un grupo.'
@@ -21,7 +21,7 @@ async function protegerCommand(sock, chatId, senderId, message) {
 
    if (!isOwner) {
       return sock.sendMessage(chatId, {
-         text: '🚫 Solo el owner puede proteger usuarios.'
+         text: '🚫 Solo el owner puede desproteger usuarios.'
       }, { quoted: message })
    }
 
@@ -39,23 +39,18 @@ async function protegerCommand(sock, chatId, senderId, message) {
       item.id === target || item.phoneNumber === target || item.lid === target
    )
    const targetLid = target.endsWith('@lid') ? target : participant?.lid
-
-   if (!targetLid) {
-      return sock.sendMessage(chatId, {
-         text: '❌ No se pudo obtener el LID del usuario.'
-      }, { quoted: message })
-   }
+   const targetUserId = targetLid || target
 
    await User.findOneAndUpdate(
-      { userId: targetLid },
-      { $set: { protected: true } },
+      { userId: targetUserId },
+      { $set: { protected: false } },
       { upsert: true, new: true, setDefaultsOnInsert: true }
    )
 
    return sock.sendMessage(chatId, {
-      text: `🛡️ @${targetLid.split('@')[0]} ahora está protegido.`,
-      mentions: [targetLid]
+      text: `🛡️ @${targetUserId.split('@')[0]} fue desprotegido.`,
+      mentions: [targetUserId]
    }, { quoted: message })
 }
 
-module.exports = protegerCommand
+module.exports = desprotegerCommand

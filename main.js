@@ -57,6 +57,7 @@ const bratCommand = require('./commands/brat')
 const groupCloseCommand = require('./commands/groupclose')
 const muteCommand = require('./commands/mute');
 const protegerCommand = require('./commands/proteger');
+const desprotegerCommand = require('./commands/desproteger');
 const { nsfwCommand } = require('./commands/nsfw')
 const { xnxxCommand, xnxxNumberReply} = require('./commands/xnxx')
 const modoAdminCommand = require('./commands/modoadmin')
@@ -564,7 +565,7 @@ if (/^\d+$/.test(userMessage)) {
         }
 
         // List of admin commands
-        const adminCommands = ['.mute', '.proteger', '.unmute', '.ban', '.unban', '.promote', '.demote', '.kick', '.tagall', '.tagnotadmin', '.hidetag', '.antilink', '.antitag', '.setgdesc', '.setgname', '.setgpp'];
+        const adminCommands = ['.mute', '.proteger', '.desproteger', '.unmute', '.ban', '.unban', '.promote', '.demote', '.kick', '.tagall', '.tagnotadmin', '.hidetag', '.antilink', '.antitag', '.setgdesc', '.setgname', '.setgpp'];
         const isAdminCommand = adminCommands.some(cmd => userMessage.startsWith(cmd));
 
         // List of owner commands
@@ -702,6 +703,10 @@ const command = rawText.split(' ')[0].toLowerCase()
 
     case userMessage.startsWith('.proteger'):
     await protegerCommand(sock, chatId, senderId, message)
+    break;
+
+    case userMessage.startsWith('.desproteger'):
+    await desprotegerCommand(sock, chatId, senderId, message)
     break;
 
     case userMessage.startsWith('.propuesta'):
