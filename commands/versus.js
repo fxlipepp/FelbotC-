@@ -65,9 +65,24 @@ function formatSlotList(users, slots, emoji = '🥷') {
     }).join('\n')
 }
 
+function parseVersusMeta(rawText) {
+    const trimmed = (rawText || '').trim()
+    if (!trimmed) {
+        return { time: null, rival: '??' }
+    }
+
+    const parts = trimmed.split(/\s+/)
+    const time = parts[0] || null
+    const rivalRaw = parts.slice(1).join(' ').trim()
+    const rival = rivalRaw ? rivalRaw.replace(/^\((.*)\)$/, '$1').trim() : '??'
+
+    return { time, rival: rival || '??' }
+}
+
 function buildVersusText(match) {
 
     const esInterna = match.type.startsWith('int')
+    const rivalName = match.rival || '??'
 
 const titulares = formatSlotList(
     match.titular,
@@ -94,7 +109,7 @@ const equipo2 = formatSlotList(
     return `
 ╭━━━〔 ⚔️ ${match.title} ⚔️ 〕━━━╮
 
-🏴‍☠️ 𝐑𝐢𝐯𝐚𝐥: ❓❓
+🏴‍☠️ 𝐑𝐢𝐯𝐚𝐥: ${rivalName}
 ${hora}
 
 ╰━━━━━━━━━━━━━━━━━━╯
@@ -169,10 +184,12 @@ async function versusCommand(sock, chatId, senderId, message) {
             message.message?.extendedTextMessage?.text ||
             ''
 
-        const parts = text.trim().split(' ')
+        const parts = text.trim().split(/\s+/)
         const command = parts[0].toLowerCase()
         const normalized = normalizeCommand(command)
-        const time = parts.slice(1).join(' ').trim() || null
+        const meta = parseVersusMeta(parts.slice(1).join(' '))
+        const time = meta.time
+        const rival = meta.rival
 
         if (!normalized) {
             return await sock.sendMessage(chatId, {
@@ -201,6 +218,7 @@ async function versusCommand(sock, chatId, senderId, message) {
             type: normalized,
             title: info.title,
             time,
+            rival,
             groupName,
             maxTitular: info.maxTitular,
             maxSuplentes: info.maxSuplentes,
