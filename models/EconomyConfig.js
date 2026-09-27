@@ -42,7 +42,7 @@ const configSchema = new mongoose.Schema({
       protect12: 12000,
       protect24: 24000,
       multiplier: 10000,
-      pico: 10000,
+      pico: 2000,
       modoRey: 2500000,
       ropa: 5000,
       pizzeria: 15000,
