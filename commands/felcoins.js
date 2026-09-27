@@ -1192,9 +1192,7 @@ async function crashGame(sock, chatId, senderId, message, amount) {
       await live.save();
 
       if (messageKey) {
-        await sock.sendMessage(chatId, {
-          text: `💥 *CRASH*\n\n💰 Apuesta: ${formatFelCoins(value)}\n📈 ${current.toFixed(2)}x\n\n💡 Retira antes del crash.`
-        }, { edit: messageKey });
+        await renderCrash(current).send(chatId, { edit: messageKey });
       }
     } catch (error) {
       clearInterval(timer);
