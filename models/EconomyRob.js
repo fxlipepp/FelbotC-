@@ -10,9 +10,8 @@ const robberySchema = new mongoose.Schema({
   updatedAt: { type: Date, default: Date.now }
 }, { minimize: false });
 
-robberySchema.pre('save', function (next) {
+robberySchema.pre('save', function () {
   this.updatedAt = new Date();
-  next();
 });
 
 module.exports = mongoose.model('EconomyRob', robberySchema);

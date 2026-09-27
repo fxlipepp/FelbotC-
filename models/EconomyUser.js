@@ -35,9 +35,8 @@ const economyUserSchema = new mongoose.Schema({
   updatedAt: { type: Date, default: Date.now }
 }, { minimize: false });
 
-economyUserSchema.pre('save', function (next) {
+economyUserSchema.pre('save', function () {
   this.updatedAt = new Date();
-  next();
 });
 
 module.exports = mongoose.model('EconomyUser', economyUserSchema);
