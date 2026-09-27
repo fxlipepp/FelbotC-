@@ -49,7 +49,8 @@ const configSchema = new mongoose.Schema({
       gamer: 35000,
       tecnologia: 75000,
       banco: 150000,
-      felbot: 500000
+      felbot: 500000,
+      mysteryBox: 2000
     }
   },
   cooldowns: {
@@ -74,12 +75,12 @@ const configSchema = new mongoose.Schema({
   companies: {
     type: Object,
     default: {
-      ropa: { price: 5000, income: 100 },
-      pizzeria: { price: 15000, income: 250 },
-      gamer: { price: 35000, income: 500 },
-      tecnologia: { price: 75000, income: 900 },
-      banco: { price: 150000, income: 1300 },
-      felbot: { price: 500000, income: 2000 }
+      ropa: { price: 5000, income: 100, maxLevel: 5 },
+      pizzeria: { price: 15000, income: 250, maxLevel: 5 },
+      gamer: { price: 35000, income: 500, maxLevel: 5 },
+      tecnologia: { price: 75000, income: 900, maxLevel: 5 },
+      banco: { price: 150000, income: 1300, maxLevel: 5 },
+      felbot: { price: 500000, income: 2000, maxLevel: 5 }
     }
   },
   createdAt: { type: Date, default: Date.now }
