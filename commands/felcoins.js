@@ -630,52 +630,29 @@ async function protectMe(sock, chatId, senderId, message, requestedHours = null)
   const active = await ensureEconomyActive(sock, chatId, message);
   if (!active) return;
 
-  const raw = String(requestedHours || '').trim() ||
-    String(message?.message?.conversation || message?.message?.extendedTextMessage?.text || '')
-      .trim().split(/\s+/)[1] || '';
-
-  if (raw === '12' || raw === '24') {
-    const result = await activateProtection(senderId, Number(raw));
-    if (!result.ok) {
-      const reason = result.reason === 'no_item'
-        ? `No tienes una protección de ${result.hours} horas. Cómprala en .tienda.`
-        : 'No se pudo activar la protección.';
-      await sock.sendMessage(chatId, { text: `❌ ${reason}` }, { quoted: message });
-      return;
-    }
-
-    await sock.sendMessage(chatId, {
-      text: `🛡️ *PROTECCIÓN ACTIVADA*\n\n⏱️ Duración: ${result.hours} horas\n\nAhora los robos contra ti serán bloqueados mientras esté activa.`
-    }, { quoted: message });
-    return;
-  }
-
   const victim = await ensureEconomyUser(senderId, message?.pushName || 'Usuario');
   if (!victim || !victim.registered) return;
 
+  // La protección manual funciona aunque no tenga una tarjeta comprada.
+  // Solo se puede usar cuando existe un robo pendiente contra esa persona.
   const pending = await getPendingRobForVictim(senderId);
-  if (!pending) {
-    // El botón de protección solo puede ser usado por la víctima.
-    return;
-  }
+  if (!pending) return;
 
-  if (!hasActiveProtection(victim)) {
-    await sock.sendMessage(chatId, {
-      text: '🛡️ Para bloquear este robo necesitas tener una protección activa. Cómprala en .tienda.'
-    }, { quoted: message });
-    return;
-  }
+  const result = await resolveRobbery(
+    pending.attacker,
+    pending.victim,
+    true,
+    300
+  );
 
-  const result = await resolveRobbery(pending.attacker, pending.victim, true);
-  if (!result?.ok) {
-    await sock.sendMessage(chatId, {
-      text: '⚠️ Este intento de robo ya fue resuelto.'
-    }, { quoted: message });
-    return;
-  }
+  if (!result?.ok) return;
 
   await sock.sendMessage(chatId, {
-    text: `🛡️ *ROBO BLOQUEADO*\n\nLograste proteger tus FelCoins.\n\n💸 El ladrón recibió una multa de ${result.penalty || 500} FC.`
+    text: `🛡️ *ROBO BLOQUEADO*
+
+Lograste proteger tus FelCoins manualmente.
+
+💸 El ladrón recibió una multa de 300 FC.`
   }, { quoted: message });
 }
 async function resetEconomy(sock, chatId, senderId, message) {
