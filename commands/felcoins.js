@@ -581,7 +581,7 @@ async function handleRobbery(sock, chatId, senderId, message, targetId) {
       `🚨 *INTENTO DE ROBO*\n\n👤 ${targetInfo.label}, ${formatEconomyLabel(senderId, 'usuario')} está intentando robarte.\n\n⏳ Tienes 5 minutos para proteger tus FelCoins.`
     )
     .setFooter('FelCoins • Protección')
-    .addButton('🛡️ PROTEGERSE', 'felcoin::protect');
+    .addButton('🛡️ PROTEGERSE', `felcoin::protect::${normalize(target)}`);
 
   await protectButton.send(chatId, {
     quoted: message,
@@ -655,9 +655,7 @@ async function protectMe(sock, chatId, senderId, message, requestedHours = null)
 
   const pending = await getPendingRobForVictim(senderId);
   if (!pending) {
-    await sock.sendMessage(chatId, {
-      text: '⚠️ Este intento de robo ya no está activo.'
-    }, { quoted: message });
+    // El botón de protección solo puede ser usado por la víctima.
     return;
   }
 
@@ -976,30 +974,70 @@ async function slotsGame(sock, chatId, senderId, message, amount) {
   await sock.sendMessage(chatId, { text: `🎰 *SLOTS*\n\n🎯 Apuesta: ${formatFelCoins(value)}\n\n${draw.join(' | ')}\n\n❌ Sin combinación.\n\n💸 -${formatFelCoins(value)}` }, { quoted: message });
 }
 
+async function sendBetMenu(sock, chatId, senderId, message, game) {
+  const label = game === 'crash' ? '💥 CRASH' : '🃏 BLACKJACK';
+  const prefix = game === 'crash' ? 'felcoin::crashbet::' : 'felcoin::blackjackbet::';
+  const menu = new ButtonV2(sock)
+    .setBody(`${label}\n\n💰 Elige cuánto quieres apostar:`)
+    .setFooter('FelCoins • Apuesta')
+    .addButton('💰 1.000 FC', `${prefix}1000::${normalize(senderId)}`)
+    .addButton('💰 2.000 FC', `${prefix}2000::${normalize(senderId)}`)
+    .addButton('💰 3.000 FC', `${prefix}3000::${normalize(senderId)}`)
+    .addButton('💰 4.000 FC', `${prefix}4000::${normalize(senderId)}`)
+    .addButton('💰 5.000 FC', `${prefix}5000::${normalize(senderId)}`);
+  await menu.send(chatId, { quoted: message });
+}
+
 async function blackjackInitial(sock, chatId, senderId, message, amount) {
   const active = await ensureEconomyActive(sock, chatId, message);
   if (!active) return;
   const user = await ensureRegisteredWithReply(sock, chatId, senderId, message, message?.pushName || 'Usuario');
   if (!user) return;
-  const value = Math.max(1, Number(amount) || 0);
-  if (!isOwnerAccount(senderId) && Number(user.saldo || 0) < value) {
-    await sock.sendMessage(chatId, { text: `❌ *FELCOINS INSUFICIENTES*\n\nNecesitas: ${formatFelCoins(value)}` }, { quoted: message });
+
+  if (user.blackjack?.active) {
+    await sock.sendMessage(chatId, { text: '⚠️ Ya tienes una partida de blackjack activa.' }, { quoted: message });
     return;
   }
 
-  const card1 = Math.floor(Math.random() * 10) + 1;
-  const card2 = Math.floor(Math.random() * 10) + 1;
-  const total = card1 + card2;
-  user.blackjack = { amount: value, cards: [card1, card2], total, bot: Math.floor(Math.random() * 10) + 1 };
+  const value = Number(amount || 0);
+  if (value <= 0) return sendBetMenu(sock, chatId, senderId, message, 'blackjack');
+
+  if (!isOwnerAccount(senderId) && Number(user.saldo || 0) < value) {
+    await sock.sendMessage(chatId, {
+      text: `❌ *FELCOINS INSUFICIENTES*\n\nNecesitas: ${formatFelCoins(value)}\nTienes: ${formatFelCoins(Number(user.saldo || 0))}`
+    }, { quoted: message });
+    return;
+  }
+
+  if (!isOwnerAccount(senderId)) user.saldo = Number(user.saldo || 0) - value;
+
+  const deck = [
+    1,2,3,4,5,6,7,8,9,10,10,10,10,
+    1,2,3,4,5,6,7,8,9,10,10,10,10,
+    1,2,3,4,5,6,7,8,9,10,10,10,10
+  ];
+  const draw = () => deck[Math.floor(Math.random() * deck.length)];
+  const card1 = draw();
+  const card2 = draw();
+  const bot1 = draw();
+  const bot2 = draw();
+
+  user.blackjack = {
+    active: true,
+    amount: value,
+    cards: [card1, card2],
+    botCards: [bot1, bot2],
+    total: card1 + card2
+  };
   user.stats = user.stats || {};
   user.stats.juegos = Number(user.stats.juegos || 0) + 1;
   await user.save();
 
   const buttons = new ButtonV2(sock)
-    .setBody(`🃏 *BLACKJACK*\n\n💰 Apuesta: ${formatFelCoins(value)}\n\nTus cartas:\n🂠 ${card1}\n\nTotal: ${total}\n\n¿Qué haces?`)
+    .setBody(`🃏 *BLACKJACK*\n\n💰 Apuesta: ${formatFelCoins(value)}\n\nTus cartas:\n🂠 ${card1} + 🂠 ${card2}\n\nTotal: ${user.blackjack.total}\n\n¿Qué haces?`)
     .setFooter('FelCoins • Blackjack')
-    .addButton('🃏 PEDIR', 'felcoin::blackjack::hit')
-    .addButton('✋ PLANTARSE', 'felcoin::blackjack::stand');
+    .addButton('🃏 PEDIR', `felcoin::blackjack::hit::${normalize(senderId)}`)
+    .addButton('✋ PLANTARSE', `felcoin::blackjack::stand::${normalize(senderId)}`);
   await buttons.send(chatId, { quoted: message });
 }
 
@@ -1008,27 +1046,32 @@ async function blackjackHit(sock, chatId, senderId, message) {
   if (!active) return;
   const user = await ensureRegisteredWithReply(sock, chatId, senderId, message, message?.pushName || 'Usuario');
   if (!user) return;
-  if (!user.blackjack) {
-    await sock.sendMessage(chatId, { text: '⚠️ No tienes una partida activa de blackjack.' }, { quoted: message });
-    return;
-  }
-  const newCard = Math.floor(Math.random() * 10) + 1;
+  if (!user.blackjack?.active) return;
+
+  const deck = [1,2,3,4,5,6,7,8,9,10,10,10,10];
+  const newCard = deck[Math.floor(Math.random() * deck.length)];
   user.blackjack.cards.push(newCard);
   user.blackjack.total = user.blackjack.cards.reduce((sum, card) => sum + card, 0);
+
   if (user.blackjack.total > 21) {
-    if (!isOwnerAccount(senderId)) user.saldo = Number(user.saldo || 0) - Number(user.blackjack.amount || 0);
+    const total = user.blackjack.total;
+    const lost = Number(user.blackjack.amount || 0);
     delete user.blackjack;
+    user.stats.derrotas = Number(user.stats.derrotas || 0) + 1;
     await user.save();
-    await sock.sendMessage(chatId, { text: `💥 *TE PASASTE*\n\nTotal: ${user.blackjack?.total || 24}\n\n💸 Perdiste ${formatFelCoins(Number(user.blackjack?.amount || 0))}.` }, { quoted: message });
+    await sock.sendMessage(chatId, {
+      text: `💥 *BLACKJACK — TE PASASTE*\n\n🃏 Carta: ${newCard}\n💥 Total: ${total}\n\n💸 Perdiste: -${formatFelCoins(lost)}`
+    }, { quoted: message });
     return;
   }
-  const buttons = new ButtonV2(sock)
-    .setBody(`🃏 *BLACKJACK*\n\nNueva carta: ${newCard}\n\nTus cartas:\n${user.blackjack.cards.join(' + ')}\n\nTotal: ${user.blackjack.total}\n\n¿Qué haces?`)
-    .setFooter('FelCoins • Blackjack')
-    .addButton('🃏 PEDIR', 'felcoin::blackjack::hit')
-    .addButton('✋ PLANTARSE', 'felcoin::blackjack::stand');
-  await buttons.send(chatId, { quoted: message });
+
   await user.save();
+  const buttons = new ButtonV2(sock)
+    .setBody(`🃏 *BLACKJACK*\n\nTus cartas:\n${user.blackjack.cards.join(' + ')}\n\nTotal: ${user.blackjack.total}\n\n¿Qué haces?`)
+    .setFooter('FelCoins • Blackjack')
+    .addButton('🃏 PEDIR', `felcoin::blackjack::hit::${normalize(senderId)}`)
+    .addButton('✋ PLANTARSE', `felcoin::blackjack::stand::${normalize(senderId)}`);
+  await buttons.send(chatId, { quoted: message });
 }
 
 async function blackjackStand(sock, chatId, senderId, message) {
@@ -1036,23 +1079,39 @@ async function blackjackStand(sock, chatId, senderId, message) {
   if (!active) return;
   const user = await ensureRegisteredWithReply(sock, chatId, senderId, message, message?.pushName || 'Usuario');
   if (!user) return;
-  if (!user.blackjack) {
-    await sock.sendMessage(chatId, { text: '⚠️ No hay partida activa.' }, { quoted: message });
-    return;
+  if (!user.blackjack?.active) return;
+
+  const playerTotal = Number(user.blackjack.total || 0);
+  const botCards = Array.isArray(user.blackjack.botCards) ? [...user.blackjack.botCards] : [10, 10];
+  let botTotal = botCards.reduce((a, b) => a + b, 0);
+  while (botTotal < 17) {
+    botCards.push(Math.floor(Math.random() * 10) + 1);
+    botTotal = botCards.reduce((a, b) => a + b, 0);
   }
-  const botTotal = Math.floor(Math.random() * 10) + 15;
+
   const amount = Number(user.blackjack.amount || 0);
-  if (user.blackjack.total > botTotal) {
-    user.saldo = Number(user.saldo || 0) + amount * 2;
-    await sock.sendMessage(chatId, { text: `🃏 *BLACKJACK*\n\nTú: ${user.blackjack.total}\nBot: ${botTotal}\n\n🎉 GANASTE\n\n💰 Premio: +${formatFelCoins(amount * 2)}` }, { quoted: message });
-  } else if (user.blackjack.total === botTotal) {
-    await sock.sendMessage(chatId, { text: `🃏 *BLACKJACK*\n\nTú: ${user.blackjack.total}\nBot: ${botTotal}\n\n🤝 EMPATE\n\n💰 Recuperas: ${formatFelCoins(amount)}` }, { quoted: message });
+  let resultText = '';
+  let payout = 0;
+
+  if (botTotal > 21 || playerTotal > botTotal) {
+    payout = amount * 2;
+    if (!isOwnerAccount(senderId)) user.saldo = Number(user.saldo || 0) + payout;
+    user.stats.victorias = Number(user.stats.victorias || 0) + 1;
+    resultText = `🎉 *GANASTE*\n\n💰 Cobras: +${formatFelCoins(payout)}`;
+  } else if (playerTotal === botTotal) {
+    payout = amount;
+    if (!isOwnerAccount(senderId)) user.saldo = Number(user.saldo || 0) + payout;
+    resultText = `🤝 *EMPATE*\n\n💰 Recuperas: ${formatFelCoins(payout)}`;
   } else {
-    if (!isOwnerAccount(senderId)) user.saldo = Number(user.saldo || 0) - amount;
-    await sock.sendMessage(chatId, { text: `🃏 *BLACKJACK*\n\nTú: ${user.blackjack.total}\nBot: ${botTotal}\n\n💥 PERDISTE\n\n💸 -${formatFelCoins(amount)}` }, { quoted: message });
+    user.stats.derrotas = Number(user.stats.derrotas || 0) + 1;
+    resultText = `💥 *PERDISTE*\n\n💸 Pierdes: -${formatFelCoins(amount)}`;
   }
+
   delete user.blackjack;
   await user.save();
+  await sock.sendMessage(chatId, {
+    text: `🃏 *BLACKJACK*\n\n👤 Tú: ${playerTotal}\n🤖 Bot: ${botTotal}\n\n${resultText}\n\n💵 Saldo: ${formatFelCoins(isOwnerAccount(senderId) ? getOwnerDisplayBalance() : Number(user.saldo || 0))}`
+  }, { quoted: message });
 }
 
 async function crashGame(sock, chatId, senderId, message, amount) {
@@ -1060,19 +1119,88 @@ async function crashGame(sock, chatId, senderId, message, amount) {
   if (!active) return;
   const user = await ensureRegisteredWithReply(sock, chatId, senderId, message, message?.pushName || 'Usuario');
   if (!user) return;
-  const value = Math.max(1, Number(amount) || 0);
-  if (!isOwnerAccount(senderId) && Number(user.saldo || 0) < value) {
-    await sock.sendMessage(chatId, { text: `❌ *FELCOINS INSUFICIENTES*\n\nNecesitas: ${formatFelCoins(value)}` }, { quoted: message });
+
+  if (user.crash?.active) {
+    await sock.sendMessage(chatId, { text: '⚠️ Ya tienes una partida de Crash activa.' }, { quoted: message });
     return;
   }
-  const multiplier = (Math.random() * 2.5 + 1.1).toFixed(2);
-  user.crash = { amount: value, multiplier: Number(multiplier), active: true };
+
+  const value = Number(amount || 0);
+  if (value <= 0) return sendBetMenu(sock, chatId, senderId, message, 'crash');
+
+  if (!isOwnerAccount(senderId) && Number(user.saldo || 0) < value) {
+    await sock.sendMessage(chatId, {
+      text: `❌ *FELCOINS INSUFICIENTES*\n\nNecesitas: ${formatFelCoins(value)}\nTienes: ${formatFelCoins(Number(user.saldo || 0))}`
+    }, { quoted: message });
+    return;
+  }
+
+  if (!isOwnerAccount(senderId)) user.saldo = Number(user.saldo || 0) - value;
+
+  // El crash siempre queda por debajo de 6x, pero puede ocurrir en cualquier punto desde 1.20x.
+  const crashPoint = Number((1.20 + Math.random() * 4.70).toFixed(2));
+  user.crash = {
+    active: true,
+    amount: value,
+    multiplier: 1.00,
+    crashPoint,
+    messageKey: null
+  };
   await user.save();
-  const buttons = new ButtonV2(sock)
-    .setBody(`💥 *CRASH*\n\n💰 Apuesta: ${formatFelCoins(value)}\n\n📈 ${multiplier}x\n\n[💰 RETIRAR]`)
+
+  const renderCrash = (multiplier, status = 'EN JUEGO') => new ButtonV2(sock)
+    .setBody(`💥 *CRASH*\n\n💰 Apuesta: ${formatFelCoins(value)}\n📈 ${multiplier.toFixed(2)}x\n\n${status}`)
     .setFooter('FelCoins • Crash')
-    .addButton('💰 RETIRAR', 'felcoin::crash::withdraw');
-  await buttons.send(chatId, { quoted: message });
+    .addButton('💰 RETIRAR', `felcoin::crash::withdraw::${normalize(senderId)}`);
+
+  const sent = await renderCrash(1.00).send(chatId, { quoted: message });
+  const messageKey = sent?.key || null;
+  if (messageKey) {
+    user.crash.messageKey = messageKey;
+    await user.save();
+  }
+
+  let current = 1.00;
+  const timer = setInterval(async () => {
+    try {
+      const live = await ensureEconomyUser(senderId, message?.pushName || 'Usuario');
+      if (!live?.crash?.active) {
+        clearInterval(timer);
+        return;
+      }
+
+      current = Number((current + (0.08 + Math.random() * 0.22)).toFixed(2));
+      const crashed = current >= Number(live.crash.crashPoint || crashPoint);
+
+      if (crashed) {
+        clearInterval(timer);
+        delete live.crash;
+        live.stats = live.stats || {};
+        live.stats.derrotas = Number(live.stats.derrotas || 0) + 1;
+        await live.save();
+
+        const finalText = `💥 *CRASH*\n\n💰 Apuesta: ${formatFelCoins(value)}\n📈 CRASH en ${Number(crashPoint).toFixed(2)}x\n\n💸 Perdiste la apuesta.`;
+        if (messageKey) {
+          await sock.sendMessage(chatId, { text: finalText }, { edit: messageKey });
+        } else {
+          await sock.sendMessage(chatId, { text: finalText }, { quoted: message });
+        }
+        return;
+      }
+
+      live.crash.multiplier = current;
+      await live.save();
+
+      if (messageKey) {
+        await sock.sendMessage(chatId, {
+          text: `💥 *CRASH*\n\n💰 Apuesta: ${formatFelCoins(value)}\n📈 ${current.toFixed(2)}x\n\n💡 Retira antes del crash.`
+        }, { edit: messageKey });
+      }
+    } catch (error) {
+      clearInterval(timer);
+      console.error('[FELCOINS CRASH] Error:', error);
+    }
+  }, 1000);
 }
 
 async function withdrawCrash(sock, chatId, senderId, message) {
@@ -1080,18 +1208,22 @@ async function withdrawCrash(sock, chatId, senderId, message) {
   if (!active) return;
   const user = await ensureRegisteredWithReply(sock, chatId, senderId, message, message?.pushName || 'Usuario');
   if (!user) return;
-  if (!user.crash || !user.crash.active) {
-    await sock.sendMessage(chatId, { text: '⚠️ Esta partida ya terminó.' }, { quoted: message });
-    return;
-  }
+  if (!user.crash?.active) return;
+
   const current = Number(user.crash.multiplier || 1);
   const base = Number(user.crash.amount || 0);
   const reward = Math.round(base * current);
-  user.saldo = Number(user.saldo || 0) + reward;
+
+  if (!isOwnerAccount(senderId)) {
+    user.saldo = Number(user.saldo || 0) + reward;
+    user.stats = user.stats || {};
+    user.stats.victorias = Number(user.stats.victorias || 0) + 1;
+  }
   delete user.crash;
   await user.save();
+
   await sock.sendMessage(chatId, {
-    text: `💰 *RETIRADA EXITOSA*\n\n📈 Multiplicador: ${current.toFixed(2)}x\n\n💵 Apuesta: ${formatFelCoins(base)}\n💰 Ganancia total: ${formatFelCoins(reward)}\n\n🎉 Beneficio: +${formatFelCoins(reward - base)}`
+    text: `💰 *RETIRADA EXITOSA*\n\n📈 Multiplicador: ${current.toFixed(2)}x\n\n💵 Apuesta: ${formatFelCoins(base)}\n💰 Cobras: +${formatFelCoins(reward)}\n\n🎉 Ganancia: +${formatFelCoins(Math.max(0, reward - base))}`
   }, { quoted: message });
 }
 
@@ -1171,12 +1303,34 @@ async function handleEconomyButton(sock, chatId, senderId, buttonId, message) {
     }, { quoted: message });
     return;
   }
-  if (action === 'protect') return protectMe(sock, chatId, senderId, message);
+  if (action === 'protect') {
+    const victimKey = normalize(extra);
+    if (victimKey && victimKey !== normalize(senderId)) return;
+    return protectMe(sock, chatId, senderId, message);
+  }
+  if (action === 'blackjackbet') {
+    const ownerKey = String(extra2 || '');
+    if (ownerKey && ownerKey !== normalize(senderId)) return;
+    const bet = Number(extra || 0);
+    return blackjackInitial(sock, chatId, senderId, message, bet);
+  }
   if (action === 'blackjack') {
+    const ownerKey = String(extra2 || '');
+    if (ownerKey && ownerKey !== normalize(senderId)) return;
     if (extra === 'hit') return blackjackHit(sock, chatId, senderId, message);
     if (extra === 'stand') return blackjackStand(sock, chatId, senderId, message);
   }
-  if (action === 'crash' && extra === 'withdraw') return withdrawCrash(sock, chatId, senderId, message);
+  if (action === 'crashbet') {
+    const ownerKey = String(extra2 || '');
+    if (ownerKey && ownerKey !== normalize(senderId)) return;
+    const bet = Number(extra || 0);
+    return crashGame(sock, chatId, senderId, message, bet);
+  }
+  if (action === 'crash') {
+    const ownerKey = String(extra2 || '');
+    if (ownerKey && ownerKey !== normalize(senderId)) return;
+    if (extra === 'withdraw') return withdrawCrash(sock, chatId, senderId, message);
+  }
   return false;
 }
 
