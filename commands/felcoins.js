@@ -133,7 +133,7 @@ async function ensureRegisteredWithReply(sock, chatId, senderId, message, userNa
   const user = await ensureEconomyUser(senderId, userName);
   if (!user || !user.registered) {
     await sock.sendMessage(chatId, {
-      text: `⚠️ **NO ESTÁS REGISTRADO**\n\nUsa .registrarme para entrar al sistema FelCoins.`
+      text: `⚠️ *NO ESTÁS REGISTRADO*\n\nUsa .registrarme para entrar al sistema FelCoins.`
     }, { quoted: message });
     return null;
   }
@@ -145,7 +145,7 @@ async function showEconomyMenu(sock, chatId, senderId, message) {
   if (!active) return;
   const user = await ensureEconomyUser(senderId, message?.pushName || 'Usuario');
   const balance = isOwnerAccount(senderId) ? getOwnerDisplayBalance() : Number(user?.saldo || 0);
-  const text = `💰 **FELCOINS**\n\n👤 ${user?.name || 'Usuario'}\n💵 Saldo: ${formatFelCoins(balance)}\n\n¿Qué quieres hacer?`;
+  const text = `💰 *FELCOINS*\n\n👤 ${user?.name || 'Usuario'}\n💵 Saldo: ${formatFelCoins(balance)}\n\n¿Qué quieres hacer?`;
 
   const menu = new ButtonV2(sock)
     .setBody(text)
@@ -178,7 +178,7 @@ async function showSaldo(sock, chatId, senderId, message) {
   const dailyIncome = Number(user.ingresoDiario || 0);
 
   await sock.sendMessage(chatId, {
-    text: `💰 **SALDO FELCOINS**\n\n👤 ${user.name || 'Usuario'}\n💵 ${formatFelCoins(displayBalance)}\n\n🏢 Empresa: ${companyText}\n📈 Ingreso diario: +${dailyIncome} FC\n\n👑 Admin: ${adminText}
+    text: `💰 *SALDO FELCOINS*\n\n👤 ${user.name || 'Usuario'}\n💵 ${formatFelCoins(displayBalance)}\n\n🏢 Empresa: ${companyText}\n📈 Ingreso diario: +${dailyIncome} FC\n\n👑 Admin: ${adminText}
 👑 Modo Rey: ${royalText}`
   }, { quoted: message });
 }
@@ -210,7 +210,7 @@ async function showPerfil(sock, chatId, senderId, message) {
   const profileMention = mentionTarget(senderId, user.name || message?.pushName || 'usuario');
 
   await sock.sendMessage(chatId, {
-    text: `👤 **PERFIL FELCOINS**\n\n👤 ${profileMention.text}\n💰 ${formatFelCoins(displayBalance)}\n\n📊 ESTADÍSTICAS\n\n💼 Trabajos: ${resolvedStats.trabajos}\n⛏️ Minería: ${resolvedStats.mineria}\n🎮 Juegos: ${resolvedStats.juegos}\n🏆 Victorias: ${resolvedStats.victorias}\n💀 Derrotas: ${resolvedStats.derrotas}\n💸 Transferencias: ${resolvedStats.transferencias}\n🦹 Robos: ${resolvedStats.robos}\n💰 Ganancias: ${formatFelCoins(resolvedStats.ganancias)}\n💸 Gastos: ${formatFelCoins(resolvedStats.gastos)}\n🎁 Cajas abiertas: ${boxCount}\n\n🏢 Empresa: ${user.empresa || 'Ninguna'}\n📈 Nivel empresa: ${companyLevel || '—'}\n🛡️ Protección: ${protectionRemaining > 0 ? formatCountdown(protectionRemaining) : 'Inactiva'}\n👑 Admin: ${user.modoAdmin ? 'Sí' : 'No'}\n👑 Modo Rey: ${reyText}`,
+    text: `👤 *PERFIL FELCOINS*\n\n👤 ${profileMention.text}\n💰 ${formatFelCoins(displayBalance)}\n\n📊 ESTADÍSTICAS\n\n💼 Trabajos: ${resolvedStats.trabajos}\n⛏️ Minería: ${resolvedStats.mineria}\n🎮 Juegos: ${resolvedStats.juegos}\n🏆 Victorias: ${resolvedStats.victorias}\n💀 Derrotas: ${resolvedStats.derrotas}\n💸 Transferencias: ${resolvedStats.transferencias}\n🦹 Robos: ${resolvedStats.robos}\n💰 Ganancias: ${formatFelCoins(resolvedStats.ganancias)}\n💸 Gastos: ${formatFelCoins(resolvedStats.gastos)}\n🎁 Cajas abiertas: ${boxCount}\n\n🏢 Empresa: ${user.empresa || 'Ninguna'}\n📈 Nivel empresa: ${companyLevel || '—'}\n🛡️ Protección: ${protectionRemaining > 0 ? formatCountdown(protectionRemaining) : 'Inactiva'}\n👑 Admin: ${user.modoAdmin ? 'Sí' : 'No'}\n👑 Modo Rey: ${reyText}`,
     contextInfo: profileMention.jid ? { mentionedJid: [profileMention.jid] } : undefined
   }, { quoted: message });
 }
@@ -232,7 +232,7 @@ async function showTop(sock, chatId, senderId, message) {
   const selfBalance = isOwnerAccount(senderId) ? formatFelCoins(getOwnerDisplayBalance()) : formatFelCoins(Number(user.saldo || 0));
 
   await sock.sendMessage(chatId, {
-    text: `🏆 **TOP FELCOINS**\n\n${topText || '🥇 Usuario — 0 FC'}\n\n📊 Tu posición: #${position}\n\n💰 Tu saldo: ${selfBalance}`
+    text: `🏆 *TOP FELCOINS*\n\n${topText || '🥇 Usuario — 0 FC'}\n\n📊 Tu posición: #${position}\n\n💰 Tu saldo: ${selfBalance}`
   }, { quoted: message });
 }
 
@@ -245,14 +245,14 @@ async function registerMe(sock, chatId, senderId, message) {
   if (user?.registered) {
     const balance = isOwnerAccount(senderId) ? formatFelCoins(getOwnerDisplayBalance()) : formatFelCoins(Number(user.saldo || 0));
     await sock.sendMessage(chatId, {
-      text: `⚠️ **YA ESTÁS REGISTRADO**\n\nYa formas parte de la economía FelCoins.\n\n💰 Saldo: ${balance}`
+      text: `⚠️ *YA ESTÁS REGISTRADO*\n\nYa formas parte de la economía FelCoins.\n\n💰 Saldo: ${balance}`
     }, { quoted: message });
     return;
   }
 
   await registerEconomyUser(senderId, realName);
   await sock.sendMessage(chatId, {
-    text: `✅ **REGISTRO COMPLETADO**\n\n👤 Usuario: ${realTag}\n💰 Saldo inicial: 0 FC\n\nAhora puedes comenzar a ganar FelCoins.\n\n💼 Trabaja\n⛏️ Mina\n🎁 Reclama tu diaria\n🏢 Construye tu empresa\n\nUsa .economia para comenzar.`
+    text: `✅ *REGISTRO COMPLETADO*\n\n👤 Usuario: ${realTag}\n💰 Saldo inicial: 0 FC\n\nAhora puedes comenzar a ganar FelCoins.\n\n💼 Trabaja\n⛏️ Mina\n🎁 Reclama tu diaria\n🏢 Construye tu empresa\n\nUsa .economia para comenzar.`
   }, { quoted: message });
 }
 
@@ -266,11 +266,11 @@ async function toggleEconomy(sock, chatId, senderId, message, enabled) {
   await setEconomyEnabled(enabled);
   if (enabled) {
     await sock.sendMessage(chatId, {
-      text: `💰 **FELCOINS ACTIVADO**\n\nEl sistema de economía está disponible nuevamente.\n\n𝕱𝖊𝖑𝖇𝖔𝖙 夜`
+      text: `💰 *FELCOINS ACTIVADO*\n\nEl sistema de economía está disponible nuevamente.\n\n𝕱𝖊𝖑𝖇𝖔𝖙 夜`
     }, { quoted: message });
   } else {
     await sock.sendMessage(chatId, {
-      text: `🔒 **FELCOINS DESACTIVADO**\n\nLa economía ha sido desactivada temporalmente.\n\nLos datos de los usuarios se conservarán.\n\n𝕱𝖊𝖑𝖇𝖔𝖙 夜`
+      text: `🔒 *FELCOINS DESACTIVADO*\n\nLa economía ha sido desactivada temporalmente.\n\nLos datos de los usuarios se conservarán.\n\n𝕱𝖊𝖑𝖇𝖔𝖙 夜`
     }, { quoted: message });
   }
 }
@@ -285,14 +285,14 @@ async function dailyReward(sock, chatId, senderId, message) {
     const remaining = result.remaining || 0;
     const human = formatCountdown(remaining);
     await sock.sendMessage(chatId, {
-      text: `⏳ **DIARIA NO DISPONIBLE**\n\nYa reclamaste tu recompensa.\n\nPróxima recompensa en: ${human}.`
+      text: `⏳ *DIARIA NO DISPONIBLE*\n\nYa reclamaste tu recompensa.\n\nPróxima recompensa en: ${human}.`
     }, { quoted: message });
     return;
   }
 
   const balance = isOwnerAccount(senderId) ? getOwnerDisplayBalance() : Number(user.saldo || 0);
   await sock.sendMessage(chatId, {
-    text: `🎁 **RECOMPENSA DIARIA**\n\n💰 Recibiste: +${result.amount} FC\n\n💵 Saldo: ${formatFelCoins(balance)}\n\n⏰ Próxima recompensa en 24h.`
+    text: `🎁 *RECOMPENSA DIARIA*\n\n💰 Recibiste: +${result.amount} FC\n\n💵 Saldo: ${formatFelCoins(balance)}\n\n⏰ Próxima recompensa en 24h.`
   }, { quoted: message });
 }
 
@@ -352,7 +352,7 @@ async function workCommand(sock, chatId, senderId, message) {
   const remaining = await getRemainingCooldown(senderId, 'work');
   if (remaining > 0) {
     await sock.sendMessage(chatId, {
-      text: `⏳ **YA TRABAJASTE HOY**\n\nPodrás volver a trabajar cuando se reinicie tu ventana de 20 minutos.`
+      text: `⏳ *YA TRABAJASTE HOY*\n\nPodrás volver a trabajar cuando se reinicie tu ventana de 20 minutos.`
     }, { quoted: message });
     return;
   }
@@ -370,7 +370,7 @@ async function workCommand(sock, chatId, senderId, message) {
   await user.save();
 
   const menu = new ButtonV2(sock)
-    .setBody('💼 **TRABAJOS DISPONIBLES**\n\nElige UN trabajo.\n\nCada trabajo tiene una recompensa diferente.\n\n⏱️ Puedes completar 2 trabajos cada 20 minutos.')
+    .setBody('💼 *TRABAJOS DISPONIBLES*\n\nElige UN trabajo.\n\nCada trabajo tiene una recompensa diferente.\n\n⏱️ Puedes completar 2 trabajos cada 20 minutos.')
     .setFooter('FelCoins • Trabajo diario')
     .addButton(jobButtons[0][1].label, `felcoin::work::${jobButtons[0][0]}`)
     .addButton(jobButtons[1][1].label, `felcoin::work::${jobButtons[1][0]}`)
@@ -390,7 +390,7 @@ async function mineCommand(sock, chatId, senderId, message) {
   const result = await claimMine(senderId);
   if (!result.ok) {
     if (result.reason === 'no_pickaxe') {
-      await sock.sendMessage(chatId, { text: '⛏️ **NO TIENES PICO**\n\nDebes comprar el pico en .tienda por 10.000 FC antes de poder minar.' }, { quoted: message });
+      await sock.sendMessage(chatId, { text: '⛏️ *NO TIENES PICO*\n\nDebes comprar el pico en .tienda por 10.000 FC antes de poder minar.' }, { quoted: message });
       return;
     }
     await sock.sendMessage(chatId, { text: `⏳ ${formatCountdown(await getRemainingCooldown(senderId, 'mine'))} antes de volver a minar.` }, { quoted: message });
@@ -398,7 +398,7 @@ async function mineCommand(sock, chatId, senderId, message) {
   }
 
   await sock.sendMessage(chatId, {
-    text: `⛏️ **MINERÍA**\n\nHas excavado...\n\n🪨 Encontraste:\n\n💎 ${result.mineral}\n\n💰 Valor: +${result.amount} FC\n\n💵 Saldo: ${formatFelCoins(Number(user.saldo || 0) + result.amount)}`
+    text: `⛏️ *MINERÍA*\n\nHas excavado...\n\n🪨 Encontraste:\n\n💎 ${result.mineral}\n\n💰 Valor: +${result.amount} FC\n\n💵 Saldo: ${formatFelCoins(Number(user.saldo || 0) + result.amount)}`
   }, { quoted: message });
 }
 
@@ -467,7 +467,7 @@ async function processTransfer(sock, chatId, senderId, message, rawText) {
   const result = await transferBalance(senderId, target, amount, 'transferir');
   if (!result.ok) {
     if (result.reason === 'insufficient') {
-      await sock.sendMessage(chatId, { text: `❌ **SALDO INSUFICIENTE**\n\nNecesitas: ${formatFelCoins(amount)}\nTienes: ${formatFelCoins(Number(user.saldo || 0))}` }, { quoted: message });
+      await sock.sendMessage(chatId, { text: `❌ *SALDO INSUFICIENTE*\n\nNecesitas: ${formatFelCoins(amount)}\nTienes: ${formatFelCoins(Number(user.saldo || 0))}` }, { quoted: message });
     } else {
       await sock.sendMessage(chatId, { text: '❌ No se pudo completar la transferencia.' }, { quoted: message });
     }
@@ -482,50 +482,150 @@ async function processTransfer(sock, chatId, senderId, message, rawText) {
 }
 
 async function handleRobbery(sock, chatId, senderId, message, targetId) {
-  const active=await ensureEconomyActive(sock,chatId,message); if(!active)return;
-  const attackerUser=await ensureRegisteredWithReply(sock,chatId,senderId,message,message?.pushName||'Usuario'); if(!attackerUser)return;
-  const targetInfo=resolveTargetInfo(message,targetId,'usuario'); const target=targetInfo.jid;
-  if(!target){await sock.sendMessage(chatId,{text:'❌ Debes indicar a quién quieres robar.'},{quoted:message});return;}
-  if(normalize(target)===normalize(senderId)){await sock.sendMessage(chatId,{text:'❌ No puedes robarte a ti mismo.'},{quoted:message});return;}
+  const active = await ensureEconomyActive(sock, chatId, message);
+  if (!active) return;
 
-  const remaining=await getRemainingCooldown(senderId,'rob');
-  if(remaining>0){await sock.sendMessage(chatId,{text:`⏳ **ROBO EN COOLDOWN**\\n\\nPodrás volver a intentarlo en ${formatCountdown(remaining)}.`},{quoted:message});return;}
+  const attackerUser = await ensureRegisteredWithReply(
+    sock, chatId, senderId, message, message?.pushName || 'Usuario'
+  );
+  if (!attackerUser) return;
 
-  const targetUser=await ensureEconomyUser(target,'Usuario');
-  if(!targetUser||!targetUser.registered){await sock.sendMessage(chatId,{text:'❌ Ese usuario no está registrado en FelCoins.'},{quoted:message});return;}
+  const targetInfo = resolveTargetInfo(message, targetId, 'usuario');
+  const target = targetInfo.jid;
 
-  attackerUser.lastRob=new Date(); await attackerUser.save();
-
-  if(isOwnerAccount(target)){
-    const penalty=2000; await deductBalance(senderId,penalty,'robar','Multa por intentar robar al OWNER');
-    await sock.sendMessage(chatId,{text:`👑 **ROBO AL OWNER BLOQUEADO**\\n\\nNo puedes robar al OWNER.\\n\\n💸 Multa: -${formatFelCoins(penalty)}`},{quoted:message}); return;
+  if (!target) {
+    await sock.sendMessage(chatId, {
+      text: '❌ Debes indicar a quién quieres robar.'
+    }, { quoted: message });
+    return;
   }
 
-  if(hasActiveProtection(targetUser)){
-    const remainingProtection=Math.max(0,new Date(targetUser.protectionUntil).getTime()-Date.now());
-    await deductBalance(senderId,500,'robar','Multa por intentar robar a un usuario protegido');
-    await sock.sendMessage(chatId,{text:`🛡️ **ROBO BLOQUEADO**\\n\\n${targetInfo.label} tiene protección activa durante ${formatCountdown(remainingProtection)}.\\n\\n💸 Multa: -500 FC`},{quoted:message,mentions:[target]}); return;
+  if (normalize(target) === normalize(senderId)) {
+    await sock.sendMessage(chatId, {
+      text: '❌ No puedes robarte a ti mismo.'
+    }, { quoted: message });
+    return;
   }
 
-  const config=await ensureEconomyConfig();
-  const victimBalance=Number(targetUser.saldo||0);
-  if(victimBalance<Number(config.limits?.robMin||100)){await sock.sendMessage(chatId,{text:'❌ Ese usuario no tiene suficientes FelCoins para robarle.'},{quoted:message});return;}
-  const amount=Math.min(Math.floor(victimBalance*Number(config.limits?.robPercent||0.50)),Number(config.limits?.robMax||8000));
-  const rob=await createRobbery(senderId,target,Math.max(Number(config.limits?.robMin||100),amount));
-  if(!rob){await sock.sendMessage(chatId,{text:'❌ No se pudo iniciar el robo.'},{quoted:message});return;}
-
-  const success=Math.random()<0.70;
-  const result=success
-    ? await resolveRobbery(senderId,target,false)
-    : await resolveRobbery(senderId,target,true,300);
-
-  if(success&&result?.ok){
-    await sock.sendMessage(chatId,{text:`🚨 **ROBO EXITOSO**\\n\\n👤 Víctima: ${targetInfo.label}\\n💰 Robaste: +${formatFelCoins(result.amount||0)}\\n📊 Se tomó el 50% de su saldo, con máximo de 8.000 FC.\\n\\n💵 Tu saldo: ${formatFelCoins(Number(attackerUser.saldo||0)+Number(result.amount||0))}` ,contextInfo:targetInfo.jid?{mentionedJid:[targetInfo.jid]}:undefined},{quoted:message}); 
-  }else{
-    await sock.sendMessage(chatId,{text:`🚔 **ROBO FALLIDO**\\n\\n👤 Víctima: ${targetInfo.label}\\n\\n💸 Multa por fallar: -300 FC\\n🎯 Probabilidad de éxito: 70%` ,contextInfo:targetInfo.jid?{mentionedJid:[targetInfo.jid]}:undefined},{quoted:message});
+  const remaining = await getRemainingCooldown(senderId, 'rob');
+  if (remaining > 0) {
+    await sock.sendMessage(chatId, {
+      text: `⏳ *ROBO EN COOLDOWN*\n\nPodrás volver a intentarlo en ${formatCountdown(remaining)}.`
+    }, { quoted: message });
+    return;
   }
+
+  const targetUser = await ensureEconomyUser(target, 'Usuario');
+  if (!targetUser || !targetUser.registered) {
+    await sock.sendMessage(chatId, {
+      text: '❌ Ese usuario no está registrado en FelCoins.'
+    }, { quoted: message });
+    return;
+  }
+
+  attackerUser.lastRob = new Date();
+  await attackerUser.save();
+
+  if (isOwnerAccount(target)) {
+    const penalty = 2000;
+    await deductBalance(senderId, penalty, 'robar', 'Multa por intentar robar al OWNER');
+    await sock.sendMessage(chatId, {
+      text: `👑 *ROBO AL OWNER BLOQUEADO*\n\nNo puedes robar al OWNER.\n\n💸 Multa: -${formatFelCoins(penalty)}`
+    }, { quoted: message });
+    return;
+  }
+
+  if (hasActiveProtection(targetUser)) {
+    const remainingProtection = Math.max(
+      0,
+      new Date(targetUser.protectionUntil).getTime() - Date.now()
+    );
+    await deductBalance(senderId, 500, 'robar', 'Multa por intentar robar a un usuario protegido');
+    await sock.sendMessage(chatId, {
+      text: `🛡️ *ROBO BLOQUEADO*\n\n${targetInfo.label} tiene protección activa durante ${formatCountdown(remainingProtection)}.\n\n💸 Multa: -500 FC`,
+      contextInfo: targetInfo.jid ? { mentionedJid: [targetInfo.jid] } : undefined
+    }, { quoted: message });
+    return;
+  }
+
+  const config = await ensureEconomyConfig();
+  const victimBalance = Number(targetUser.saldo || 0);
+
+  if (victimBalance < Number(config.limits?.robMin || 100)) {
+    await sock.sendMessage(chatId, {
+      text: '❌ Ese usuario no tiene suficientes FelCoins para robarle.'
+    }, { quoted: message });
+    return;
+  }
+
+  const amount = Math.min(
+    Math.floor(victimBalance * Number(config.limits?.robPercent || 0.50)),
+    Number(config.limits?.robMax || 8000)
+  );
+
+  const rob = await createRobbery(
+    senderId,
+    target,
+    Math.max(Number(config.limits?.robMin || 100), amount)
+  );
+
+  if (!rob) {
+    await sock.sendMessage(chatId, {
+      text: '❌ No se pudo iniciar el robo.'
+    }, { quoted: message });
+    return;
+  }
+
+  const protectButton = new ButtonV2(sock)
+    .setBody(
+      `🚨 *INTENTO DE ROBO*\n\n👤 ${targetInfo.label}, ${formatEconomyLabel(senderId, 'usuario')} está intentando robarte.\n\n⏳ Tienes 5 minutos para proteger tus FelCoins.`
+    )
+    .setFooter('FelCoins • Protección')
+    .addButton('🛡️ PROTEGERSE', 'felcoin::protect');
+
+  await protectButton.send(chatId, {
+    quoted: message,
+    mentions: [target]
+  });
+
+  setTimeout(async () => {
+    try {
+      const pending = await getPendingRobForVictim(target);
+      if (!pending || String(pending.attacker) !== normalize(senderId)) return;
+
+      const victim = await ensureEconomyUser(target, 'Usuario');
+      if (!victim || !victim.registered) return;
+
+      if (hasActiveProtection(victim)) {
+        const blocked = await resolveRobbery(pending.attacker, pending.victim, true);
+        if (blocked?.ok) {
+          await sock.sendMessage(chatId, {
+            text: `🛡️ *ROBO BLOQUEADO*\n\n${targetInfo.label} tenía protección activa.`
+          }, { quoted: message });
+        }
+        return;
+      }
+
+      const success = Math.random() < 0.70;
+      const result = success
+        ? await resolveRobbery(pending.attacker, pending.victim, false)
+        : await resolveRobbery(pending.attacker, pending.victim, true, 300);
+
+      if (success && result?.ok) {
+        await sock.sendMessage(chatId, {
+          text: `🚨 *ROBO EXITOSO*\n\n👤 Víctima: ${targetInfo.label}\n💰 Robaste: +${formatFelCoins(result.amount || 0)}\n\n💵 Se tomó el 50% del saldo, con máximo de 8.000 FC.`,
+          contextInfo: targetInfo.jid ? { mentionedJid: [targetInfo.jid] } : undefined
+        }, { quoted: message });
+      } else if (result?.ok) {
+        await sock.sendMessage(chatId, {
+          text: `🚔 *ROBO FALLIDO*\n\n👤 Víctima: ${targetInfo.label}\n\n💸 Multa por fallar: -300 FC\n🎯 Probabilidad de éxito: 70%`
+        }, { quoted: message });
+      }
+    } catch (error) {
+      console.error('[FELCOINS ROBO] Error resolviendo robo:', error);
+    }
+  }, 5 * 60 * 1000);
 }
-
 async function protectMe(sock, chatId, senderId, message, requestedHours = null) {
   const active = await ensureEconomyActive(sock, chatId, message);
   if (!active) return;
@@ -538,7 +638,7 @@ async function protectMe(sock, chatId, senderId, message, requestedHours = null)
       await sock.sendMessage(chatId, { text: `❌ ${reason}` }, { quoted: message });
       return;
     }
-    await sock.sendMessage(chatId, { text: `🛡️ **PROTECCIÓN ACTIVADA**\n\n⏱️ Duración: ${result.hours} horas\n\nAhora los robos contra ti serán bloqueados mientras esté activa.` }, { quoted: message });
+    await sock.sendMessage(chatId, { text: `🛡️ *PROTECCIÓN ACTIVADA*\n\n⏱️ Duración: ${result.hours} horas\n\nAhora los robos contra ti serán bloqueados mientras esté activa.` }, { quoted: message });
     return;
   }
 
@@ -550,7 +650,7 @@ async function protectMe(sock, chatId, senderId, message, requestedHours = null)
   const result = await resolveRobbery(pending.attacker, pending.victim, true);
   const penalty = result.penalty || 500;
   await sock.sendMessage(chatId, {
-    text: `🛡️ **ROBO BLOQUEADO**\n\nLograste proteger tus FelCoins.\n\n💸 El ladrón recibió una multa de ${penalty} FC.`
+    text: `🛡️ *ROBO BLOQUEADO*\n\nLograste proteger tus FelCoins.\n\n💸 El ladrón recibió una multa de ${penalty} FC.`
   }, { quoted: message });
 }
 
@@ -562,7 +662,7 @@ async function resetEconomy(sock, chatId, senderId, message) {
 
   const result = await require('../lib/felcoins').resetEconomyState(senderId);
   await sock.sendMessage(chatId, {
-    text: `♻️ **ECONOMÍA REINICIADA**\n\nUsuarios dejados en 0 FC: ${result.resetCount || 0}\n\n👑 Owner: preservado.`
+    text: `♻️ *ECONOMÍA REINICIADA*\n\nUsuarios dejados en 0 FC: ${result.resetCount || 0}\n\n👑 Owner: preservado.`
   }, { quoted: message });
 }
 
@@ -570,7 +670,7 @@ async function openShop(sock, chatId, senderId, message) {
   const active = await ensureEconomyActive(sock, chatId, message);
   if (!active) return;
   const menu = new ButtonV2(sock)
-    .setBody('🛒 **TIENDA FELCOINS**\n\nSelecciona un producto:')
+    .setBody('🛒 *TIENDA FELCOINS*\n\nSelecciona un producto:')
     .setFooter('FelCoins • Tienda')
     .addButton('🎵 .PLAY — 50K', 'felcoin::shop::play')
     .addButton('🎵 .TIKTOK — 30K', 'felcoin::shop::tiktok')
@@ -604,14 +704,14 @@ async function buyProduct(sock, chatId, senderId, message, product) {
   const commandProduct = ['play', 'tiktok', 'instagram', 'brat', 'vv'].includes(product);
   if (commandProduct && Number(user.inventory?.[product]?.quantity || 0) > 0) {
     await sock.sendMessage(chatId, {
-      text: `🔓 **COMANDO YA DESBLOQUEADO**\n\n${({ play: '🎵 .play', tiktok: '🎵 .tiktok', instagram: '📸 .instagram', brat: '📝 .brat', vv: '👁️ .vv' })[product] || product}\n\nYa compraste este acceso anteriormente. No necesitas volver a pagarlo.`
+      text: `🔓 *COMANDO YA DESBLOQUEADO*\n\n${({ play: '🎵 .play', tiktok: '🎵 .tiktok', instagram: '📸 .instagram', brat: '📝 .brat', vv: '👁️ .vv' })[product] || product}\n\nYa compraste este acceso anteriormente. No necesitas volver a pagarlo.`
     }, { quoted: message });
     return;
   }
 
   if (!isOwnerAccount(senderId) && Number(user.saldo || 0) < price) {
     await sock.sendMessage(chatId, {
-      text: `❌ **FELCOINS INSUFICIENTES**\n\nNecesitas: ${formatFelCoins(price)}\nTienes: ${formatFelCoins(Number(user.saldo || 0))}`
+      text: `❌ *FELCOINS INSUFICIENTES*\n\nNecesitas: ${formatFelCoins(price)}\nTienes: ${formatFelCoins(Number(user.saldo || 0))}`
     }, { quoted: message });
     return;
   }
@@ -627,7 +727,7 @@ async function buyProduct(sock, chatId, senderId, message, product) {
     user.inventory[product] = { quantity: 1, expiresAt: null };
     await user.save();
     await sock.sendMessage(chatId, {
-      text: `✅ **MODO REY ACTIVADO**\n\n👑 Ahora eres inmune al modo admin del grupo.\n\n💸 Gastaste: ${formatFelCoins(price)}`
+      text: `✅ *MODO REY ACTIVADO*\n\n👑 Ahora eres inmune al modo admin del grupo.\n\n💸 Gastaste: ${formatFelCoins(price)}`
     }, { quoted: message });
     return;
   }
@@ -637,7 +737,7 @@ async function buyProduct(sock, chatId, senderId, message, product) {
     user.inventory[product] = { quantity: 1, expiresAt: null };
     user.markModified('inventory');
     await user.save();
-    await sock.sendMessage(chatId, { text: `✅ **COMANDO DESBLOQUEADO**\n\n${labels[product] || product}\n\n💸 Compra: ${formatFelCoins(price)}\n\n🔓 Ya puedes usar este comando.` }, { quoted: message });
+    await sock.sendMessage(chatId, { text: `✅ *COMANDO DESBLOQUEADO*\n\n${labels[product] || product}\n\n💸 Compra: ${formatFelCoins(price)}\n\n🔓 Ya puedes usar este comando.` }, { quoted: message });
     return;
   }
 
@@ -645,30 +745,46 @@ async function buyProduct(sock, chatId, senderId, message, product) {
     user.inventory.multiplier = { quantity: 1, expiresAt: new Date(Date.now() + 6 * 60 * 60 * 1000) };
     user.markModified('inventory');
     await user.save();
-    await sock.sendMessage(chatId, { text: `✅ **MULTIPLICADOR x2 ACTIVADO**\n\n⚡ Tus recompensas de trabajar y minar se duplican durante 6 horas.\n\n💸 Gastaste: ${formatFelCoins(price)}` }, { quoted: message });
+    await sock.sendMessage(chatId, { text: `✅ *MULTIPLICADOR x2 ACTIVADO*\n\n⚡ Tus recompensas de trabajar y minar se duplican durante 6 horas.\n\n💸 Gastaste: ${formatFelCoins(price)}` }, { quoted: message });
     return;
   }
 
   if (product === 'pico') {
     if (Number(user.inventory?.pico?.quantity || 0) > 0) {
-      await sock.sendMessage(chatId, { text: '⛏️ **PICO YA COMPRADO**\n\nYa tienes un pico y puedes usar .minar.' }, { quoted: message });
+      await sock.sendMessage(chatId, { text: '⛏️ *PICO YA COMPRADO*\n\nYa tienes un pico y puedes usar .minar.' }, { quoted: message });
       return;
     }
     user.inventory.pico = { quantity: 1, expiresAt: null };
     user.markModified('inventory');
     await user.save();
-    await sock.sendMessage(chatId, { text: `⛏️ **PICO COMPRADO**\n\nYa puedes usar .minar.\n\n💸 Gastaste: ${formatFelCoins(price)}` }, { quoted: message });
+    await sock.sendMessage(chatId, { text: `⛏️ *PICO COMPRADO*\n\nYa puedes usar .minar.\n\n💸 Gastaste: ${formatFelCoins(price)}` }, { quoted: message });
     return;
   }
 
   const protectionProduct = product === 'protect12' || product === 'protect24';
   const hours = product === 'protect24' ? 24 : 12;
+
+  if (protectionProduct) {
+    const result = await activateProtection(senderId, hours);
+    if (!result.ok) {
+      await sock.sendMessage(chatId, {
+        text: '❌ No se pudo activar la protección comprada.'
+      }, { quoted: message });
+      return;
+    }
+
+    await sock.sendMessage(chatId, {
+      text: `🛡️ *PROTECCIÓN ACTIVADA*\n\n⏱️ Duración: ${hours} horas\n💸 Gastaste: ${formatFelCoins(price)}\n\nTu protección está activa desde este momento y bloqueará cualquier robo contra ti.`
+    }, { quoted: message });
+    return;
+  }
+
   user.inventory[product] = { quantity: Number(user.inventory[product]?.quantity || 0) + 1, expiresAt: null };
   user.markModified('inventory');
   await user.save();
 
   await sock.sendMessage(chatId, {
-    text: `✅ **COMPRA REALIZADA**\n\n${protectionProduct ? '🛡️ Protección' : '📦 Producto'}: ${protectionProduct ? `${hours} horas` : product}\n\n💸 Gastaste: ${formatFelCoins(price)}\n\nUsa \\.protegerse ${hours} para activar la protección.`
+    text: `✅ *COMPRA REALIZADA*\n\n📦 Producto: ${product}\n\n💸 Gastaste: ${formatFelCoins(price)}`
   }, { quoted: message });
 }
 
@@ -676,7 +792,7 @@ async function openGamesMenu(sock, chatId, senderId, message) {
   const active = await ensureEconomyActive(sock, chatId, message);
   if (!active) return;
   const menu = new ButtonV2(sock)
-    .setBody('🎮 **JUEGOS FELCOINS**\n\nElige un juego para apostar y ganar FC.')
+    .setBody('🎮 *JUEGOS FELCOINS*\n\nElige un juego para apostar y ganar FC.')
     .setFooter('FelCoins • Juegos')
     .addButton('🎡 RULETA', 'felcoin::game::ruleta')
     .addButton('🎰 SLOTS', 'felcoin::game::slots')
@@ -690,7 +806,7 @@ async function viewCompanies(sock, chatId, senderId, message) {
   const active = await ensureEconomyActive(sock, chatId, message);
   if (!active) return;
   const menu = new ButtonV2(sock)
-    .setBody('🏢 **EMPRESAS FELCOINS**\n\nCompra una empresa y mejórala hasta nivel 5.\nCada nivel aumenta el ingreso diario en +50%.')
+    .setBody('🏢 *EMPRESAS FELCOINS*\n\nCompra una empresa y mejórala hasta nivel 5.\nCada nivel aumenta el ingreso diario en +50%.')
     .setFooter('FelCoins • Empresas')
     .addButton('👕 ROPA', 'felcoin::company::ropa')
     .addButton('🍕 PIZZERÍA', 'felcoin::company::pizzeria')
@@ -709,7 +825,7 @@ async function openCompanyDetails(sock, chatId, senderId, message, company) {
   const owned=user?.empresa===company; const level=owned?Math.max(1,Number(user.companyLevel||1)):0; const max=Number(data.maxLevel||5);
   const income=owned?Math.round(Number(data.income||0)*(1+((level-1)*0.5))):Number(data.income||0);
   const cost=owned&&level<max?Math.max(1000,Math.round(Number(data.price||0)*level*0.75)):0;
-  const body=`${labels[company]||company}\\n\\n💰 Compra: ${formatFelCoins(data.price||0)}\\n📈 Ingreso base: +${formatFelCoins(data.income||0)}/día\\n🏢 Nivel: ${level||'—'} / ${max}\\n💵 Ingreso actual: +${formatFelCoins(income)}/día\\n${owned&&level<max?`⬆️ Mejora: ${formatFelCoins(cost)}`:owned?'🏆 NIVEL MÁXIMO':'🛒 Compra esta empresa para empezar'}`;
+  const body=`${labels[company]||company}\n\n💰 Compra: ${formatFelCoins(data.price||0)}\n📈 Ingreso base: +${formatFelCoins(data.income||0)}/día\n🏢 Nivel: ${level||'—'} / ${max}\n💵 Ingreso actual: +${formatFelCoins(income)}/día\n${owned&&level<max?`⬆️ Mejora: ${formatFelCoins(cost)}`:owned?'🏆 NIVEL MÁXIMO':'🛒 Compra esta empresa para empezar'}`;
   const menu=new ButtonV2(sock).setBody(body).setFooter('FelCoins • Empresa').addButton(owned?(level<max?'⬆️ MEJORAR':'🏆 NIVEL 5'):'🛒 COMPRAR',owned&&level<max?`felcoin::upgradeCompany::${company}`:owned?'felcoin::empresas':`felcoin::buyCompany::${company}`).addButton('⬅️ VOLVER','felcoin::empresas');
   await menu.send(chatId,{quoted:message});
 }
@@ -721,10 +837,10 @@ async function buyCompany(sock, chatId, senderId, message, company) {
   if(!data){await sock.sendMessage(chatId,{text:'❌ Empresa no disponible.'},{quoted:message});return;}
   if(user.empresa){await sock.sendMessage(chatId,{text:`⚠️ Ya tienes la empresa ${user.empresa}. Mejora esa empresa antes de comprar otra.`},{quoted:message});return;}
   const price=Number(data.price||0);
-  if(!isOwnerAccount(senderId)&&Number(user.saldo||0)<price){await sock.sendMessage(chatId,{text:`❌ **FELCOINS INSUFICIENTES**\\n\\nNecesitas: ${formatFelCoins(price)}`},{quoted:message});return;}
+  if(!isOwnerAccount(senderId)&&Number(user.saldo||0)<price){await sock.sendMessage(chatId,{text:`❌ *FELCOINS INSUFICIENTES*\n\nNecesitas: ${formatFelCoins(price)}`},{quoted:message});return;}
   if(!isOwnerAccount(senderId)){user.saldo-=price;user.stats=user.stats||{};user.stats.gastos=Number(user.stats.gastos||0)+price;}
   user.empresa=company; user.companyLevel=1; user.companyPurchasedAt=new Date(); user.companyLastPaidAt=new Date(); user.ingresoDiario=Number(data.income||0); user.markModified('stats'); await user.save();
-  await sock.sendMessage(chatId,{text:`✅ **EMPRESA ADQUIRIDA**\\n\\n🏢 ${company}\\n⭐ Nivel: 1\\n📈 Ingreso: +${formatFelCoins(user.ingresoDiario)}/día\\n💰 Inversión: ${formatFelCoins(price)}\\n\\n⬆️ Mejora con .mejorarempresa.`},{quoted:message});
+  await sock.sendMessage(chatId,{text:`✅ *EMPRESA ADQUIRIDA*\n\n🏢 ${company}\n⭐ Nivel: 1\n📈 Ingreso: +${formatFelCoins(user.ingresoDiario)}/día\n💰 Inversión: ${formatFelCoins(price)}\n\n⬆️ Mejora con .mejorarempresa.`},{quoted:message});
 }
 
 async function upgradeCompany(sock, chatId, senderId, message, company) {
@@ -733,25 +849,25 @@ async function upgradeCompany(sock, chatId, senderId, message, company) {
   const config=await ensureEconomyConfig(); const data=config.companies?.[company];
   if(!data||user.empresa!==company){await sock.sendMessage(chatId,{text:'❌ Debes ser dueño de esa empresa para mejorarla.'},{quoted:message});return;}
   const level=Math.max(1,Number(user.companyLevel||1)); const max=Number(data.maxLevel||5);
-  if(level>=max){await sock.sendMessage(chatId,{text:`🏆 **EMPRESA AL MÁXIMO**\\n\\nNivel ${max}.`},{quoted:message});return;}
+  if(level>=max){await sock.sendMessage(chatId,{text:`🏆 *EMPRESA AL MÁXIMO*\n\nNivel ${max}.`},{quoted:message});return;}
   const cost=Math.max(1000,Math.round(Number(data.price||0)*level*0.75));
-  if(!isOwnerAccount(senderId)&&Number(user.saldo||0)<cost){await sock.sendMessage(chatId,{text:`❌ **FELCOINS INSUFICIENTES**\\n\\nMejora a nivel ${level+1}: ${formatFelCoins(cost)}`},{quoted:message});return;}
+  if(!isOwnerAccount(senderId)&&Number(user.saldo||0)<cost){await sock.sendMessage(chatId,{text:`❌ *FELCOINS INSUFICIENTES*\n\nMejora a nivel ${level+1}: ${formatFelCoins(cost)}`},{quoted:message});return;}
   if(!isOwnerAccount(senderId)){user.saldo-=cost;user.stats=user.stats||{};user.stats.gastos=Number(user.stats.gastos||0)+cost;}
   user.companyLevel=level+1; user.ingresoDiario=Math.round(Number(data.income||0)*(1+((user.companyLevel-1)*0.5))); user.markModified('stats'); await user.save();
-  await sock.sendMessage(chatId,{text:`⬆️ **EMPRESA MEJORADA**\\n\\n🏢 ${company}\\n⭐ Nivel: ${user.companyLevel}/${max}\\n📈 Ingreso diario: +${formatFelCoins(user.ingresoDiario)}\\n💸 Inversión: ${formatFelCoins(cost)}`},{quoted:message});
+  await sock.sendMessage(chatId,{text:`⬆️ *EMPRESA MEJORADA*\n\n🏢 ${company}\n⭐ Nivel: ${user.companyLevel}/${max}\n📈 Ingreso diario: +${formatFelCoins(user.ingresoDiario)}\n💸 Inversión: ${formatFelCoins(cost)}`},{quoted:message});
 }
 
 async function mysteryBox(sock, chatId, senderId, message) {
   const active=await ensureEconomyActive(sock,chatId,message); if(!active)return;
   const result=await openMysteryBox(senderId);
-  if(!result.ok){const text=result.reason==='insufficient'?`❌ **FELCOINS INSUFICIENTES**\\n\\nLa caja cuesta ${formatFelCoins(result.price||2000)}.\\nTienes: ${formatFelCoins(result.balance||0)}`:'⚠️ No se pudo abrir la caja.'; await sock.sendMessage(chatId,{text},{quoted:message});return;}
+  if(!result.ok){const text=result.reason==='insufficient'?`❌ *FELCOINS INSUFICIENTES*\n\nLa caja cuesta ${formatFelCoins(result.price||2000)}.\nTienes: ${formatFelCoins(result.balance||0)}`:'⚠️ No se pudo abrir la caja.'; await sock.sendMessage(chatId,{text},{quoted:message});return;}
   const r=result.result; let outcome='';
-  if(r.type==='command') outcome=`🍀 **¡COMANDO RARO!**\\n\\n🎁 Encontraste acceso permanente a *.${r.command}*.\\n\\n⭐ Probabilidad: 1.5%`;
-  else if(r.type==='loss') outcome=`💀 **MALA SUERTE**\\n\\nPerdiste ${formatFelCoins(r.amount)} adicionales.`;
-  else if(r.type==='big') outcome=`💎 **PREMIO GRANDE**\\n\\nGanaste +${formatFelCoins(r.amount)}.`;
-  else if(r.type==='refund') outcome=`🔁 **COMANDO REPETIDO**\\n\\nRecibiste +${formatFelCoins(r.amount)}.`;
-  else outcome=`💰 **MONEDAS**\\n\\nGanaste +${formatFelCoins(r.amount)}.`;
-  await sock.sendMessage(chatId,{text:`🎁 **CAJA MISTERIOSA**\\n\\n💸 Precio: 2.000 FC\\n\\n${outcome}\\n\\n💵 Saldo: ${formatFelCoins(result.saldo)}`},{quoted:message});
+  if(r.type==='command') outcome=`🍀 *¡COMANDO RARO!*\n\n🎁 Encontraste acceso permanente a *.${r.command}*.\n\n⭐ Probabilidad: 1.5%`;
+  else if(r.type==='loss') outcome=`💀 *MALA SUERTE*\n\nPerdiste ${formatFelCoins(r.amount)} adicionales.`;
+  else if(r.type==='big') outcome=`💎 *PREMIO GRANDE*\n\nGanaste +${formatFelCoins(r.amount)}.`;
+  else if(r.type==='refund') outcome=`🔁 *COMANDO REPETIDO*\n\nRecibiste +${formatFelCoins(r.amount)}.`;
+  else outcome=`💰 *MONEDAS*\n\nGanaste +${formatFelCoins(r.amount)}.`;
+  await sock.sendMessage(chatId,{text:`🎁 *CAJA MISTERIOSA*\n\n💸 Precio: 2.000 FC\n\n${outcome}\n\n💵 Saldo: ${formatFelCoins(result.saldo)}`},{quoted:message});
 }
 
 async function rouletteGame(sock, chatId, senderId, message, amount) {
@@ -762,7 +878,7 @@ async function rouletteGame(sock, chatId, senderId, message, amount) {
 
   const value = Math.max(1, Number(amount) || 0);
   if (!isOwnerAccount(senderId) && Number(user.saldo || 0) < value) {
-    await sock.sendMessage(chatId, { text: `❌ **FELCOINS INSUFICIENTES**\n\nNecesitas: ${formatFelCoins(value)}` }, { quoted: message });
+    await sock.sendMessage(chatId, { text: `❌ *FELCOINS INSUFICIENTES*\n\nNecesitas: ${formatFelCoins(value)}` }, { quoted: message });
     return;
   }
 
@@ -778,7 +894,7 @@ async function rouletteGame(sock, chatId, senderId, message, amount) {
     user.stats.victorias = Number(user.stats.victorias || 0) + 1;
     await user.save();
     await sock.sendMessage(chatId, {
-      text: `🎡 **RULETA**\n\n🎯 Apuesta: ${formatFelCoins(value)}\n\n💎 3 DIAMANTES\n\n🎉 GANASTE EL PREMIO MAYOR\n\n💰 +${formatFelCoins(jackpotPrize)}\n\n💵 Saldo: ${formatFelCoins(Number(user.saldo || 0))}`
+      text: `🎡 *RULETA*\n\n🎯 Apuesta: ${formatFelCoins(value)}\n\n💎 3 DIAMANTES\n\n🎉 GANASTE EL PREMIO MAYOR\n\n💰 +${formatFelCoins(jackpotPrize)}\n\n💵 Saldo: ${formatFelCoins(Number(user.saldo || 0))}`
     }, { quoted: message });
     return;
   }
@@ -787,7 +903,7 @@ async function rouletteGame(sock, chatId, senderId, message, amount) {
     user.stats.derrotas = Number(user.stats.derrotas || 0) + 1;
     await user.save();
     await sock.sendMessage(chatId, {
-      text: `🎡 **RULETA**\n\n🎯 Apuesta: ${formatFelCoins(value)}\n\n⚫ PERDISTE\n\n💸 -${formatFelCoins(value)}\n\n💵 Saldo: ${formatFelCoins(Number(user.saldo || 0))}`
+      text: `🎡 *RULETA*\n\n🎯 Apuesta: ${formatFelCoins(value)}\n\n⚫ PERDISTE\n\n💸 -${formatFelCoins(value)}\n\n💵 Saldo: ${formatFelCoins(Number(user.saldo || 0))}`
     }, { quoted: message });
     return;
   }
@@ -797,7 +913,7 @@ async function rouletteGame(sock, chatId, senderId, message, amount) {
   user.stats.victorias = Number(user.stats.victorias || 0) + 1;
   await user.save();
   await sock.sendMessage(chatId, {
-    text: `🎡 **RULETA**\n\n🎯 Apuesta: ${formatFelCoins(value)}\n\n🔴 x2\n\n💰 Ganaste: +${formatFelCoins(prize)}\n\n💵 Saldo: ${formatFelCoins(Number(user.saldo || 0))}`
+    text: `🎡 *RULETA*\n\n🎯 Apuesta: ${formatFelCoins(value)}\n\n🔴 x2\n\n💰 Ganaste: +${formatFelCoins(prize)}\n\n💵 Saldo: ${formatFelCoins(Number(user.saldo || 0))}`
   }, { quoted: message });
 }
 
@@ -808,7 +924,7 @@ async function slotsGame(sock, chatId, senderId, message, amount) {
   if (!user) return;
   const value = Math.max(1, Number(amount) || 0);
   if (!isOwnerAccount(senderId) && Number(user.saldo || 0) < value) {
-    await sock.sendMessage(chatId, { text: `❌ **FELCOINS INSUFICIENTES**\n\nNecesitas: ${formatFelCoins(value)}` }, { quoted: message });
+    await sock.sendMessage(chatId, { text: `❌ *FELCOINS INSUFICIENTES*\n\nNecesitas: ${formatFelCoins(value)}` }, { quoted: message });
     return;
   }
 
@@ -823,7 +939,7 @@ async function slotsGame(sock, chatId, senderId, message, amount) {
     user.stats.juegos = Number(user.stats.juegos || 0) + 1;
     user.stats.victorias = Number(user.stats.victorias || 0) + 1;
     await user.save();
-    await sock.sendMessage(chatId, { text: `🎰 **SLOTS**\n\n🎯 Apuesta: ${formatFelCoins(value)}\n\n${draw.join(' | ')}\n\n🎉 JACKPOT\n\n💰 Premio: +${formatFelCoins(prize)}` }, { quoted: message });
+    await sock.sendMessage(chatId, { text: `🎰 *SLOTS*\n\n🎯 Apuesta: ${formatFelCoins(value)}\n\n${draw.join(' | ')}\n\n🎉 JACKPOT\n\n💰 Premio: +${formatFelCoins(prize)}` }, { quoted: message });
     return;
   }
 
@@ -831,7 +947,7 @@ async function slotsGame(sock, chatId, senderId, message, amount) {
   user.stats.juegos = Number(user.stats.juegos || 0) + 1;
   user.stats.derrotas = Number(user.stats.derrotas || 0) + 1;
   await user.save();
-  await sock.sendMessage(chatId, { text: `🎰 **SLOTS**\n\n🎯 Apuesta: ${formatFelCoins(value)}\n\n${draw.join(' | ')}\n\n❌ Sin combinación.\n\n💸 -${formatFelCoins(value)}` }, { quoted: message });
+  await sock.sendMessage(chatId, { text: `🎰 *SLOTS*\n\n🎯 Apuesta: ${formatFelCoins(value)}\n\n${draw.join(' | ')}\n\n❌ Sin combinación.\n\n💸 -${formatFelCoins(value)}` }, { quoted: message });
 }
 
 async function blackjackInitial(sock, chatId, senderId, message, amount) {
@@ -841,7 +957,7 @@ async function blackjackInitial(sock, chatId, senderId, message, amount) {
   if (!user) return;
   const value = Math.max(1, Number(amount) || 0);
   if (!isOwnerAccount(senderId) && Number(user.saldo || 0) < value) {
-    await sock.sendMessage(chatId, { text: `❌ **FELCOINS INSUFICIENTES**\n\nNecesitas: ${formatFelCoins(value)}` }, { quoted: message });
+    await sock.sendMessage(chatId, { text: `❌ *FELCOINS INSUFICIENTES*\n\nNecesitas: ${formatFelCoins(value)}` }, { quoted: message });
     return;
   }
 
@@ -854,7 +970,7 @@ async function blackjackInitial(sock, chatId, senderId, message, amount) {
   await user.save();
 
   const buttons = new ButtonV2(sock)
-    .setBody(`🃏 **BLACKJACK**\n\n💰 Apuesta: ${formatFelCoins(value)}\n\nTus cartas:\n🂠 ${card1}\n\nTotal: ${total}\n\n¿Qué haces?`)
+    .setBody(`🃏 *BLACKJACK*\n\n💰 Apuesta: ${formatFelCoins(value)}\n\nTus cartas:\n🂠 ${card1}\n\nTotal: ${total}\n\n¿Qué haces?`)
     .setFooter('FelCoins • Blackjack')
     .addButton('🃏 PEDIR', 'felcoin::blackjack::hit')
     .addButton('✋ PLANTARSE', 'felcoin::blackjack::stand');
@@ -877,11 +993,11 @@ async function blackjackHit(sock, chatId, senderId, message) {
     if (!isOwnerAccount(senderId)) user.saldo = Number(user.saldo || 0) - Number(user.blackjack.amount || 0);
     delete user.blackjack;
     await user.save();
-    await sock.sendMessage(chatId, { text: `💥 **TE PASASTE**\n\nTotal: ${user.blackjack?.total || 24}\n\n💸 Perdiste ${formatFelCoins(Number(user.blackjack?.amount || 0))}.` }, { quoted: message });
+    await sock.sendMessage(chatId, { text: `💥 *TE PASASTE*\n\nTotal: ${user.blackjack?.total || 24}\n\n💸 Perdiste ${formatFelCoins(Number(user.blackjack?.amount || 0))}.` }, { quoted: message });
     return;
   }
   const buttons = new ButtonV2(sock)
-    .setBody(`🃏 **BLACKJACK**\n\nNueva carta: ${newCard}\n\nTus cartas:\n${user.blackjack.cards.join(' + ')}\n\nTotal: ${user.blackjack.total}\n\n¿Qué haces?`)
+    .setBody(`🃏 *BLACKJACK*\n\nNueva carta: ${newCard}\n\nTus cartas:\n${user.blackjack.cards.join(' + ')}\n\nTotal: ${user.blackjack.total}\n\n¿Qué haces?`)
     .setFooter('FelCoins • Blackjack')
     .addButton('🃏 PEDIR', 'felcoin::blackjack::hit')
     .addButton('✋ PLANTARSE', 'felcoin::blackjack::stand');
@@ -902,12 +1018,12 @@ async function blackjackStand(sock, chatId, senderId, message) {
   const amount = Number(user.blackjack.amount || 0);
   if (user.blackjack.total > botTotal) {
     user.saldo = Number(user.saldo || 0) + amount * 2;
-    await sock.sendMessage(chatId, { text: `🃏 **BLACKJACK**\n\nTú: ${user.blackjack.total}\nBot: ${botTotal}\n\n🎉 GANASTE\n\n💰 Premio: +${formatFelCoins(amount * 2)}` }, { quoted: message });
+    await sock.sendMessage(chatId, { text: `🃏 *BLACKJACK*\n\nTú: ${user.blackjack.total}\nBot: ${botTotal}\n\n🎉 GANASTE\n\n💰 Premio: +${formatFelCoins(amount * 2)}` }, { quoted: message });
   } else if (user.blackjack.total === botTotal) {
-    await sock.sendMessage(chatId, { text: `🃏 **BLACKJACK**\n\nTú: ${user.blackjack.total}\nBot: ${botTotal}\n\n🤝 EMPATE\n\n💰 Recuperas: ${formatFelCoins(amount)}` }, { quoted: message });
+    await sock.sendMessage(chatId, { text: `🃏 *BLACKJACK*\n\nTú: ${user.blackjack.total}\nBot: ${botTotal}\n\n🤝 EMPATE\n\n💰 Recuperas: ${formatFelCoins(amount)}` }, { quoted: message });
   } else {
     if (!isOwnerAccount(senderId)) user.saldo = Number(user.saldo || 0) - amount;
-    await sock.sendMessage(chatId, { text: `🃏 **BLACKJACK**\n\nTú: ${user.blackjack.total}\nBot: ${botTotal}\n\n💥 PERDISTE\n\n💸 -${formatFelCoins(amount)}` }, { quoted: message });
+    await sock.sendMessage(chatId, { text: `🃏 *BLACKJACK*\n\nTú: ${user.blackjack.total}\nBot: ${botTotal}\n\n💥 PERDISTE\n\n💸 -${formatFelCoins(amount)}` }, { quoted: message });
   }
   delete user.blackjack;
   await user.save();
@@ -920,14 +1036,14 @@ async function crashGame(sock, chatId, senderId, message, amount) {
   if (!user) return;
   const value = Math.max(1, Number(amount) || 0);
   if (!isOwnerAccount(senderId) && Number(user.saldo || 0) < value) {
-    await sock.sendMessage(chatId, { text: `❌ **FELCOINS INSUFICIENTES**\n\nNecesitas: ${formatFelCoins(value)}` }, { quoted: message });
+    await sock.sendMessage(chatId, { text: `❌ *FELCOINS INSUFICIENTES*\n\nNecesitas: ${formatFelCoins(value)}` }, { quoted: message });
     return;
   }
   const multiplier = (Math.random() * 2.5 + 1.1).toFixed(2);
   user.crash = { amount: value, multiplier: Number(multiplier), active: true };
   await user.save();
   const buttons = new ButtonV2(sock)
-    .setBody(`💥 **CRASH**\n\n💰 Apuesta: ${formatFelCoins(value)}\n\n📈 ${multiplier}x\n\n[💰 RETIRAR]`)
+    .setBody(`💥 *CRASH*\n\n💰 Apuesta: ${formatFelCoins(value)}\n\n📈 ${multiplier}x\n\n[💰 RETIRAR]`)
     .setFooter('FelCoins • Crash')
     .addButton('💰 RETIRAR', 'felcoin::crash::withdraw');
   await buttons.send(chatId, { quoted: message });
@@ -949,7 +1065,7 @@ async function withdrawCrash(sock, chatId, senderId, message) {
   delete user.crash;
   await user.save();
   await sock.sendMessage(chatId, {
-    text: `💰 **RETIRADA EXITOSA**\n\n📈 Multiplicador: ${current.toFixed(2)}x\n\n💵 Apuesta: ${formatFelCoins(base)}\n💰 Ganancia total: ${formatFelCoins(reward)}\n\n🎉 Beneficio: +${formatFelCoins(reward - base)}`
+    text: `💰 *RETIRADA EXITOSA*\n\n📈 Multiplicador: ${current.toFixed(2)}x\n\n💵 Apuesta: ${formatFelCoins(base)}\n💰 Ganancia total: ${formatFelCoins(reward)}\n\n🎉 Beneficio: +${formatFelCoins(reward - base)}`
   }, { quoted: message });
 }
 
@@ -983,7 +1099,7 @@ async function handleEconomyButton(sock, chatId, senderId, buttonId, message) {
     if (label === 'blackjack') return blackjackInitial(sock, chatId, senderId, message, 100);
     if (label === 'crash') return crashGame(sock, chatId, senderId, message, 100);
     return sock.sendMessage(chatId, {
-      text: '🎮 **JUEGOS FELCOINS**\n\nUsa estos comandos:\n• .ruleta 100\n• .slots 100\n• .blackjack 100\n• .crash 100'
+      text: '🎮 *JUEGOS FELCOINS*\n\nUsa estos comandos:\n• .ruleta 100\n• .slots 100\n• .blackjack 100\n• .crash 100'
     }, { quoted: message });
   }
   if (action === 'work') {
@@ -1005,7 +1121,7 @@ async function handleEconomyButton(sock, chatId, senderId, buttonId, message) {
     const remaining = await getRemainingCooldown(senderId, 'work');
     if (remaining > 0) {
       await sock.sendMessage(chatId, {
-        text: `⏳ **YA TRABAJASTE HOY**\n\nPodrás volver a trabajar en: ${formatCountdown(remaining)}.`
+        text: `⏳ *YA TRABAJASTE HOY*\n\nPodrás volver a trabajar en: ${formatCountdown(remaining)}.`
       }, { quoted: message });
       return;
     }
@@ -1025,7 +1141,7 @@ async function handleEconomyButton(sock, chatId, senderId, buttonId, message) {
     }
 
     await sock.sendMessage(chatId, {
-      text: `${job.label} **${job.title.toUpperCase()}**\n\n${job.detail}\n\n💰 Pago recibido: +${formatFelCoins(result.amount)}\n🎁 ${job.bonus}\n\n💵 Saldo: ${formatFelCoins(result.saldo)}\n📅 Próximo trabajo: en 24 horas.`
+      text: `${job.label} *${job.title.toUpperCase()}*\n\n${job.detail}\n\n💰 Pago recibido: +${formatFelCoins(result.amount)}\n🎁 ${job.bonus}\n\n💵 Saldo: ${formatFelCoins(result.saldo)}\n📅 Próximo trabajo: en 24 horas.`
     }, { quoted: message });
     return;
   }
