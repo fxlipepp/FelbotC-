@@ -13,6 +13,7 @@ const { handleEconomyButton, showEconomyMenu } = require('../commands/felcoins')
   assert.equal(await getCommandCost('play'), 100, 'El costo del comando debe venir de la config compartida');
   assert.equal(await getCommandCost('sticker'), 25, 'El costo del comando sticker debe quedar en 25 FC');
   assert.equal(formatFelCoins(5000), '5.000 FC');
+  assert.equal(formatFelCoins(1000000), '1.000.000 FC');
   assert.equal(parseAmount('500'), 500);
   assert.equal(hasSufficientBalance(500, 100), true);
   assert.equal(hasSufficientBalance(50, 100), false);

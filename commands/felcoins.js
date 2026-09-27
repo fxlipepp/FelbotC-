@@ -6,6 +6,7 @@ const {
   setEconomyEnabled,
   formatFelCoins,
   getBalance,
+  getOwnerDisplayBalance,
   claimDaily,
   claimWork,
   claimMine,
@@ -37,11 +38,27 @@ function formatCountdown(ms) {
 }
 
 function formatDisplayName(userId, fallback = 'Usuario') {
-  return `@${String(userId || fallback).split('@')[0].split(':')[0]}`;
+  const clean = String(userId || fallback).split('@')[0].split(':')[0].replace(/[^0-9]/g, '');
+  return clean ? `@${clean}` : '@usuario';
 }
 
 function normalize(value = '') {
   return String(value || '').split(':')[0].split('@')[0].replace(/[^0-9]/g, '');
+}
+
+function toRecipientJid(value = '') {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+  if (raw.includes('@')) return raw.split(':')[0];
+  const digits = normalize(raw);
+  return digits ? `${digits}@s.whatsapp.net` : '';
+}
+
+function mentionTarget(value = '') {
+  const jid = toRecipientJid(value);
+  if (!jid) return { text: '@usuario', jid: '' };
+  const name = jid.split('@')[0];
+  return { text: `@${name}`, jid };
 }
 
 async function ensureRegisteredWithReply(sock, chatId, senderId, message, userName = 'Usuario') {
@@ -57,7 +74,7 @@ async function ensureRegisteredWithReply(sock, chatId, senderId, message, userNa
 
 async function showEconomyMenu(sock, chatId, senderId, message) {
   const user = await ensureEconomyUser(senderId, message?.pushName || 'Usuario');
-  const balance = isOwnerAccount(senderId) ? '∞' : Number(user?.saldo || 0);
+  const balance = isOwnerAccount(senderId) ? getOwnerDisplayBalance() : Number(user?.saldo || 0);
   const text = `💰 **FELCOINS**\n\n👤 ${user?.name || 'Usuario'}\n💵 Saldo: ${formatFelCoins(balance)}\n\n¿Qué quieres hacer?`;
 
   const menu = new ButtonV2(sock)
@@ -83,7 +100,7 @@ async function showSaldo(sock, chatId, senderId, message) {
   const companyText = user.empresa ? user.empresa : 'Ninguna';
   const adminText = user.modoAdmin ? 'Sí' : 'No';
   const rawBalance = isOwnerAccount(senderId) ? 9999999999999 : Number(user.saldo || 0);
-  const displayBalance = isOwnerAccount(senderId) ? '∞' : rawBalance;
+  const displayBalance = isOwnerAccount(senderId) ? getOwnerDisplayBalance() : rawBalance;
   const dailyIncome = Number(user.ingresoDiario || 0);
 
   await sock.sendMessage(chatId, {
@@ -97,7 +114,7 @@ async function showPerfil(sock, chatId, senderId, message) {
 
   const stats = user.stats || {};
   const rawBalance = isOwnerAccount(senderId) ? 9999999999999 : Number(user.saldo || 0);
-  const displayBalance = isOwnerAccount(senderId) ? '∞' : rawBalance;
+  const displayBalance = isOwnerAccount(senderId) ? getOwnerDisplayBalance() : rawBalance;
 
   await sock.sendMessage(chatId, {
     text: `👤 **PERFIL FELCOINS**\n\n👤 ${user.name || 'Usuario'}\n💰 ${formatFelCoins(displayBalance)}\n\n📊 ESTADÍSTICAS\n\n💼 Trabajos: ${Number(stats.trabajos || 0)}\n⛏️ Minería: ${Number(stats.mineria || 0)}\n🎮 Juegos: ${Number(stats.juegos || 0)}\n💸 Transferencias: ${Number(stats.transferencias || 0)}\n🦹 Robos: ${Number(stats.robos || 0)}\n\n🏢 Empresa: ${user.empresa || 'Ninguna'}\n👑 Admin: ${user.modoAdmin ? 'Sí' : 'No'}`
@@ -116,7 +133,7 @@ async function showTop(sock, chatId, senderId, message) {
   }).join('\n');
 
   const position = await getUserPosition(senderId);
-  const selfBalance = isOwnerAccount(senderId) ? '∞' : formatFelCoins(Number(user.saldo || 0));
+  const selfBalance = isOwnerAccount(senderId) ? formatFelCoins(getOwnerDisplayBalance()) : formatFelCoins(Number(user.saldo || 0));
 
   await sock.sendMessage(chatId, {
     text: `🏆 **TOP FELCOINS**\n\n${topText || '🥇 Usuario — 0 FC'}\n\n📊 Tu posición: #${position}\n\n💰 Tu saldo: ${selfBalance}`
@@ -126,7 +143,7 @@ async function showTop(sock, chatId, senderId, message) {
 async function registerMe(sock, chatId, senderId, message) {
   const user = await ensureEconomyUser(senderId, message?.pushName || 'Usuario');
   if (user?.registered) {
-    const balance = isOwnerAccount(senderId) ? '∞' : formatFelCoins(Number(user.saldo || 0));
+    const balance = isOwnerAccount(senderId) ? formatFelCoins(getOwnerDisplayBalance()) : formatFelCoins(Number(user.saldo || 0));
     await sock.sendMessage(chatId, {
       text: `⚠️ **YA ESTÁS REGISTRADO**\n\nYa formas parte de la economía FelCoins.\n\n💰 Saldo: ${balance}`
     }, { quoted: message });
@@ -171,7 +188,7 @@ async function dailyReward(sock, chatId, senderId, message) {
     return;
   }
 
-  const balance = isOwnerAccount(senderId) ? '∞' : Number(user.saldo || 0);
+  const balance = isOwnerAccount(senderId) ? getOwnerDisplayBalance() : Number(user.saldo || 0);
   await sock.sendMessage(chatId, {
     text: `🎁 **RECOMPENSA DIARIA**\n\n💰 Recibiste: +${result.amount} FC\n\n💵 Saldo: ${formatFelCoins(balance)}\n\n⏰ Próxima recompensa en 24h.`
   }, { quoted: message });
@@ -227,7 +244,8 @@ async function processTransfer(sock, chatId, senderId, message, rawText) {
   if (!user) return;
   const args = rawText.trim().split(/\s+/).slice(1);
   const amount = parseAmount(args[0]);
-  const target = args[1] || (message.message?.extendedTextMessage?.contextInfo?.mentionedJid?.[0] || '');
+  const targetRaw = args[1] || (message.message?.extendedTextMessage?.contextInfo?.mentionedJid?.[0] || '');
+  const target = toRecipientJid(targetRaw);
 
   if (!amount || amount <= 0) {
     await sock.sendMessage(chatId, { text: '❌ Cantidad inválida. Usa .transferir 500 @usuario' }, { quoted: message });
@@ -254,15 +272,18 @@ async function processTransfer(sock, chatId, senderId, message, rawText) {
     return;
   }
 
+  const recipientMention = mentionTarget(target);
   await sock.sendMessage(chatId, {
-    text: `💸 **TRANSFERENCIA REALIZADA**\n\n👤 Destinatario: @${String(target).split('@')[0]}\n💰 Cantidad: ${formatFelCoins(amount)}\n\n💵 Saldo anterior: ${formatFelCoins(Number(user.saldo || 0) + amount)}\n💵 Saldo actual: ${formatFelCoins(Number(result.senderBalance || 0))}`
+    text: `💸 **TRANSFERENCIA REALIZADA**\n\n👤 Destinatario: ${recipientMention.text}\n💰 Cantidad: ${formatFelCoins(amount)}\n\n💵 Saldo anterior: ${formatFelCoins(Number(user.saldo || 0) + amount)}\n💵 Saldo actual: ${formatFelCoins(Number(result.senderBalance || 0))}`,
+    mentions: recipientMention.jid ? [recipientMention.jid] : []
   }, { quoted: message });
 }
 
 async function handleRobbery(sock, chatId, senderId, message, targetId) {
   const attackerUser = await ensureRegisteredWithReply(sock, chatId, senderId, message, message?.pushName || 'Usuario');
   if (!attackerUser) return;
-  const target = targetId || (message.message?.extendedTextMessage?.contextInfo?.mentionedJid?.[0] || '');
+  const targetRaw = targetId || (message.message?.extendedTextMessage?.contextInfo?.mentionedJid?.[0] || '');
+  const target = toRecipientJid(targetRaw);
   if (!target) {
     await sock.sendMessage(chatId, { text: '❌ Debes indicar a quién quieres robar.' }, { quoted: message });
     return;
@@ -282,12 +303,14 @@ async function handleRobbery(sock, chatId, senderId, message, targetId) {
     return;
   }
 
+  const victimMention = mentionTarget(target);
   await sock.sendMessage(chatId, {
-    text: `🚨 **INTENTO DE ROBO**\n\n@${String(target).split('@')[0]} está intentando robarte.\n\n⏱️ Tienes 5 minutos para protegerte.\n\n🛡️ Pulsa el botón:`
+    text: `🚨 **INTENTO DE ROBO**\n\n${victimMention.text} está intentando robarte.\n\n⏱️ Tienes 5 minutos para protegerte.\n\n🛡️ Pulsa el botón:`,
+    mentions: victimMention.jid ? [victimMention.jid] : []
   }, { quoted: message });
 
   const menu = new ButtonV2(sock)
-    .setBody(`🛡️ **PROTECCIÓN**\n\n@${String(target).split('@')[0]} tiene un robo pendiente.`)
+    .setBody(`🛡️ **PROTECCIÓN**\n\n${victimMention.text} tiene un robo pendiente.`)
     .setFooter('FelCoins • Robo')
     .addButton('🛡️ PROTEGERME', `felcoin::protect::${rob._id}`);
   await menu.send(target, { quoted: message, mentions: [senderId, target] });
