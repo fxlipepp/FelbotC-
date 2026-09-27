@@ -902,27 +902,17 @@ const command = rawText.split(' ')[0].toLowerCase()
             case userMessage === '.sticker' || userMessage === '.s':
                 {
                     const enabled = await getEconomyEnabled();
-                    const cost = enabled ? await getCommandCost('sticker') : 0;
                     if (enabled) {
                         const currentUser = await ensureEconomyUser(senderId, message?.pushName || 'Usuario');
                         if (!currentUser || !currentUser.registered) {
                             await sock.sendMessage(chatId, { text: '⚠️ **NO ESTÁS REGISTRADO**\n\nUsa .registrarme para entrar al sistema FelCoins.' }, { quoted: message });
                             break;
                         }
-                        if (!isOwnerAccount(senderId) && Number(currentUser.saldo || 0) < cost) {
-                            await sock.sendMessage(chatId, { text: `❌ **FELCOINS INSUFICIENTES**\n\nNecesitas: ${formatFelCoins(cost)}\nTienes: ${formatFelCoins(Number(currentUser.saldo || 0))}` }, { quoted: message });
+                        const stickerUnlocked = isOwnerAccount(senderId) || Number(currentUser.inventory?.sticker?.quantity || 0) > 0;
+                        if (!stickerUnlocked) {
+                            await sock.sendMessage(chatId, { text: '🔒 **.STICKER BLOQUEADO**\n\nDebes comprar el acceso a .sticker en .tienda para poder usarlo.' }, { quoted: message });
                             break;
                         }
-                        const success = await stickerCommand(sock, chatId, message);
-                        if (success === false) break;
-                        if (!isOwnerAccount(senderId)) {
-                            const charged = await chargeCommandCost(senderId, 'sticker', { name: message?.pushName || 'Usuario', description: 'Costo de sticker' });
-                            if (charged.ok && charged.charged) {
-                                const updatedUser = await ensureEconomyUser(senderId, message?.pushName || 'Usuario');
-                                await sock.sendMessage(chatId, { text: `🖼️ **STICKER**\n\n💸 Costo de uso: ${formatFelCoins(charged.cost)}\n\n💰 Saldo restante: ${formatFelCoins(Number(updatedUser?.saldo || 0))}` }, { quoted: message });
-                            }
-                        }
-                        break;
                     }
                     await stickerCommand(sock, chatId, message);
                 }
