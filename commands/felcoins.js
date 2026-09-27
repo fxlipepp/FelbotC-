@@ -18,6 +18,8 @@ const {
   ensureEconomyConfig,
   isOwnerAccount,
   hasRoyalProtection,
+  hasActiveProtection,
+  activateProtection,
   deductBalance,
   addBalance,
   createRobbery,
@@ -480,8 +482,27 @@ async function handleRobbery(sock, chatId, senderId, message, targetId) {
     return;
   }
 
-  const maxAmount = Math.min(Number(targetUser.saldo || 0) * 0.25, 8000);
-  const amount = Math.max(100, Math.min(8000, Math.floor(maxAmount || 100)));
+  if (isOwnerAccount(target)) {
+    const penalty = 2000;
+    await deductBalance(senderId, penalty, 'robar', 'Multa por intentar robar al OWNER');
+    await sock.sendMessage(chatId, { text: `👑 **ROBO AL OWNER BLOQUEADO**\n\nNo puedes robar al OWNER.\n\n💸 Multa aplicada: -${formatFelCoins(penalty)}` }, { quoted: message });
+    return;
+  }
+
+  if (hasActiveProtection(targetUser)) {
+    const remaining = Math.max(0, new Date(targetUser.protectionUntil).getTime() - Date.now());
+    await deductBalance(senderId, 500, 'robar', 'Multa por intentar robar a un usuario protegido');
+    await sock.sendMessage(chatId, { text: `🛡️ **ROBO BLOQUEADO**\n\n${targetInfo.label} está protegido durante ${formatCountdown(remaining)}.\n\n💸 Multa al ladrón: -500 FC` }, { quoted: message });
+    return;
+  }
+
+  const config = await ensureEconomyConfig();
+  const maxAmount = Math.min(Number(targetUser.saldo || 0) * Number(config.limits?.robPercent || 0.50), Number(config.limits?.robMax || 8000));
+  if (Number(targetUser.saldo || 0) < Number(config.limits?.robMin || 100)) {
+    await sock.sendMessage(chatId, { text: '❌ Ese usuario no tiene suficientes FelCoins para robarle.' }, { quoted: message });
+    return;
+  }
+  const amount = Math.max(Number(config.limits?.robMin || 100), Math.floor(maxAmount));
   const rob = await createRobbery(senderId, target, amount);
   if (!rob) {
     await sock.sendMessage(chatId, { text: '❌ No se pudo iniciar el robo.' }, { quoted: message });
@@ -506,16 +527,29 @@ async function handleRobbery(sock, chatId, senderId, message, targetId) {
   }
 }
 
-async function protectMe(sock, chatId, senderId, message) {
+async function protectMe(sock, chatId, senderId, message, requestedHours = null) {
   const active = await ensureEconomyActive(sock, chatId, message);
   if (!active) return;
+
+  const raw = String(requestedHours || '').trim() || String(message?.message?.conversation || message?.message?.extendedTextMessage?.text || '').trim().split(/\s+/)[1] || '';
+  if (raw === '12' || raw === '24') {
+    const result = await activateProtection(senderId, Number(raw));
+    if (!result.ok) {
+      const reason = result.reason === 'no_item' ? `No tienes una protección de ${result.hours} horas. Cómprala en .tienda.` : 'No se pudo activar la protección.';
+      await sock.sendMessage(chatId, { text: `❌ ${reason}` }, { quoted: message });
+      return;
+    }
+    await sock.sendMessage(chatId, { text: `🛡️ **PROTECCIÓN ACTIVADA**\n\n⏱️ Duración: ${result.hours} horas\n\nAhora los robos contra ti serán bloqueados mientras esté activa.` }, { quoted: message });
+    return;
+  }
+
   const pending = await getPendingRobForVictim(senderId);
   if (!pending) {
     await sock.sendMessage(chatId, { text: '⚠️ Este robo ya no está activo.' }, { quoted: message });
     return;
   }
   const result = await resolveRobbery(pending.attacker, pending.victim, true);
-  const penalty = result.penalty || 300;
+  const penalty = result.penalty || 500;
   await sock.sendMessage(chatId, {
     text: `🛡️ **ROBO BLOQUEADO**\n\nLograste proteger tus FelCoins.\n\n💸 El ladrón recibió una multa de ${penalty} FC.`
   }, { quoted: message });
@@ -539,7 +573,8 @@ async function openShop(sock, chatId, senderId, message) {
   const menu = new ButtonV2(sock)
     .setBody('🛒 **TIENDA FELCOINS**\n\nSelecciona un producto:')
     .setFooter('FelCoins • Tienda')
-    .addButton('🧤 GUANTE', 'felcoin::shop::glove')
+    .addButton('🛡️ PROTEGERME 12H', 'felcoin::shop::protect12')
+    .addButton('🛡️ PROTEGERME 24H', 'felcoin::shop::protect24')
     .addButton('⚡ MULTIPLICADOR', 'felcoin::shop::multiplier')
     .addButton('⛏️ PICO', 'felcoin::shop::pico')
     .addButton('👑 ADMIN 24H', 'felcoin::shop::admin24')
@@ -584,11 +619,13 @@ async function buyProduct(sock, chatId, senderId, message, product) {
     return;
   }
 
-  user.inventory[product] = { quantity: Number(user.inventory[product]?.quantity || 0) + 1, expiresAt: new Date(Date.now() + (product === 'glove' ? 12 * 60 * 60 * 1000 : 0)) };
+  const protectionProduct = product === 'protect12' || product === 'protect24';
+  const hours = product === 'protect24' ? 24 : 12;
+  user.inventory[product] = { quantity: Number(user.inventory[product]?.quantity || 0) + 1, expiresAt: null };
   await user.save();
 
   await sock.sendMessage(chatId, {
-    text: `✅ **COMPRA REALIZADA**\n\n🧤 Protección activada.\n\n⏱️ 12 horas\n\n💸 Gastaste: ${formatFelCoins(price)}`
+    text: `✅ **COMPRA REALIZADA**\n\n${protectionProduct ? '🛡️ Protección' : '📦 Producto'}: ${protectionProduct ? `${hours} horas` : product}\n\n💸 Gastaste: ${formatFelCoins(price)}\n\nUsa \\.protegerse ${hours} para activar la protección.`
   }, { quoted: message });
 }
 
