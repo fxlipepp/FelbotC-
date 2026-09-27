@@ -202,7 +202,8 @@ async function showPerfil(sock, chatId, senderId, message) {
   const reyText = hasRoyalProtection(user) ? 'Sí' : 'No';
 
   await sock.sendMessage(chatId, {
-    text: `👤 **PERFIL FELCOINS**\n\n👤 ${user.name || 'Usuario'}\n💰 ${formatFelCoins(displayBalance)}\n\n📊 ESTADÍSTICAS\n\n💼 Trabajos: ${resolvedStats.trabajos}\n⛏️ Minería: ${resolvedStats.mineria}\n🎮 Juegos: ${resolvedStats.juegos}\n🏆 Victorias: ${resolvedStats.victorias}\n💀 Derrotas: ${resolvedStats.derrotas}\n💸 Transferencias: ${resolvedStats.transferencias}\n🦹 Robos: ${resolvedStats.robos}\n💰 Ganancias: ${formatFelCoins(resolvedStats.ganancias)}\n💸 Gastos: ${formatFelCoins(resolvedStats.gastos)}\n\n🏢 Empresa: ${user.empresa || 'Ninguna'}\n👑 Admin: ${user.modoAdmin ? 'Sí' : 'No'}\n👑 Modo Rey: ${reyText}`
+    text: `👤 **PERFIL FELCOINS**\n\n👤 ${profileMention.text}\n💰 ${formatFelCoins(displayBalance)}\n\n📊 ESTADÍSTICAS\n\n💼 Trabajos: ${resolvedStats.trabajos}\n⛏️ Minería: ${resolvedStats.mineria}\n🎮 Juegos: ${resolvedStats.juegos}\n🏆 Victorias: ${resolvedStats.victorias}\n💀 Derrotas: ${resolvedStats.derrotas}\n💸 Transferencias: ${resolvedStats.transferencias}\n🦹 Robos: ${resolvedStats.robos}\n💰 Ganancias: ${formatFelCoins(resolvedStats.ganancias)}\n💸 Gastos: ${formatFelCoins(resolvedStats.gastos)}\n\n🏢 Empresa: ${user.empresa || 'Ninguna'}\n👑 Admin: ${user.modoAdmin ? 'Sí' : 'No'}\n👑 Modo Rey: ${reyText}`,
+    contextInfo: profileMention.jid ? { mentionedJid: [profileMention.jid] } : undefined
   }, { quoted: message });
 }
 
@@ -343,7 +344,7 @@ async function workCommand(sock, chatId, senderId, message) {
   const remaining = await getRemainingCooldown(senderId, 'work');
   if (remaining > 0) {
     await sock.sendMessage(chatId, {
-      text: `⏳ **YA TRABAJASTE HOY**\n\nTu próximo turno estará disponible en: ${formatCountdown(remaining)}.`
+      text: `⏳ **YA TRABAJASTE HOY**\n\nPodrás volver a trabajar cuando se reinicie tu ventana de 20 minutos.`
     }, { quoted: message });
     return;
   }
@@ -361,7 +362,7 @@ async function workCommand(sock, chatId, senderId, message) {
   await user.save();
 
   const menu = new ButtonV2(sock)
-    .setBody('💼 **TRABAJOS DISPONIBLES**\n\nElige UN trabajo para hoy.\n\nCada trabajo tiene una recompensa diferente.\n\n📅 Solo puedes completar 1 trabajo cada 24 horas.')
+    .setBody('💼 **TRABAJOS DISPONIBLES**\n\nElige UN trabajo.\n\nCada trabajo tiene una recompensa diferente.\n\n⏱️ Puedes completar 2 trabajos cada 20 minutos.')
     .setFooter('FelCoins • Trabajo diario')
     .addButton(jobButtons[0][1].label, `felcoin::work::${jobButtons[0][0]}`)
     .addButton(jobButtons[1][1].label, `felcoin::work::${jobButtons[1][0]}`)
