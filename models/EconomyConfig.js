@@ -6,7 +6,7 @@ const configSchema = new mongoose.Schema({
   commandCosts: {
     type: Object,
     default: {
-      play: 100,
+      play: 500,
       sticker: 25,
       menu: 0,
       transferir: 0,

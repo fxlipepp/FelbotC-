@@ -282,6 +282,53 @@ async function dailyReward(sock, chatId, senderId, message) {
   }, { quoted: message });
 }
 
+function getWorkJobs() {
+  return {
+    delivery: {
+      label: '🚚 REPARTO',
+      title: 'Entrega a domicilio',
+      detail: 'Llevaste paquetes a clientes del centro y el norte.',
+      reward: 580,
+      bonus: 'Propinas +180 FC'
+    },
+    cashier: {
+      label: '💳 CAJA',
+      title: 'Atención al cliente',
+      detail: 'Cobraste ventas y resolviste devoluciones del día.',
+      reward: 640,
+      bonus: 'Comisión +220 FC'
+    },
+    repair: {
+      label: '🛠️ REPARACIÓN',
+      title: 'Servicio técnico',
+      detail: 'Arreglaste equipos y dejaste todo funcionando.',
+      reward: 700,
+      bonus: 'Extra por rapidez +260 FC'
+    },
+    restaurant: {
+      label: '🍽️ RESTAURANTE',
+      title: 'Turno de cocina',
+      detail: 'Preparaste pedidos y atendiste la mesa de la noche.',
+      reward: 540,
+      bonus: 'Propina +150 FC'
+    },
+    warehouse: {
+      label: '📦 ALMACÉN',
+      title: 'Picking y logística',
+      detail: 'Ordenaste stock y entregaste paquetes del almacén.',
+      reward: 610,
+      bonus: 'Bonificación +190 FC'
+    },
+    event: {
+      label: '🎉 EVENTO',
+      title: 'Montaje del evento',
+      detail: 'Armaste la zona, ayudaste con la logística y la atención.',
+      reward: 760,
+      bonus: 'Bonificación de evento +300 FC'
+    }
+  };
+}
+
 async function workCommand(sock, chatId, senderId, message) {
   const active = await ensureEconomyActive(sock, chatId, message);
   if (!active) return;
@@ -301,17 +348,22 @@ async function workCommand(sock, chatId, senderId, message) {
     return;
   }
 
+  const jobs = getWorkJobs();
+  const jobButtons = Object.entries(jobs).slice(0, 6);
   const menu = new ButtonV2(sock)
-    .setBody('🍕 **TURNO DE REPARTO**\n\nTienes 3 pedidos pendientes.\n\n📍 Centro\n📍 Barrio Norte\n📍 Barrio Sur\n\n⏱️ Tiempo: 60 segundos')
+    .setBody('💼 **TRABAJOS DISPONIBLES**\n\nElige un turno realista para ganar FelCoins.\n\n• Reparto\n• Caja\n• Reparación\n• Restaurante\n• Almacén\n• Evento\n\n⏱️ Cada turno tarda 60 segundos.')
     .setFooter('FelCoins • Trabajo')
-    .addButton('🚦 RUTA RÁPIDA', 'felcoin::work::fast')
-    .addButton('🛣️ RUTA SEGURA', 'felcoin::work::safe')
-    .addButton('🔄 CAMBIAR ORDEN', 'felcoin::work::change');
+    .addButton(jobButtons[0][1].label, `felcoin::work::${jobButtons[0][0]}`)
+    .addButton(jobButtons[1][1].label, `felcoin::work::${jobButtons[1][0]}`)
+    .addButton(jobButtons[2][1].label, `felcoin::work::${jobButtons[2][0]}`)
+    .addButton(jobButtons[3][1].label, `felcoin::work::${jobButtons[3][0]}`)
+    .addButton(jobButtons[4][1].label, `felcoin::work::${jobButtons[4][0]}`)
+    .addButton(jobButtons[5][1].label, `felcoin::work::${jobButtons[5][0]}`);
 
   await menu.send(chatId, { quoted: message, mentions: [senderId] });
 
   const userNow = await ensureEconomyUser(senderId, message?.pushName || 'Usuario');
-  userNow.workState = { type: 'delivery', step: 'route', reward: result.amount };
+  userNow.workState = { type: 'job', step: 'route', reward: result.amount, jobs: Object.keys(jobs) };
   await userNow.save();
 }
 
@@ -853,7 +905,14 @@ async function handleEconomyButton(sock, chatId, senderId, buttonId, message) {
   }
   if (action === 'work') {
     const user = await ensureEconomyUser(senderId, message?.pushName || 'Usuario');
+    const jobs = getWorkJobs();
     const awardMap = {
+      delivery: 580,
+      cashier: 640,
+      repair: 700,
+      restaurant: 540,
+      warehouse: 610,
+      event: 760,
       fast: 580,
       safe: 520,
       change: 430
@@ -867,6 +926,42 @@ async function handleEconomyButton(sock, chatId, senderId, buttonId, message) {
       user.stats.trabajos = Number(user.stats.trabajos || 0) + 1;
       user.stats.ganancias = Number(user.stats.ganancias || 0) + reward;
       await user.save();
+
+      if (extra === 'delivery') {
+        const job = jobs.delivery;
+        await sock.sendMessage(chatId, { text: `🚚 **${job.title.toUpperCase()}**\n\n${job.detail}\n\n💰 Pago: +${reward} FC\n🎁 ${job.bonus}\n\n💵 Total ganado: +${reward} FC` }, { quoted: message });
+        return;
+      }
+
+      if (extra === 'cashier') {
+        const job = jobs.cashier;
+        await sock.sendMessage(chatId, { text: `💳 **${job.title.toUpperCase()}**\n\n${job.detail}\n\n💰 Pago: +${reward} FC\n🎁 ${job.bonus}\n\n💵 Total ganado: +${reward} FC` }, { quoted: message });
+        return;
+      }
+
+      if (extra === 'repair') {
+        const job = jobs.repair;
+        await sock.sendMessage(chatId, { text: `🛠️ **${job.title.toUpperCase()}**\n\n${job.detail}\n\n💰 Pago: +${reward} FC\n🎁 ${job.bonus}\n\n💵 Total ganado: +${reward} FC` }, { quoted: message });
+        return;
+      }
+
+      if (extra === 'restaurant') {
+        const job = jobs.restaurant;
+        await sock.sendMessage(chatId, { text: `🍽️ **${job.title.toUpperCase()}**\n\n${job.detail}\n\n💰 Pago: +${reward} FC\n🎁 ${job.bonus}\n\n💵 Total ganado: +${reward} FC` }, { quoted: message });
+        return;
+      }
+
+      if (extra === 'warehouse') {
+        const job = jobs.warehouse;
+        await sock.sendMessage(chatId, { text: `📦 **${job.title.toUpperCase()}**\n\n${job.detail}\n\n💰 Pago: +${reward} FC\n🎁 ${job.bonus}\n\n💵 Total ganado: +${reward} FC` }, { quoted: message });
+        return;
+      }
+
+      if (extra === 'event') {
+        const job = jobs.event;
+        await sock.sendMessage(chatId, { text: `🎉 **${job.title.toUpperCase()}**\n\n${job.detail}\n\n💰 Pago: +${reward} FC\n🎁 ${job.bonus}\n\n💵 Total ganado: +${reward} FC` }, { quoted: message });
+        return;
+      }
 
       if (extra === 'fast') {
         await sock.sendMessage(chatId, { text: `🍕 **TURNO TERMINADO**\n\n📦 Pedidos entregados: 3/3\n⏱️ Tiempo: excelente\n🎁 Propinas: +180 FC\n💰 Pago: +400 FC\n\n💵 Total ganado: +580 FC` }, { quoted: message });

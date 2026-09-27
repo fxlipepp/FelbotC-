@@ -11,8 +11,8 @@ const { handleEconomyButton, showEconomyMenu, showPerfil, isEconomyCommand, form
 (async () => {
   const cfg = getEconomyConfig();
   assert.equal(cfg.enabled, false, 'La economía debe iniciar desactivada');
-  assert.ok(cfg.commandCosts.play === 100, 'El costo de .play debe quedar en 100 FC');
-  assert.equal(await getCommandCost('play'), 100, 'El costo del comando debe venir de la config compartida');
+  assert.ok(cfg.commandCosts.play === 500, 'El costo de .play debe quedar en 500 FC');
+  assert.equal(await getCommandCost('play'), 500, 'El costo del comando debe venir de la config compartida');
   assert.equal(await getCommandCost('sticker'), 25, 'El costo del comando sticker debe quedar en 25 FC');
   assert.equal(formatFelCoins(5000), '5.000 FC');
   assert.equal(formatFelCoins(1000000), '1.000.000 FC');
@@ -135,7 +135,7 @@ const { handleEconomyButton, showEconomyMenu, showPerfil, isEconomyCommand, form
     lean: () => ({
       key: 'main',
       enabled: true,
-      commandCosts: { play: 100, sticker: 25 },
+      commandCosts: { play: 500, sticker: 25 },
       rewards: { daily: 300 },
       prices: {},
       cooldowns: {},
@@ -168,7 +168,7 @@ const { handleEconomyButton, showEconomyMenu, showPerfil, isEconomyCommand, form
     lean: () => ({
       key: 'main',
       enabled: true,
-      commandCosts: { play: 100, sticker: 25 },
+      commandCosts: { play: 500, sticker: 25 },
       rewards: { daily: 300, work: { min: 200, max: 900 } },
       prices: {},
       cooldowns: {},
