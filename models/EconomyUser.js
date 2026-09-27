@@ -30,9 +30,11 @@ const economyUserSchema = new mongoose.Schema({
       victorias: 0,
       derrotas: 0,
       ganancias: 0,
-      gastos: 0
+      gastos: 0,
+      cajas: 0
     }
   },
+  companyLevel: { type: Number, default: 0 },
   companyPurchasedAt: { type: Date, default: null },
   companyLastPaidAt: { type: Date, default: null },
   createdAt: { type: Date, default: Date.now },
