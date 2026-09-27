@@ -39,9 +39,30 @@ function formatCountdown(ms) {
   return `${seconds}s`;
 }
 
+function formatEconomyLabel(value = '', fallback = 'usuario') {
+  const raw = String(value || '').trim();
+  if (!raw || raw === 'null' || raw === 'undefined') return `@${fallback}`;
+
+  const cleaned = raw
+    .replace(/^@+/, '')
+    .split('@')[0]
+    .split(':')[0]
+    .replace(/[^\p{L}\p{N}_\s]/gu, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  if (cleaned && !/^\d+$/.test(cleaned.replace(/\s+/g, ''))) {
+    const first = cleaned.split(' ')[0].slice(0, 12) || fallback;
+    return `@${first}`;
+  }
+
+  const digits = raw.replace(/[^0-9]/g, '');
+  if (digits.length >= 4) return `@${digits.slice(-4)}`;
+  return `@${cleaned || fallback}`;
+}
+
 function formatDisplayName(userId, fallback = 'Usuario') {
-  const clean = String(userId || fallback).split('@')[0].split(':')[0].replace(/[^0-9]/g, '');
-  return clean ? `@${clean}` : '@usuario';
+  return formatEconomyLabel(userId, fallback);
 }
 
 function isEconomyCommand(rawText = '') {
@@ -70,11 +91,10 @@ function toRecipientJid(value = '') {
   return digits ? `${digits}@s.whatsapp.net` : '';
 }
 
-function mentionTarget(value = '') {
+function mentionTarget(value = '', fallbackName = 'usuario') {
   const jid = toRecipientJid(value);
-  if (!jid) return { text: '@usuario', jid: '' };
-  const name = jid.split('@')[0];
-  return { text: `@${name}`, jid };
+  if (!jid) return { text: formatEconomyLabel(fallbackName, 'usuario'), jid: '' };
+  return { text: formatEconomyLabel(jid, fallbackName), jid };
 }
 
 async function ensureEconomyActive(sock, chatId, message) {
@@ -190,8 +210,9 @@ async function showTop(sock, chatId, senderId, message) {
 async function registerMe(sock, chatId, senderId, message) {
   const active = await ensureEconomyActive(sock, chatId, message);
   if (!active) return;
-  const realTag = formatDisplayName(senderId, message?.pushName || 'Usuario');
-  const user = await ensureEconomyUser(senderId, realTag);
+  const realName = String(message?.pushName || message?.senderName || formatDisplayName(senderId, 'usuario')).trim() || 'usuario';
+  const realTag = formatEconomyLabel(realName, 'usuario');
+  const user = await ensureEconomyUser(senderId, realName);
   if (user?.registered) {
     const balance = isOwnerAccount(senderId) ? formatFelCoins(getOwnerDisplayBalance()) : formatFelCoins(Number(user.saldo || 0));
     await sock.sendMessage(chatId, {
@@ -200,7 +221,7 @@ async function registerMe(sock, chatId, senderId, message) {
     return;
   }
 
-  await registerEconomyUser(senderId, realTag);
+  await registerEconomyUser(senderId, realName);
   await sock.sendMessage(chatId, {
     text: `✅ **REGISTRO COMPLETADO**\n\n👤 Usuario: ${realTag}\n💰 Saldo inicial: 0 FC\n\nAhora puedes comenzar a ganar FelCoins.\n\n💼 Trabaja\n⛏️ Mina\n🎁 Reclama tu diaria\n🏢 Construye tu empresa\n\nUsa .economia para comenzar.`
   }, { quoted: message });
@@ -430,6 +451,18 @@ async function protectMe(sock, chatId, senderId, message) {
   const penalty = result.penalty || 300;
   await sock.sendMessage(chatId, {
     text: `🛡️ **ROBO BLOQUEADO**\n\nLograste proteger tus FelCoins.\n\n💸 El ladrón recibió una multa de ${penalty} FC.`
+  }, { quoted: message });
+}
+
+async function resetEconomy(sock, chatId, senderId, message) {
+  if (!isOwnerAccount(senderId) && !message?.key?.fromMe) {
+    await sock.sendMessage(chatId, { text: '❌ Solo el OWNER puede reiniciar la economía.' }, { quoted: message });
+    return;
+  }
+
+  const result = await require('../lib/felcoins').resetEconomyState(senderId);
+  await sock.sendMessage(chatId, {
+    text: `♻️ **ECONOMÍA REINICIADA**\n\nUsuarios dejados en 0 FC: ${result.resetCount || 0}\n\n👑 Owner: preservado.`
   }, { quoted: message });
 }
 
@@ -854,5 +887,7 @@ module.exports = {
   handleEconomyButton,
   formatCountdown,
   removeCoinsFromUser,
-  isEconomyCommand
+  isEconomyCommand,
+  formatEconomyLabel,
+  resetEconomy
 };

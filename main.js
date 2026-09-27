@@ -158,7 +158,7 @@ const { pmblockerCommand, readState: readPmBlockerState } = require('./commands/
 const settingsCommand = require('./commands/settings');
 const soraCommand = require('./commands/sora');
 const { handleGameCommand, handleGameInput } = require('./commands/gameSystem');
-const { showEconomyMenu, registerMe, toggleEconomy, showSaldo, showPerfil, showTop, dailyReward, workCommand, mineCommand, processTransfer, removeCoinsFromUser, handleRobbery, protectMe, openShop, buyProduct, viewCompanies, openCompanyDetails, buyCompany, rouletteGame, slotsGame, blackjackInitial, blackjackHit, blackjackStand, crashGame, withdrawCrash, handleEconomyButton, formatCountdown, isEconomyCommand } = require('./commands/felcoins');
+const { showEconomyMenu, registerMe, toggleEconomy, showSaldo, showPerfil, showTop, dailyReward, workCommand, mineCommand, processTransfer, removeCoinsFromUser, handleRobbery, protectMe, openShop, buyProduct, viewCompanies, openCompanyDetails, buyCompany, rouletteGame, slotsGame, blackjackInitial, blackjackHit, blackjackStand, crashGame, withdrawCrash, handleEconomyButton, formatCountdown, isEconomyCommand, resetEconomy } = require('./commands/felcoins');
 const { getEconomyEnabled, ensureEconomyUser, formatFelCoins, deductBalance, isOwnerAccount, parseAmount, getCommandCost, chargeCommandCost, hasRoyalProtection } = require('./lib/felcoins');
 const { AIRich, Button, ButtonV2, Carousel, Toolkit } = require('./lib/airich');
 
@@ -796,6 +796,14 @@ const command = rawText.split(' ')[0].toLowerCase()
                 break;
             case userMessage === '.registrarme':
                 await registerMe(sock, chatId, senderId, message);
+                commandExecuted = true;
+                break;
+            case userMessage === '.reiniciar economia' || userMessage === '.reiniciarEconomia' || userMessage.startsWith('.reiniciar') && userMessage.includes('economia'):
+                if (!message.key.fromMe && !senderIsOwnerOrSudo) {
+                    await sock.sendMessage(chatId, { text: '❌ Solo el OWNER puede reiniciar la economía.' }, { quoted: message });
+                    break;
+                }
+                await resetEconomy(sock, chatId, senderId, message);
                 commandExecuted = true;
                 break;
             case userMessage === '.saldo':

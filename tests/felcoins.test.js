@@ -1,12 +1,12 @@
 const assert = require('node:assert/strict');
 const mongoose = require('mongoose');
-const { getEconomyConfig, getCommandCost, formatFelCoins, parseAmount, hasSufficientBalance, isOwnerAccount, transferBalance, normalizeJid, setEconomyEnabled, resolveRobbery, hasRoyalProtection } = require('../lib/felcoins');
+const { getEconomyConfig, getCommandCost, formatFelCoins, parseAmount, hasSufficientBalance, isOwnerAccount, transferBalance, normalizeJid, setEconomyEnabled, resolveRobbery, hasRoyalProtection, resetEconomyState } = require('../lib/felcoins');
 const settings = require('../settings');
 const EconomyUser = require('../models/EconomyUser');
 const EconomyLog = require('../models/EconomyLog');
 const EconomyRob = require('../models/EconomyRob');
 const EconomyConfig = require('../models/EconomyConfig');
-const { handleEconomyButton, showEconomyMenu, showPerfil, isEconomyCommand } = require('../commands/felcoins');
+const { handleEconomyButton, showEconomyMenu, showPerfil, isEconomyCommand, formatEconomyLabel } = require('../commands/felcoins');
 
 (async () => {
   const cfg = getEconomyConfig();
@@ -23,6 +23,7 @@ const { handleEconomyButton, showEconomyMenu, showPerfil, isEconomyCommand } = r
   assert.equal(isOwnerAccount(settings.ownerLid), true, 'El LID del owner también debe ser considerado propietario');
   assert.equal(hasRoyalProtection({ modoRey: true }), true, 'El modo rey debe proteger al usuario del modo admin');
   assert.equal(hasRoyalProtection({ modoRey: false }), false, 'Sin modo rey, la protección debe estar desactivada');
+  assert.equal(formatEconomyLabel('523123456789@s.whatsapp.net'), '@6789', 'La etiqueta pública no debe mostrar un número enorme de WhatsApp');
   assert.equal(isEconomyCommand('.saldo'), true, 'Los comandos de economía deben quedar exentos del modo admin del grupo');
   assert.equal(isEconomyCommand('.transferir 100 @usuario'), true, 'Las transferencias de FelCoins también deben quedar exentas');
   assert.equal(isEconomyCommand('.play una cancion'), true, 'Los comandos con costo también deben quedar exentos del modo admin');
@@ -87,6 +88,10 @@ const { handleEconomyButton, showEconomyMenu, showPerfil, isEconomyCommand } = r
   };
   const userMap = new Map([[attackerId, attackerUser], [victimOwnerId, ownerUser]]);
   EconomyUser.findOne = async ({ userId }) => userMap.get(normalizeJid(userId)) || null;
+  EconomyUser.find = async () => [
+    { userId: '111111111', saldo: 2500, registered: true, name: 'A', stats: { trabajos: 2, mineria: 1, juegos: 4, transferencias: 1, robos: 0, victorias: 2, derrotas: 1, ganancias: 500, gastos: 100 }, empresa: 'ropa', inventory: { glove: { quantity: 1 } }, modoAdmin: true, modoRey: true, save: async function () { return this; } },
+    { userId: '222222222', saldo: 900, registered: true, name: 'B', stats: { trabajos: 1, mineria: 0, juegos: 2, transferencias: 0, robos: 1, victorias: 1, derrotas: 1, ganancias: 200, gastos: 50 }, empresa: null, inventory: {}, modoAdmin: false, modoRey: false, save: async function () { return this; } }
+  ];
   EconomyRob.findOne = async () => ({
     attacker: attackerId,
     victim: victimOwnerId,
@@ -99,6 +104,10 @@ const { handleEconomyButton, showEconomyMenu, showPerfil, isEconomyCommand } = r
   const robberyResult = await resolveRobbery(attackerId, settings.ownerNumber, true);
   assert.equal(robberyResult.penalty, 500, 'Si intentan robar al owner, la multa debe ser 500 FC');
   assert.equal(attackerUser.saldo, -100, 'Si el atacante no tiene 500, debe quedar en deuda negativa');
+
+  const resetResult = await resetEconomyState();
+  assert.equal(resetResult.resetCount, 2, 'El reinicio debe limpiar todas las economías no owner');
+  assert.equal(resetResult.ownerPreserved, true, 'El owner no debe perder su saldo virtual');
 
   const profileUser = {
     userId: '1234567890',
