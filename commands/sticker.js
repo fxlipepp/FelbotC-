@@ -58,7 +58,7 @@ async function stickerCommand(sock, chatId, message) {
 
         }, { quoted: messageToQuote })
 
-        return
+        return false
     }
 
     try {
@@ -100,7 +100,7 @@ async function stickerCommand(sock, chatId, message) {
 
             })
 
-            return
+            return false
         }
 
         // 📂 Carpeta temporal
@@ -249,7 +249,10 @@ async function stickerCommand(sock, chatId, message) {
             }
 
         })
+        return false
     }
+
+    return true
 }
 
 module.exports = stickerCommand

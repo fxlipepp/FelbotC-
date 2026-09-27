@@ -158,6 +158,8 @@ const { pmblockerCommand, readState: readPmBlockerState } = require('./commands/
 const settingsCommand = require('./commands/settings');
 const soraCommand = require('./commands/sora');
 const { handleGameCommand, handleGameInput } = require('./commands/gameSystem');
+const { showEconomyMenu, registerMe, toggleEconomy, showSaldo, showPerfil, showTop, dailyReward, workCommand, mineCommand, processTransfer, handleRobbery, protectMe, openShop, buyProduct, viewCompanies, openCompanyDetails, buyCompany, rouletteGame, slotsGame, blackjackInitial, blackjackHit, blackjackStand, crashGame, withdrawCrash, handleEconomyButton, formatCountdown } = require('./commands/felcoins');
+const { getEconomyEnabled, ensureEconomyUser, formatFelCoins, deductBalance, isOwnerAccount, parseAmount, getCommandCost, chargeCommandCost } = require('./lib/felcoins');
 const { AIRich, Button, ButtonV2, Carousel, Toolkit } = require('./lib/airich');
 
 // Global settings
@@ -357,6 +359,10 @@ if (userData?.banned) {
             } else if (buttonId.startsWith('song::')) {
                 const handled = await handleSongButton(sock, chatId, senderId, buttonId, message);
                 if (handled) return;
+                return;
+            } else if (buttonId.startsWith('felcoin::')) {
+                const handled = await handleEconomyButton(sock, chatId, senderId, buttonId, message);
+                if (handled !== false) return;
                 return;
             }
         }
@@ -769,8 +775,141 @@ const command = rawText.split(' ')[0].toLowerCase()
                 await helpCommand(sock, chatId, message, global.channelLink);
                 commandExecuted = true;
                 break;
+            case userMessage === '.economia':
+                await showEconomyMenu(sock, chatId, senderId, message);
+                commandExecuted = true;
+                break;
+            case userMessage.startsWith('.modoeconomia'):
+                if (!message.key.fromMe && !senderIsOwnerOrSudo) {
+                    await sock.sendMessage(chatId, { text: '❌ Solo el OWNER puede activar la economía.' }, { quoted: message });
+                    break;
+                }
+                const economyAction = userMessage.split(' ')[1]?.toLowerCase();
+                if (economyAction === 'on') await toggleEconomy(sock, chatId, senderId, message, true);
+                else if (economyAction === 'off') await toggleEconomy(sock, chatId, senderId, message, false);
+                else await sock.sendMessage(chatId, { text: 'Uso: .modoeconomia on|off' }, { quoted: message });
+                commandExecuted = true;
+                break;
+            case userMessage === '.registrarme':
+                await registerMe(sock, chatId, senderId, message);
+                commandExecuted = true;
+                break;
+            case userMessage === '.saldo':
+                await showSaldo(sock, chatId, senderId, message);
+                commandExecuted = true;
+                break;
+            case userMessage === '.perfil':
+                await showPerfil(sock, chatId, senderId, message);
+                commandExecuted = true;
+                break;
+            case userMessage.startsWith('.transferir'):
+                await processTransfer(sock, chatId, senderId, message, rawText);
+                commandExecuted = true;
+                break;
+            case userMessage === '.diaria':
+                await dailyReward(sock, chatId, senderId, message);
+                commandExecuted = true;
+                break;
+            case userMessage === '.trabajar':
+                await workCommand(sock, chatId, senderId, message);
+                commandExecuted = true;
+                break;
+            case userMessage === '.minar':
+                await mineCommand(sock, chatId, senderId, message);
+                commandExecuted = true;
+                break;
+            case userMessage.startsWith('.robar'):
+                const robTarget = rawText.split(/\s+/).slice(1).join(' ');
+                const robMention = message.message?.extendedTextMessage?.contextInfo?.mentionedJid?.[0] || robTarget;
+                await handleRobbery(sock, chatId, senderId, message, robMention);
+                commandExecuted = true;
+                break;
+            case userMessage === '.protegerse':
+                await protectMe(sock, chatId, senderId, message);
+                commandExecuted = true;
+                break;
+            case userMessage === '.tienda':
+                await openShop(sock, chatId, senderId, message);
+                commandExecuted = true;
+                break;
+            case userMessage.startsWith('.comprar'):
+                {
+                    const product = rawText.split(/\s+/).slice(1).join(' ');
+                    await buyProduct(sock, chatId, senderId, message, product || 'glove');
+                }
+                commandExecuted = true;
+                break;
+            case userMessage === '.empresas':
+                await viewCompanies(sock, chatId, senderId, message);
+                commandExecuted = true;
+                break;
+            case userMessage.startsWith('.ruleta'):
+                {
+                    const amount = parseAmount(rawText.split(/\s+/).slice(1).join(' '));
+                    await rouletteGame(sock, chatId, senderId, message, amount || 100);
+                }
+                commandExecuted = true;
+                break;
+            case userMessage.startsWith('.slots'):
+                {
+                    const amount = parseAmount(rawText.split(/\s+/).slice(1).join(' '));
+                    await slotsGame(sock, chatId, senderId, message, amount || 100);
+                }
+                commandExecuted = true;
+                break;
+            case userMessage.startsWith('.blackjack'):
+                {
+                    const amount = parseAmount(rawText.split(/\s+/).slice(1).join(' '));
+                    await blackjackInitial(sock, chatId, senderId, message, amount || 100);
+                }
+                commandExecuted = true;
+                break;
+            case userMessage === '.pedir':
+                await blackjackHit(sock, chatId, senderId, message);
+                commandExecuted = true;
+                break;
+            case userMessage === '.plantarse':
+                await blackjackStand(sock, chatId, senderId, message);
+                commandExecuted = true;
+                break;
+            case userMessage.startsWith('.crash'):
+                {
+                    const amount = parseAmount(rawText.split(/\s+/).slice(1).join(' '));
+                    await crashGame(sock, chatId, senderId, message, amount || 100);
+                }
+                commandExecuted = true;
+                break;
+            case userMessage === '.retirar':
+                await withdrawCrash(sock, chatId, senderId, message);
+                commandExecuted = true;
+                break;
             case userMessage === '.sticker' || userMessage === '.s':
-                await stickerCommand(sock, chatId, message);
+                {
+                    const enabled = await getEconomyEnabled();
+                    const cost = enabled ? await getCommandCost('sticker') : 0;
+                    if (enabled) {
+                        const currentUser = await ensureEconomyUser(senderId, message?.pushName || 'Usuario');
+                        if (!currentUser || !currentUser.registered) {
+                            await sock.sendMessage(chatId, { text: '⚠️ **NO ESTÁS REGISTRADO**\n\nUsa .registrarme para entrar al sistema FelCoins.' }, { quoted: message });
+                            break;
+                        }
+                        if (!isOwnerAccount(senderId) && Number(currentUser.saldo || 0) < cost) {
+                            await sock.sendMessage(chatId, { text: `❌ **FELCOINS INSUFICIENTES**\n\nNecesitas: ${formatFelCoins(cost)}\nTienes: ${formatFelCoins(Number(currentUser.saldo || 0))}` }, { quoted: message });
+                            break;
+                        }
+                        const success = await stickerCommand(sock, chatId, message);
+                        if (success === false) break;
+                        if (!isOwnerAccount(senderId)) {
+                            const charged = await chargeCommandCost(senderId, 'sticker', { name: message?.pushName || 'Usuario', description: 'Costo de sticker' });
+                            if (charged.ok && charged.charged) {
+                                const updatedUser = await ensureEconomyUser(senderId, message?.pushName || 'Usuario');
+                                await sock.sendMessage(chatId, { text: `🖼️ **STICKER**\n\n💸 Costo de uso: ${formatFelCoins(charged.cost)}\n\n💰 Saldo restante: ${formatFelCoins(Number(updatedUser?.saldo || 0))}` }, { quoted: message });
+                            }
+                        }
+                        break;
+                    }
+                    await stickerCommand(sock, chatId, message);
+                }
                 commandExecuted = true;
                 break;
             case userMessage.startsWith('.warnings'):
@@ -1628,7 +1767,32 @@ break;
                 await spotifyCommand(sock, chatId, message);
                 break;
             case userMessage.startsWith('.play') || userMessage.startsWith('.mp3') || userMessage.startsWith('.ytmp3') || userMessage.startsWith('.song'):
-                await songCommand(sock, chatId, message);
+                {
+                    const enabled = await getEconomyEnabled();
+                    const cost = enabled ? await getCommandCost('play') : 0;
+                    if (enabled) {
+                        const currentUser = await ensureEconomyUser(senderId, message?.pushName || 'Usuario');
+                        if (!currentUser || !currentUser.registered) {
+                            await sock.sendMessage(chatId, { text: '⚠️ **NO ESTÁS REGISTRADO**\n\nUsa .registrarme para entrar al sistema FelCoins.' }, { quoted: message });
+                            break;
+                        }
+                        if (!isOwnerAccount(senderId) && Number(currentUser.saldo || 0) < cost) {
+                            await sock.sendMessage(chatId, { text: `❌ **FELCOINS INSUFICIENTES**\n\n💰 Necesitas: ${formatFelCoins(cost)}\n💵 Tienes: ${formatFelCoins(Number(currentUser.saldo || 0))}\n\nTe faltan: ${formatFelCoins(cost - Number(currentUser.saldo || 0))}\n\n💼 Usa .trabajar\n⛏️ Usa .minar\n🎁 Usa .diaria` }, { quoted: message });
+                            break;
+                        }
+                        const success = await songCommand(sock, chatId, message);
+                        if (success !== true) break;
+                        if (!isOwnerAccount(senderId)) {
+                            const charged = await chargeCommandCost(senderId, 'play', { name: message?.pushName || 'Usuario', description: 'Uso de .play' });
+                            if (charged.ok && charged.charged) {
+                                const updatedUser = await ensureEconomyUser(senderId, message?.pushName || 'Usuario');
+                                await sock.sendMessage(chatId, { text: `🎵 **PLAY**\n\n🎶 ${rawText.replace(/^\.[a-z0-9]+\s*/i, '').trim() || 'Canción'}\n\n💸 Uso de .play: -${formatFelCoins(charged.cost)}\n\n💰 Saldo restante: ${formatFelCoins(Number(updatedUser?.saldo || 0))}` }, { quoted: message });
+                            }
+                        }
+                        break;
+                    }
+                    await songCommand(sock, chatId, message);
+                }
                 break;
             case userMessage.startsWith('.formatos'):
                 await formatsCommand(sock, chatId, message);
