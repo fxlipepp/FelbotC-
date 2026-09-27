@@ -1308,9 +1308,7 @@ async function startRace(sock, chatId, senderId, message) {
   const user = await ensureRegisteredWithReply(sock, chatId, senderId, message, message?.pushName || 'Usuario');
   if (!user?.raceGame?.active) return;
 
-  if (user.raceGame.selected) return;
-
-  const selected = String(message?.racePick || '');
+  const selected = String(message?.racePick || user.raceGame.selected || '');
   if (!selected) return;
 
   user.raceGame.selected = selected;
@@ -1359,7 +1357,11 @@ async function startRace(sock, chatId, senderId, message) {
         } else if (amountWon <= 0) {
           live.stats.derrotas = Number(live.stats.derrotas || 0) + 1;
         }
-        const selectedName = live.raceGame.racers.find(r => r.id === selected)?.name || 'Tu caballo';
+        const raceSnapshot = {
+          amount: Number(live.raceGame.amount || 0),
+          racers: live.raceGame.racers.map(r => ({ ...r }))
+        };
+        const selectedName = raceSnapshot.racers.find(r => r.id === selected)?.name || 'Tu caballo';
         delete live.raceGame;
         await live.save();
 
@@ -1367,7 +1369,7 @@ async function startRace(sock, chatId, senderId, message) {
           ? `🏆 *¡GANASTE LA CARRERA!*\\n\\n🥇 ${selectedName} llegó primero.\\n💰 Premio: +${formatFelCoins(amountWon)}`
           : place === 2
             ? `🥈 *SEGUNDO LUGAR*\\n\\n🐎 ${selectedName} llegó segundo.\\n💰 Premio: +${formatFelCoins(amountWon)}`
-            : `💥 *PERDISTE LA CARRERA*\\n\\n🐎 ${selectedName} quedó en posición ${place}.\\n💸 Perdiste: -${formatFelCoins(Number(live.raceGame?.amount || 0))}`;
+            : `💥 *PERDISTE LA CARRERA*\\n\\n🐎 ${selectedName} quedó en posición ${place}.\\n💸 Perdiste la apuesta: -${formatFelCoins(raceSnapshot.amount)}`;
 
         const finalBody = `🏁 *CARRERA TERMINADA*\\n\\n${renderRaceTrack(live.raceGame?.racers || [], selected, finish)}\\n\\n${result}`;
         if (messageKey) await sock.sendMessage(chatId, { text: finalBody }, { edit: messageKey });
