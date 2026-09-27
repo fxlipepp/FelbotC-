@@ -1785,31 +1785,21 @@ break;
             case userMessage.startsWith('.play') || userMessage.startsWith('.mp3') || userMessage.startsWith('.ytmp3') || userMessage.startsWith('.song'):
                 {
                     const enabled = await getEconomyEnabled();
-                    const cost = enabled ? await getCommandCost('play') : 0;
                     if (enabled) {
                         const currentUser = await ensureEconomyUser(senderId, message?.pushName || 'Usuario');
                         if (!currentUser || !currentUser.registered) {
                             await sock.sendMessage(chatId, { text: '⚠️ **NO ESTÁS REGISTRADO**\n\nUsa .registrarme para entrar al sistema FelCoins.' }, { quoted: message });
                             break;
                         }
-                        if (!isOwnerAccount(senderId) && Number(currentUser.saldo || 0) < cost) {
-                            await sock.sendMessage(chatId, { text: `❌ **FELCOINS INSUFICIENTES**\n\n💰 Necesitas: ${formatFelCoins(cost)}\n💵 Tienes: ${formatFelCoins(Number(currentUser.saldo || 0))}\n\nTe faltan: ${formatFelCoins(cost - Number(currentUser.saldo || 0))}\n\n💼 Usa .trabajar\n⛏️ Usa .minar\n🎁 Usa .diaria` }, { quoted: message });
+                        const playUnlocked = isOwnerAccount(senderId) || Number(currentUser.inventory?.play?.quantity || 0) > 0;
+                        if (!playUnlocked) {
+                            await sock.sendMessage(chatId, { text: '🔒 **.PLAY BLOQUEADO**\n\nDebes comprar el acceso a .play en .tienda para poder usarlo.' }, { quoted: message });
                             break;
                         }
-                        const success = await songCommand(sock, chatId, message);
-                        if (success !== true) break;
-                        if (!isOwnerAccount(senderId)) {
-                            const charged = await chargeCommandCost(senderId, 'play', { name: message?.pushName || 'Usuario', description: 'Uso de .play' });
-                            if (charged.ok && charged.charged) {
-                                const updatedUser = await ensureEconomyUser(senderId, message?.pushName || 'Usuario');
-                                await sock.sendMessage(chatId, { text: `🎵 **PLAY**\n\n🎶 ${rawText.replace(/^\.[a-z0-9]+\s*/i, '').trim() || 'Canción'}\n\n💸 Uso de .play: -${formatFelCoins(charged.cost)}\n\n💰 Saldo restante: ${formatFelCoins(Number(updatedUser?.saldo || 0))}` }, { quoted: message });
-                            }
-                        }
-                        break;
                     }
                     await songCommand(sock, chatId, message);
+                    break;
                 }
-                break;
             case userMessage.startsWith('.formatos'):
                 await formatsCommand(sock, chatId, message);
                 break;
