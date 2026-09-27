@@ -609,7 +609,7 @@ async function buyProduct(sock, chatId, senderId, message, product) {
   const commandProduct = ['play', 'tiktok', 'instagram', 'brat', 'vv'].includes(product);
   if (commandProduct && Number(user.inventory?.[product]?.quantity || 0) > 0) {
     await sock.sendMessage(chatId, {
-      text: `🔓 **COMANDO YA DESBLOQUEADO**\n\n${product === 'play' ? '🎵 .play' : '🎨 .sticker'}\n\nYa compraste este acceso anteriormente. No necesitas volver a pagarlo.`
+      text: `🔓 **COMANDO YA DESBLOQUEADO**\n\n${({ play: '🎵 .play', tiktok: '🎵 .tiktok', instagram: '📸 .instagram', brat: '📝 .brat', vv: '👁️ .vv' })[product] || product}\n\nYa compraste este acceso anteriormente. No necesitas volver a pagarlo.`
     }, { quoted: message });
     return;
   }
@@ -655,6 +655,10 @@ async function buyProduct(sock, chatId, senderId, message, product) {
   }
 
   if (product === 'pico') {
+    if (Number(user.inventory?.pico?.quantity || 0) > 0) {
+      await sock.sendMessage(chatId, { text: '⛏️ **PICO YA COMPRADO**\n\nYa tienes un pico y puedes usar .minar.' }, { quoted: message });
+      return;
+    }
     user.inventory.pico = { quantity: 1, expiresAt: null };
     user.markModified('inventory');
     await user.save();
