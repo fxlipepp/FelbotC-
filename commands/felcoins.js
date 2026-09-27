@@ -581,7 +581,7 @@ async function openShop(sock, chatId, senderId, message) {
     .addButton('🛡️ PROTEGERME 24H — 24K', 'felcoin::shop::protect24')
     .addButton('⚡ MULTIPLICADOR x2 — 10K', 'felcoin::shop::multiplier')
     .addButton('⛏️ PICO — 2K', 'felcoin::shop::pico')
-    .addButton('🎁 CAJA MISTERIOSA — 2K', 'felcoin::shop::mysteryBox')
+    .addButton('🎁 CAJA MISTERIOSA — 2K', 'felcoin::caja')
     .addButton('👑 MODO REY — 2.5M', 'felcoin::shop::modoRey');
   await menu.send(chatId, { quoted: message });
 }
