@@ -158,7 +158,7 @@ const { pmblockerCommand, readState: readPmBlockerState } = require('./commands/
 const settingsCommand = require('./commands/settings');
 const soraCommand = require('./commands/sora');
 const { handleGameCommand, handleGameInput } = require('./commands/gameSystem');
-const { showEconomyMenu, registerMe, toggleEconomy, showSaldo, showPerfil, showTop, dailyReward, workCommand, mineCommand, processTransfer, removeCoinsFromUser, handleRobbery, protectMe, openShop, buyProduct, viewCompanies, openCompanyDetails, buyCompany, upgradeCompany, mysteryBox, rouletteGame, slotsGame, blackjackInitial, blackjackHit, blackjackStand, crashGame, withdrawCrash, handleEconomyButton, formatCountdown, isEconomyCommand, resetEconomy } = require('./commands/felcoins');
+const { showEconomyMenu, registerMe, toggleEconomy, showSaldo, showPerfil, showTop, dailyReward, workCommand, mineCommand, processTransfer, removeCoinsFromUser, handleRobbery, protectMe, openShop, buyProduct, viewCompanies, openCompanyDetails, buyCompany, upgradeCompany, mysteryBox, rouletteGame, slotsGame, blackjackInitial, blackjackHit, blackjackStand, crashGame, withdrawCrash, raceGame, handleEconomyButton, formatCountdown, isEconomyCommand, resetEconomy } = require('./commands/felcoins');
 const { getEconomyEnabled, ensureEconomyUser, formatFelCoins, deductBalance, isOwnerAccount, parseAmount, getCommandCost, chargeCommandCost, hasRoyalProtection } = require('./lib/felcoins');
 const { AIRich, Button, ButtonV2, Carousel, Toolkit } = require('./lib/airich');
 
@@ -925,6 +925,13 @@ const command = rawText.split(' ')[0].toLowerCase()
                 break;
             case userMessage === '.retirar':
                 await withdrawCrash(sock, chatId, senderId, message);
+                commandExecuted = true;
+                break;
+            case userMessage.startsWith('.carreras'):
+                {
+                    const amount = parseAmount(rawText.split(/\s+/).slice(1).join(' '));
+                    await raceGame(sock, chatId, senderId, message, amount);
+                }
                 commandExecuted = true;
                 break;
             case userMessage === '.sticker' || userMessage === '.s':
