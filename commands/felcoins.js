@@ -789,16 +789,18 @@ async function buyProduct(sock, chatId, senderId, message, product) {
   const hours = product === 'protect24' ? 24 : 12;
 
   if (protectionProduct) {
-    const result = await activateProtection(senderId, hours);
-    if (!result.ok) {
-      await sock.sendMessage(chatId, {
-        text: '❌ No se pudo activar la protección comprada.'
-      }, { quoted: message });
-      return;
-    }
+    // La compra activa la protección inmediatamente.
+    user.protectionUntil = new Date(Date.now() + hours * 60 * 60 * 1000);
+    user.markModified('protectionUntil');
+    await user.save();
 
     await sock.sendMessage(chatId, {
-      text: `🛡️ *PROTECCIÓN ACTIVADA*\n\n⏱️ Duración: ${hours} horas\n💸 Gastaste: ${formatFelCoins(price)}\n\nTu protección está activa desde este momento y bloqueará cualquier robo contra ti.`
+      text: `🛡️ *PROTECCIÓN ACTIVADA*
+
+⏱️ Duración: ${hours} horas
+💸 Gastaste: ${formatFelCoins(price)}
+
+Tu protección quedó activa automáticamente. Nadie podrá robarte mientras esté vigente.`
     }, { quoted: message });
     return;
   }
