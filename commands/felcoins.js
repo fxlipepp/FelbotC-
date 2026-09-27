@@ -336,25 +336,30 @@ async function workCommand(sock, chatId, senderId, message) {
   if (!active) return;
   const user = await ensureRegisteredWithReply(sock, chatId, senderId, message, message?.pushName || 'Usuario');
   if (!user) return;
+
   const remaining = await getRemainingCooldown(senderId, 'work');
   if (remaining > 0) {
     await sock.sendMessage(chatId, {
-      text: `⏳ **ESTÁS DESCANSANDO**\n\nYa completaste un turno.\n\nPodrás trabajar nuevamente en: ${formatCountdown(remaining)}.`
+      text: `⏳ **YA TRABAJASTE HOY**\n\nTu próximo turno estará disponible en: ${formatCountdown(remaining)}.`
     }, { quoted: message });
-    return;
-  }
-
-  const result = await claimWork(senderId);
-  if (!result.ok) {
-    await sock.sendMessage(chatId, { text: `⚠️ No pudiste trabajar.` }, { quoted: message });
     return;
   }
 
   const jobs = getWorkJobs();
   const jobButtons = Object.entries(jobs).slice(0, 6);
+
+  user.workState = {
+    type: 'job',
+    step: 'route',
+    jobs: jobButtons.map(([key]) => key),
+    createdAt: new Date()
+  };
+  user.markModified('workState');
+  await user.save();
+
   const menu = new ButtonV2(sock)
-    .setBody('💼 **TRABAJOS DISPONIBLES**\n\nElige un turno realista para ganar FelCoins.\n\n• Reparto\n• Caja\n• Reparación\n• Restaurante\n• Almacén\n• Evento\n\n⏱️ Cada turno tarda 60 segundos.')
-    .setFooter('FelCoins • Trabajo')
+    .setBody('💼 **TRABAJOS DISPONIBLES**\n\nElige UN trabajo para hoy.\n\nCada trabajo tiene una recompensa diferente.\n\n📅 Solo puedes completar 1 trabajo cada 24 horas.')
+    .setFooter('FelCoins • Trabajo diario')
     .addButton(jobButtons[0][1].label, `felcoin::work::${jobButtons[0][0]}`)
     .addButton(jobButtons[1][1].label, `felcoin::work::${jobButtons[1][0]}`)
     .addButton(jobButtons[2][1].label, `felcoin::work::${jobButtons[2][0]}`)
@@ -363,10 +368,6 @@ async function workCommand(sock, chatId, senderId, message) {
     .addButton(jobButtons[5][1].label, `felcoin::work::${jobButtons[5][0]}`);
 
   await menu.send(chatId, { quoted: message, mentions: [senderId] });
-
-  const userNow = await ensureEconomyUser(senderId, message?.pushName || 'Usuario');
-  userNow.workState = { type: 'job', step: 'route', reward: result.amount, jobs: Object.keys(jobs) };
-  await userNow.save();
 }
 
 async function mineCommand(sock, chatId, senderId, message) {
@@ -589,10 +590,20 @@ async function buyProduct(sock, chatId, senderId, message, product) {
   const user = await ensureRegisteredWithReply(sock, chatId, senderId, message, message?.pushName || 'Usuario');
   if (!user) return;
 
+  const normalizedProduct = String(product || '').trim().toLowerCase().replace(/^\./, '');
+  product = normalizedProduct;
   const config = await ensureEconomyConfig();
   const price = Number(config.prices?.[product] || 0);
   if (price <= 0) {
     await sock.sendMessage(chatId, { text: `❌ Producto no disponible: ${product}` }, { quoted: message });
+    return;
+  }
+
+  const commandProduct = product === 'play' || product === 'sticker';
+  if (commandProduct && Number(user.inventory?.[product]?.quantity || 0) > 0) {
+    await sock.sendMessage(chatId, {
+      text: `🔓 **COMANDO YA DESBLOQUEADO**\n\n${product === 'play' ? '🎵 .play' : '🎨 .sticker'}\n\nYa compraste este acceso anteriormente. No necesitas volver a pagarlo.`
+    }, { quoted: message });
     return;
   }
 
@@ -619,9 +630,9 @@ async function buyProduct(sock, chatId, senderId, message, product) {
     return;
   }
 
-  const commandProduct = product === 'play' || product === 'sticker';
   if (commandProduct) {
     user.inventory[product] = { quantity: 1, expiresAt: null };
+    user.markModified('inventory');
     await user.save();
     await sock.sendMessage(chatId, { text: `✅ **COMANDO DESBLOQUEADO**\n\n${product === 'play' ? '🎵 .play' : '🎨 .sticker'}\n\n💸 Compra: ${formatFelCoins(price)}\n\n🔓 Ya puedes usar este comando.` }, { quoted: message });
     return;
@@ -630,6 +641,7 @@ async function buyProduct(sock, chatId, senderId, message, product) {
   const protectionProduct = product === 'protect12' || product === 'protect24';
   const hours = product === 'protect24' ? 24 : 12;
   user.inventory[product] = { quantity: Number(user.inventory[product]?.quantity || 0) + 1, expiresAt: null };
+  user.markModified('inventory');
   await user.save();
 
   await sock.sendMessage(chatId, {
@@ -950,85 +962,45 @@ async function handleEconomyButton(sock, chatId, senderId, buttonId, message) {
   }
   if (action === 'work') {
     const user = await ensureEconomyUser(senderId, message?.pushName || 'Usuario');
-    const jobs = getWorkJobs();
-    const awardMap = {
-      delivery: 580,
-      cashier: 640,
-      repair: 700,
-      restaurant: 540,
-      warehouse: 610,
-      event: 760,
-      fast: 580,
-      safe: 520,
-      change: 430
-    };
-
-    const reward = awardMap[extra] || 0;
-    if (reward > 0) {
-      user.saldo = Number(user.saldo || 0) + reward;
-      user.workState = null;
-      user.stats = user.stats || {};
-      user.stats.trabajos = Number(user.stats.trabajos || 0) + 1;
-      user.stats.ganancias = Number(user.stats.ganancias || 0) + reward;
-      await user.save();
-
-      if (extra === 'delivery') {
-        const job = jobs.delivery;
-        await sock.sendMessage(chatId, { text: `🚚 **${job.title.toUpperCase()}**\n\n${job.detail}\n\n💰 Pago: +${reward} FC\n🎁 ${job.bonus}\n\n💵 Total ganado: +${reward} FC` }, { quoted: message });
-        return;
-      }
-
-      if (extra === 'cashier') {
-        const job = jobs.cashier;
-        await sock.sendMessage(chatId, { text: `💳 **${job.title.toUpperCase()}**\n\n${job.detail}\n\n💰 Pago: +${reward} FC\n🎁 ${job.bonus}\n\n💵 Total ganado: +${reward} FC` }, { quoted: message });
-        return;
-      }
-
-      if (extra === 'repair') {
-        const job = jobs.repair;
-        await sock.sendMessage(chatId, { text: `🛠️ **${job.title.toUpperCase()}**\n\n${job.detail}\n\n💰 Pago: +${reward} FC\n🎁 ${job.bonus}\n\n💵 Total ganado: +${reward} FC` }, { quoted: message });
-        return;
-      }
-
-      if (extra === 'restaurant') {
-        const job = jobs.restaurant;
-        await sock.sendMessage(chatId, { text: `🍽️ **${job.title.toUpperCase()}**\n\n${job.detail}\n\n💰 Pago: +${reward} FC\n🎁 ${job.bonus}\n\n💵 Total ganado: +${reward} FC` }, { quoted: message });
-        return;
-      }
-
-      if (extra === 'warehouse') {
-        const job = jobs.warehouse;
-        await sock.sendMessage(chatId, { text: `📦 **${job.title.toUpperCase()}**\n\n${job.detail}\n\n💰 Pago: +${reward} FC\n🎁 ${job.bonus}\n\n💵 Total ganado: +${reward} FC` }, { quoted: message });
-        return;
-      }
-
-      if (extra === 'event') {
-        const job = jobs.event;
-        await sock.sendMessage(chatId, { text: `🎉 **${job.title.toUpperCase()}**\n\n${job.detail}\n\n💰 Pago: +${reward} FC\n🎁 ${job.bonus}\n\n💵 Total ganado: +${reward} FC` }, { quoted: message });
-        return;
-      }
-
-      if (extra === 'fast') {
-        await sock.sendMessage(chatId, { text: `🍕 **TURNO TERMINADO**\n\n📦 Pedidos entregados: 3/3\n⏱️ Tiempo: excelente\n🎁 Propinas: +180 FC\n💰 Pago: +400 FC\n\n💵 Total ganado: +580 FC` }, { quoted: message });
-        return;
-      }
-
-      if (extra === 'safe') {
-        await sock.sendMessage(chatId, { text: `🚚 **RUTA SEGURA**\n\n📦 Entrega completada sin incidentes\n⏱️ Tiempo: muy estable\n💰 Pago: +500 FC\n🎁 Bonificación: +20 FC\n\n💵 Total ganado: +520 FC` }, { quoted: message });
-        return;
-      }
-
-      if (extra === 'change') {
-        await sock.sendMessage(chatId, { text: `🔄 **ORDEN REASIGNADA**\n\nSe reordenaron los pedidos\n📍 Ruta ajustada al tráfico\n💰 Pago: +360 FC\n🎁 Bônus: +70 FC\n\n💵 Total ganado: +430 FC` }, { quoted: message });
-        return;
-      }
-    }
-
-    if (user?.workState?.step !== 'route') {
-      await sock.sendMessage(chatId, { text: '⚠️ Este trabajo ya fue resuelto.' }, { quoted: message });
+    if (!user || !user.registered) {
+      await sock.sendMessage(chatId, { text: '⚠️ Debes registrarte con .registrarme.' }, { quoted: message });
       return;
     }
 
+    const jobKey = String(extra || '').toLowerCase();
+    const jobs = getWorkJobs();
+    const job = jobs[jobKey];
+
+    if (!job) {
+      await sock.sendMessage(chatId, { text: '❌ Ese trabajo ya no está disponible.' }, { quoted: message });
+      return;
+    }
+
+    const remaining = await getRemainingCooldown(senderId, 'work');
+    if (remaining > 0) {
+      await sock.sendMessage(chatId, {
+        text: `⏳ **YA TRABAJASTE HOY**\n\nPodrás volver a trabajar en: ${formatCountdown(remaining)}.`
+      }, { quoted: message });
+      return;
+    }
+
+    if (user.workState?.type !== 'job' || !Array.isArray(user.workState.jobs) || !user.workState.jobs.includes(jobKey)) {
+      await sock.sendMessage(chatId, { text: '⚠️ Este turno ya fue usado o la selección expiró. Usa .trabajar para abrir los trabajos de hoy.' }, { quoted: message });
+      return;
+    }
+
+    const result = await claimWork(senderId, jobKey);
+    if (!result.ok) {
+      const text = result.reason === 'cooldown'
+        ? `⏳ Ya trabajaste hoy. Próximo turno en ${formatCountdown(result.remaining || 0)}.`
+        : '⚠️ No se pudo completar el trabajo.';
+      await sock.sendMessage(chatId, { text }, { quoted: message });
+      return;
+    }
+
+    await sock.sendMessage(chatId, {
+      text: `${job.label} **${job.title.toUpperCase()}**\n\n${job.detail}\n\n💰 Pago recibido: +${formatFelCoins(result.amount)}\n🎁 ${job.bonus}\n\n💵 Saldo: ${formatFelCoins(result.saldo)}\n📅 Próximo trabajo: en 24 horas.`
+    }, { quoted: message });
     return;
   }
   if (action === 'protect') return protectMe(sock, chatId, senderId, message);
