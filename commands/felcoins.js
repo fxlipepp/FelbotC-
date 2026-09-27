@@ -190,14 +190,14 @@ async function workCommand(sock, chatId, senderId, message) {
     return;
   }
 
-  await sock.sendMessage(chatId, {
-    text: `🍕 **TURNO DE REPARTO**\n\nTienes 3 pedidos pendientes.\n\n📍 Centro\n📍 Barrio Norte\n📍 Barrio Sur\n\n⏱️ Tiempo: 60 segundos\n\n[🚦 RUTA RÁPIDA] [🛣️ RUTA SEGURA] [🔄 CAMBIAR ORDEN]` ,
-    buttons: [
-      { buttonId: 'felcoin::work::fast', buttonText: { displayText: '🚦 RUTA RÁPIDA' }, type: 1 },
-      { buttonId: 'felcoin::work::safe', buttonText: { displayText: '🛣️ RUTA SEGURA' }, type: 1 },
-      { buttonId: 'felcoin::work::change', buttonText: { displayText: '🔄 CAMBIAR ORDEN' }, type: 1 }
-    ]
-  }, { quoted: message });
+  const menu = new ButtonV2(sock)
+    .setBody('🍕 **TURNO DE REPARTO**\n\nTienes 3 pedidos pendientes.\n\n📍 Centro\n📍 Barrio Norte\n📍 Barrio Sur\n\n⏱️ Tiempo: 60 segundos')
+    .setFooter('FelCoins • Trabajo')
+    .addButton('🚦 RUTA RÁPIDA', 'felcoin::work::fast')
+    .addButton('🛣️ RUTA SEGURA', 'felcoin::work::safe')
+    .addButton('🔄 CAMBIAR ORDEN', 'felcoin::work::change');
+
+  await menu.send(chatId, { quoted: message, mentions: [senderId] });
 
   const userNow = await ensureEconomyUser(senderId, message?.pushName || 'Usuario');
   userNow.workState = { type: 'delivery', step: 'route', reward: result.amount };

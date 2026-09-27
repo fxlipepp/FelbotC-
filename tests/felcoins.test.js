@@ -1,5 +1,6 @@
 const assert = require('node:assert/strict');
-const { getEconomyConfig, getCommandCost, formatFelCoins, parseAmount, hasSufficientBalance } = require('../lib/felcoins');
+const { getEconomyConfig, getCommandCost, formatFelCoins, parseAmount, hasSufficientBalance, isOwnerAccount } = require('../lib/felcoins');
+const settings = require('../settings');
 const { handleEconomyButton, showEconomyMenu } = require('../commands/felcoins');
 
 (async () => {
@@ -12,6 +13,8 @@ const { handleEconomyButton, showEconomyMenu } = require('../commands/felcoins')
   assert.equal(parseAmount('500'), 500);
   assert.equal(hasSufficientBalance(500, 100), true);
   assert.equal(hasSufficientBalance(50, 100), false);
+  assert.equal(isOwnerAccount(settings.ownerNumber), true, 'El número principal del owner debe ser considerado propietario');
+  assert.equal(isOwnerAccount(settings.ownerLid), true, 'El LID del owner también debe ser considerado propietario');
 
   const sent = [];
   const fakeSock = {
