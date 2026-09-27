@@ -1483,8 +1483,9 @@ async function handleEconomyButton(sock, chatId, senderId, buttonId, message) {
       return;
     }
 
+    // Si el botón pertenece a un menú viejo o ya fue consumido,
+    // simplemente no respondemos. Así no aparece el mensaje de "turno expirado".
     if (user.workState?.type !== 'job' || !Array.isArray(user.workState.jobs) || !user.workState.jobs.includes(jobKey)) {
-      await sock.sendMessage(chatId, { text: '⚠️ Este turno ya fue usado o la selección expiró. Usa .trabajar para abrir los trabajos de hoy.' }, { quoted: message });
       return;
     }
 
