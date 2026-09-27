@@ -97,6 +97,21 @@ function mentionTarget(value = '', fallbackName = 'usuario') {
   return { text: formatEconomyLabel(jid, fallbackName), jid };
 }
 
+function resolveTargetInfo(message, rawValue = '', fallbackName = 'usuario') {
+  const directValue = String(rawValue || '').trim();
+  const directJid = directValue ? toRecipientJid(directValue) : '';
+  const mentionedJid = message?.message?.extendedTextMessage?.contextInfo?.mentionedJid?.[0]
+    || message?.message?.viewOnceMessage?.message?.extendedTextMessage?.contextInfo?.mentionedJid?.[0]
+    || '';
+  const jid = directJid || toRecipientJid(mentionedJid || directValue || fallbackName);
+
+  if (!jid) {
+    return { jid: '', label: formatEconomyLabel(fallbackName, 'usuario') };
+  }
+
+  return { jid, label: formatEconomyLabel(jid, fallbackName) };
+}
+
 async function ensureEconomyActive(sock, chatId, message) {
   const enabled = await getEconomyEnabled();
   if (!enabled) {
@@ -324,8 +339,8 @@ async function removeCoinsFromUser(sock, chatId, senderId, message, rawText) {
 
   const args = rawText.trim().split(/\s+/).slice(1);
   const amount = parseAmount(args[0]);
-  const targetRaw = args[1] || (message.message?.extendedTextMessage?.contextInfo?.mentionedJid?.[0] || '');
-  const target = toRecipientJid(targetRaw);
+  const targetInfo = resolveTargetInfo(message, args[1], 'usuario');
+  const target = targetInfo.jid;
 
   if (!amount || amount <= 0) {
     await sock.sendMessage(chatId, { text: '❌ Cantidad inválida. Usa .quitar 900 @usuario' }, { quoted: message });
@@ -360,8 +375,8 @@ async function processTransfer(sock, chatId, senderId, message, rawText) {
   if (!user) return;
   const args = rawText.trim().split(/\s+/).slice(1);
   const amount = parseAmount(args[0]);
-  const targetRaw = args[1] || (message.message?.extendedTextMessage?.contextInfo?.mentionedJid?.[0] || '');
-  const target = toRecipientJid(targetRaw);
+  const targetInfo = resolveTargetInfo(message, args[1], 'usuario');
+  const target = targetInfo.jid;
 
   if (!amount || amount <= 0) {
     await sock.sendMessage(chatId, { text: '❌ Cantidad inválida. Usa .transferir 500 @usuario' }, { quoted: message });
@@ -400,8 +415,8 @@ async function handleRobbery(sock, chatId, senderId, message, targetId) {
   if (!active) return;
   const attackerUser = await ensureRegisteredWithReply(sock, chatId, senderId, message, message?.pushName || 'Usuario');
   if (!attackerUser) return;
-  const targetRaw = targetId || (message.message?.extendedTextMessage?.contextInfo?.mentionedJid?.[0] || '');
-  const target = toRecipientJid(targetRaw);
+  const targetInfo = resolveTargetInfo(message, targetId, 'usuario');
+  const target = targetInfo.jid;
   if (!target) {
     await sock.sendMessage(chatId, { text: '❌ Debes indicar a quién quieres robar.' }, { quoted: message });
     return;
@@ -611,29 +626,46 @@ async function rouletteGame(sock, chatId, senderId, message, amount) {
   if (!active) return;
   const user = await ensureRegisteredWithReply(sock, chatId, senderId, message, message?.pushName || 'Usuario');
   if (!user) return;
+
   const value = Math.max(1, Number(amount) || 0);
   if (!isOwnerAccount(senderId) && Number(user.saldo || 0) < value) {
     await sock.sendMessage(chatId, { text: `❌ **FELCOINS INSUFICIENTES**\n\nNecesitas: ${formatFelCoins(value)}` }, { quoted: message });
     return;
   }
-  const result = Math.random() < 0.45;
-  if (result) {
-    const prize = value * 2;
-    if (!isOwnerAccount(senderId)) user.saldo = Number(user.saldo || 0) - value;
-    user.saldo = Number(user.saldo || 0) + prize;
-    user.stats = user.stats || {};
-    user.stats.juegos = Number(user.stats.juegos || 0) + 1;
+
+  const roll = Math.random();
+  user.stats = user.stats || {};
+  user.stats.juegos = Number(user.stats.juegos || 0) + 1;
+
+  if (!isOwnerAccount(senderId)) user.saldo = Number(user.saldo || 0) - value;
+
+  if (roll < 0.2) {
+    const jackpotPrize = 1000000;
+    user.saldo = Number(user.saldo || 0) + jackpotPrize;
     user.stats.victorias = Number(user.stats.victorias || 0) + 1;
     await user.save();
-    await sock.sendMessage(chatId, { text: `🎡 **RULETA**\n\n🎯 Apuesta: ${formatFelCoins(value)}\n\n🔴 x2\n\n💰 Ganaste: +${formatFelCoins(prize)}\n\n💵 Saldo: ${formatFelCoins(Number(user.saldo || 0))}` }, { quoted: message });
-  } else {
-    if (!isOwnerAccount(senderId)) user.saldo = Number(user.saldo || 0) - value;
-    user.stats = user.stats || {};
-    user.stats.juegos = Number(user.stats.juegos || 0) + 1;
+    await sock.sendMessage(chatId, {
+      text: `🎡 **RULETA**\n\n🎯 Apuesta: ${formatFelCoins(value)}\n\n💎 3 DIAMANTES\n\n🎉 GANASTE EL PREMIO MAYOR\n\n💰 +${formatFelCoins(jackpotPrize)}\n\n💵 Saldo: ${formatFelCoins(Number(user.saldo || 0))}`
+    }, { quoted: message });
+    return;
+  }
+
+  if (roll < 0.8) {
     user.stats.derrotas = Number(user.stats.derrotas || 0) + 1;
     await user.save();
-    await sock.sendMessage(chatId, { text: `🎡 **RULETA**\n\n🎯 Apuesta: ${formatFelCoins(value)}\n\n⚫ PERDISTE\n\n💸 -${formatFelCoins(value)}\n\n💵 Saldo: ${formatFelCoins(Number(user.saldo || 0))}` }, { quoted: message });
+    await sock.sendMessage(chatId, {
+      text: `🎡 **RULETA**\n\n🎯 Apuesta: ${formatFelCoins(value)}\n\n⚫ PERDISTE\n\n💸 -${formatFelCoins(value)}\n\n💵 Saldo: ${formatFelCoins(Number(user.saldo || 0))}`
+    }, { quoted: message });
+    return;
   }
+
+  const prize = value * 2;
+  user.saldo = Number(user.saldo || 0) + prize;
+  user.stats.victorias = Number(user.stats.victorias || 0) + 1;
+  await user.save();
+  await sock.sendMessage(chatId, {
+    text: `🎡 **RULETA**\n\n🎯 Apuesta: ${formatFelCoins(value)}\n\n🔴 x2\n\n💰 Ganaste: +${formatFelCoins(prize)}\n\n💵 Saldo: ${formatFelCoins(Number(user.saldo || 0))}`
+  }, { quoted: message });
 }
 
 async function slotsGame(sock, chatId, senderId, message, amount) {
@@ -821,29 +853,39 @@ async function handleEconomyButton(sock, chatId, senderId, buttonId, message) {
   }
   if (action === 'work') {
     const user = await ensureEconomyUser(senderId, message?.pushName || 'Usuario');
-    if (user?.workState?.step !== 'route') return;
+    const awardMap = {
+      fast: 580,
+      safe: 520,
+      change: 430
+    };
 
-    if (extra === 'fast') {
-      user.saldo = Number(user.saldo || 0) + 580;
+    const reward = awardMap[extra] || 0;
+    if (reward > 0) {
+      user.saldo = Number(user.saldo || 0) + reward;
       user.workState = null;
+      user.stats = user.stats || {};
+      user.stats.trabajos = Number(user.stats.trabajos || 0) + 1;
+      user.stats.ganancias = Number(user.stats.ganancias || 0) + reward;
       await user.save();
-      await sock.sendMessage(chatId, { text: `🍕 **TURNO TERMINADO**\n\n📦 Pedidos entregados: 3/3\n⏱️ Tiempo: excelente\n🎁 Propinas: +180 FC\n💰 Pago: +400 FC\n\n💵 Total ganado: +580 FC` }, { quoted: message });
-      return;
+
+      if (extra === 'fast') {
+        await sock.sendMessage(chatId, { text: `🍕 **TURNO TERMINADO**\n\n📦 Pedidos entregados: 3/3\n⏱️ Tiempo: excelente\n🎁 Propinas: +180 FC\n💰 Pago: +400 FC\n\n💵 Total ganado: +580 FC` }, { quoted: message });
+        return;
+      }
+
+      if (extra === 'safe') {
+        await sock.sendMessage(chatId, { text: `🚚 **RUTA SEGURA**\n\n📦 Entrega completada sin incidentes\n⏱️ Tiempo: muy estable\n💰 Pago: +500 FC\n🎁 Bonificación: +20 FC\n\n💵 Total ganado: +520 FC` }, { quoted: message });
+        return;
+      }
+
+      if (extra === 'change') {
+        await sock.sendMessage(chatId, { text: `🔄 **ORDEN REASIGNADA**\n\nSe reordenaron los pedidos\n📍 Ruta ajustada al tráfico\n💰 Pago: +360 FC\n🎁 Bônus: +70 FC\n\n💵 Total ganado: +430 FC` }, { quoted: message });
+        return;
+      }
     }
 
-    if (extra === 'safe') {
-      user.saldo = Number(user.saldo || 0) + 520;
-      user.workState = null;
-      await user.save();
-      await sock.sendMessage(chatId, { text: `🚚 **RUTA SEGURA**\n\n📦 Entrega completada sin incidentes\n⏱️ Tiempo: muy estable\n💰 Pago: +500 FC\n🎁 Bonificación: +20 FC\n\n💵 Total ganado: +520 FC` }, { quoted: message });
-      return;
-    }
-
-    if (extra === 'change') {
-      user.saldo = Number(user.saldo || 0) + 430;
-      user.workState = null;
-      await user.save();
-      await sock.sendMessage(chatId, { text: `🔄 **ORDEN REASIGNADA**\n\nSe reordenaron los pedidos\n📍 Ruta ajustada al tráfico\n💰 Pago: +360 FC\n🎁 Bônus: +70 FC\n\n💵 Total ganado: +430 FC` }, { quoted: message });
+    if (user?.workState?.step !== 'route') {
+      await sock.sendMessage(chatId, { text: '⚠️ Este trabajo ya fue resuelto.' }, { quoted: message });
       return;
     }
 

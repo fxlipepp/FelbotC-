@@ -1,6 +1,6 @@
 const assert = require('node:assert/strict');
 const mongoose = require('mongoose');
-const { getEconomyConfig, getCommandCost, formatFelCoins, parseAmount, hasSufficientBalance, isOwnerAccount, transferBalance, normalizeJid, setEconomyEnabled, resolveRobbery, hasRoyalProtection, resetEconomyState } = require('../lib/felcoins');
+const { getEconomyConfig, getCommandCost, formatFelCoins, parseAmount, hasSufficientBalance, isOwnerAccount, transferBalance, normalizeJid, setEconomyEnabled, resolveRobbery, hasRoyalProtection, resetEconomyState, claimWork } = require('../lib/felcoins');
 const settings = require('../settings');
 const EconomyUser = require('../models/EconomyUser');
 const EconomyLog = require('../models/EconomyLog');
@@ -153,6 +153,44 @@ const { handleEconomyButton, showEconomyMenu, showPerfil, isEconomyCommand, form
   };
   await showPerfil(profileSock, '1234567890@s.whatsapp.net', '1234567890@s.whatsapp.net', { pushName: 'Perfil User' });
   assert.ok(profileSent.some((item) => String(item.payload?.text || '').includes('Victorias: 11') && String(item.payload?.text || '').includes('Derrotas: 9') && String(item.payload?.text || '').includes('Ganancias: 1.500 FC') && String(item.payload?.text || '').includes('Gastos: 400 FC')), 'El perfil debe mostrar las estadísticas reales del usuario');
+
+  const workUser = {
+    userId: '9876543210',
+    name: 'Trabajo User',
+    saldo: 0,
+    registered: true,
+    stats: { trabajos: 0, mineria: 0, juegos: 0, transferencias: 0, robos: 0, victorias: 0, derrotas: 0, ganancias: 0, gastos: 0 },
+    workState: null,
+    save: async function () { return this; }
+  };
+  EconomyUser.findOne = async ({ userId }) => normalizeJid(userId) === '9876543210' ? workUser : null;
+  EconomyConfig.findOne = () => ({
+    lean: () => ({
+      key: 'main',
+      enabled: true,
+      commandCosts: { play: 100, sticker: 25 },
+      rewards: { daily: 300, work: { min: 200, max: 900 } },
+      prices: {},
+      cooldowns: {},
+      limits: {},
+      companies: {}
+    })
+  });
+  const workReward = await claimWork('9876543210@s.whatsapp.net');
+  assert.equal(workReward.ok, true, 'El trabajo debe iniciar correctamente sin pagar aún el premio final');
+  assert.equal(workUser.saldo, 0, 'El trabajo no debe abonar saldo antes de que el usuario elija la ruta');
+
+  workUser.workState = { type: 'delivery', step: 'route', reward: workReward.amount };
+  const workSent = [];
+  const workSock = {
+    sendMessage: async (chatId, payload, extra) => {
+      workSent.push({ chatId, payload, extra });
+      return true;
+    }
+  };
+  await handleEconomyButton(workSock, '9876543210@s.whatsapp.net', '9876543210@s.whatsapp.net', 'felcoin::work::safe', { pushName: 'Trabajo User' });
+  assert.ok(workSent.some((item) => String(item.payload?.text || '').includes('RUTA SEGURA') && String(item.payload?.text || '').includes('520 FC')), 'La ruta seleccionada debe mostrar el resultado final del trabajo');
+  assert.equal(workUser.saldo, 520, 'La recompensa del trabajo debe aplicarse sólo cuando se seleccione la ruta');
 
   Object.defineProperty(mongoose.connection, 'readyState', { value: readyState, configurable: true });
   EconomyUser.findOne = findOneOriginal;
