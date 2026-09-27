@@ -59,7 +59,9 @@ function formatEconomyLabel(value = '', fallback = 'usuario') {
   }
 
   const digits = raw.replace(/[^0-9]/g, '');
-  if (digits.length >= 4) return `@${digits.slice(-4)}`;
+  // Cuando tenemos un JID real, usamos el número completo y mentionedJid
+  // para que WhatsApp renderice la mención correctamente.
+  if (digits.length >= 4) return `@${digits}`;
   return `@${cleaned || fallback}`;
 }
 
@@ -105,7 +107,8 @@ function resolveTargetInfo(message, rawValue = '', fallbackName = 'usuario') {
   const mentionedJid = message?.message?.extendedTextMessage?.contextInfo?.mentionedJid?.[0]
     || message?.message?.viewOnceMessage?.message?.extendedTextMessage?.contextInfo?.mentionedJid?.[0]
     || '';
-  const jid = directJid || toRecipientJid(mentionedJid || directValue || fallbackName);
+  // Si el mensaje trae una mención real, esa siempre tiene prioridad.
+  const jid = toRecipientJid(mentionedJid) || directJid || toRecipientJid(directValue || fallbackName);
 
   if (!jid) {
     return { jid: '', label: formatEconomyLabel(fallbackName, 'usuario') };
@@ -422,7 +425,7 @@ async function removeCoinsFromUser(sock, chatId, senderId, message, rawText) {
   const targetMention = mentionTarget(target);
 
   await sock.sendMessage(chatId, {
-    text: `⚙️ **COINS QUITADOS**\n\n👤 Usuario: ${targetMention.text}\n💸 Cantidad: -${formatFelCoins(amount)}\n\n💰 Saldo anterior: ${formatFelCoins(previous)}\n💰 Saldo actual: ${formatFelCoins(Number(updated || 0))}`,
+    text: `╭─〔 ⚙️ FELCOINS 〕─╮\n│\n│ 👤 Usuario: ${targetMention.text}\n│ 💸 Retirado: -${formatFelCoins(amount)} FC\n│\n│ 💰 Antes: ${formatFelCoins(previous)} FC\n│ 💰 Ahora: ${formatFelCoins(Number(updated || 0))} FC\n│\n╰─────────────────╯`,
     contextInfo: targetMention.jid ? { mentionedJid: [targetMention.jid] } : undefined
   }, { quoted: message });
 }
@@ -464,7 +467,7 @@ async function processTransfer(sock, chatId, senderId, message, rawText) {
 
   const recipientMention = mentionTarget(target);
   await sock.sendMessage(chatId, {
-    text: `💸 **TRANSFERENCIA REALIZADA**\n\n👤 Destinatario: ${recipientMention.text}\n💰 Cantidad: ${formatFelCoins(amount)}\n\n💵 Saldo anterior: ${formatFelCoins(Number(user.saldo || 0) + amount)}\n💵 Saldo actual: ${formatFelCoins(Number(result.senderBalance || 0))}`,
+    text: `╭─〔 💸 TRANSFERENCIA 〕─╮\n│\n│ 👤 Para: ${recipientMention.text}\n│ 💰 Enviado: ${formatFelCoins(amount)} FC\n│\n│ 💵 Saldo anterior: ${formatFelCoins(Number(user.saldo || 0) + amount)} FC\n│ 💳 Saldo actual: ${formatFelCoins(Number(result.senderBalance || 0))} FC\n│\n╰────────────────────╯`,
     contextInfo: recipientMention.jid ? { mentionedJid: [recipientMention.jid] } : undefined
   }, { quoted: message });
 }
