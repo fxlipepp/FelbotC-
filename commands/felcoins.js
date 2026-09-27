@@ -822,6 +822,7 @@ async function openGamesMenu(sock, chatId, senderId, message) {
     .addButton('🎰 SLOTS', 'felcoin::game::slots')
     .addButton('🃏 BLACKJACK', 'felcoin::game::blackjack')
     .addButton('💥 CRASH', 'felcoin::game::crash')
+    .addButton('🏇 CARRERAS', 'felcoin::game::race')
     .addButton('⬅️ VOLVER', 'felcoin::economia');
   await menu.send(chatId, { quoted: message });
 }
@@ -1225,6 +1226,182 @@ async function withdrawCrash(sock, chatId, senderId, message) {
   }, { quoted: message });
 }
 
+
+async function sendRaceBetMenu(sock, chatId, senderId, message) {
+  const menu = new ButtonV2(sock)
+    .setBody('🏇 *CARRERAS FELCOINS*\n\n💰 Elige cuánto quieres apostar:')
+    .setFooter('FelCoins • Carreras')
+    .addButton('💰 1.000 FC', `felcoin::racebet::1000::${normalize(senderId)}`)
+    .addButton('💰 2.000 FC', `felcoin::racebet::2000::${normalize(senderId)}`)
+    .addButton('💰 3.000 FC', `felcoin::racebet::3000::${normalize(senderId)}`)
+    .addButton('💰 4.000 FC', `felcoin::racebet::4000::${normalize(senderId)}`)
+    .addButton('💰 5.000 FC', `felcoin::racebet::5000::${normalize(senderId)}`);
+  await menu.send(chatId, { quoted: message });
+}
+
+async function raceGame(sock, chatId, senderId, message, amount) {
+  const active = await ensureEconomyActive(sock, chatId, message);
+  if (!active) return;
+  const user = await ensureRegisteredWithReply(sock, chatId, senderId, message, message?.pushName || 'Usuario');
+  if (!user) return;
+
+  if (user.raceGame?.active) {
+    await sock.sendMessage(chatId, { text: '⚠️ Ya tienes una carrera activa.' }, { quoted: message });
+    return;
+  }
+
+  const value = Number(amount || 0);
+  if (value <= 0) return sendRaceBetMenu(sock, chatId, senderId, message);
+
+  if (!isOwnerAccount(senderId) && Number(user.saldo || 0) < value) {
+    await sock.sendMessage(chatId, {
+      text: `❌ *FELCOINS INSUFICIENTES*\\n\\nNecesitas: ${formatFelCoins(value)}\\nTienes: ${formatFelCoins(Number(user.saldo || 0))}`
+    }, { quoted: message });
+    return;
+  }
+
+  if (!isOwnerAccount(senderId)) user.saldo = Number(user.saldo || 0) - value;
+
+  const racers = [
+    { id: 'relampago', emoji: '🔴🐎', name: 'Relámpago' },
+    { id: 'sombra', emoji: '⚫🐎', name: 'Sombra' },
+    { id: 'trueno', emoji: '🔵🐎', name: 'Trueno' },
+    { id: 'diablo', emoji: '🟢🐎', name: 'Diablo' }
+  ];
+
+  user.raceGame = {
+    active: true,
+    amount: value,
+    selected: null,
+    racers: racers.map(r => ({ ...r, progress: 0 })),
+    step: 0
+  };
+  user.stats = user.stats || {};
+  user.stats.juegos = Number(user.stats.juegos || 0) + 1;
+  await user.save();
+
+  const select = new ButtonV2(sock)
+    .setBody('🏁 *CARRERA FELCOINS*\n\n🐎 Elige tu corredor:\n\n🔴🐎 Relámpago\n⚫🐎 Sombra\n🔵🐎 Trueno\n🟢🐎 Diablo')
+    .setFooter(`Apuesta: ${formatFelCoins(value)}`)
+    .addButton('🔴 RELÁMPAGO', `felcoin::racepick::relampago::${normalize(senderId)}`)
+    .addButton('⚫ SOMBRA', `felcoin::racepick::sombra::${normalize(senderId)}`)
+    .addButton('🔵 TRUENO', `felcoin::racepick::trueno::${normalize(senderId)}`)
+    .addButton('🟢 DIABLO', `felcoin::racepick::diablo::${normalize(senderId)}`);
+  await select.send(chatId, { quoted: message });
+}
+
+function renderRaceTrack(racers, selectedId, finish = 24) {
+  const sorted = [...racers].sort((a, b) => b.progress - a.progress);
+  const positionMap = new Map(sorted.map((r, i) => [r.id, i + 1]));
+  const lines = racers.map(r => {
+    const spaces = ' '.repeat(Math.max(1, Math.min(finish - 1, Math.floor(r.progress))));
+    const horse = `${r.emoji} ${r.name}`;
+    const marker = r.id === selectedId ? ' ⭐' : '';
+    return `${horse}${marker} ${spaces}🏇`;
+  });
+  return lines.join('\n') + `\n\n🥇 ${sorted[0]?.name || '-'}  •  🥈 ${sorted[1]?.name || '-'}  •  🥉 ${sorted[2]?.name || '-'}  •  4️⃣ ${sorted[3]?.name || '-'}`;
+}
+
+async function startRace(sock, chatId, senderId, message) {
+  const active = await ensureEconomyActive(sock, chatId, message);
+  if (!active) return;
+  const user = await ensureRegisteredWithReply(sock, chatId, senderId, message, message?.pushName || 'Usuario');
+  if (!user?.raceGame?.active) return;
+
+  if (user.raceGame.selected) return;
+
+  const selected = String(message?.racePick || '');
+  if (!selected) return;
+
+  user.raceGame.selected = selected;
+  await user.save();
+
+  const finish = 24;
+  const messageText = () => {
+    const race = user.raceGame;
+    return `🏁 *CARRERA FELCOINS*\\n\\n${renderRaceTrack(race.racers, race.selected, finish)}\\n\\n⭐ Tu corredor está marcado.\\n💰 Apuesta: ${formatFelCoins(race.amount)}`;
+  };
+
+  const sent = await sock.sendMessage(chatId, { text: messageText() }, { quoted: message });
+  const messageKey = sent?.key;
+  let finished = false;
+
+  const timer = setInterval(async () => {
+    if (finished) return;
+    try {
+      const live = await ensureEconomyUser(senderId, message?.pushName || 'Usuario');
+      if (!live?.raceGame?.active || live.raceGame.selected !== selected) {
+        clearInterval(timer);
+        return;
+      }
+
+      live.raceGame.step = Number(live.raceGame.step || 0) + 1;
+      for (const racer of live.raceGame.racers) {
+        const burst = 0.7 + Math.random() * 1.7;
+        racer.progress = Math.min(finish, Number(racer.progress || 0) + burst);
+      }
+
+      const winner = live.raceGame.racers.find(r => r.progress >= finish);
+      await live.save();
+
+      if (winner) {
+        finished = true;
+        clearInterval(timer);
+
+        const sorted = [...live.raceGame.racers].sort((a, b) => b.progress - a.progress);
+        const place = sorted.findIndex(r => r.id === selected) + 1;
+        const amountWon = place === 1 ? Math.round(Number(live.raceGame.amount) * 3) :
+          place === 2 ? Math.round(Number(live.raceGame.amount) * 1.5) : 0;
+
+        if (amountWon > 0 && !isOwnerAccount(senderId)) {
+          live.saldo = Number(live.saldo || 0) + amountWon;
+          live.stats.victorias = Number(live.stats.victorias || 0) + 1;
+        } else if (amountWon <= 0) {
+          live.stats.derrotas = Number(live.stats.derrotas || 0) + 1;
+        }
+        const selectedName = live.raceGame.racers.find(r => r.id === selected)?.name || 'Tu caballo';
+        delete live.raceGame;
+        await live.save();
+
+        const result = place === 1
+          ? `🏆 *¡GANASTE LA CARRERA!*\\n\\n🥇 ${selectedName} llegó primero.\\n💰 Premio: +${formatFelCoins(amountWon)}`
+          : place === 2
+            ? `🥈 *SEGUNDO LUGAR*\\n\\n🐎 ${selectedName} llegó segundo.\\n💰 Premio: +${formatFelCoins(amountWon)}`
+            : `💥 *PERDISTE LA CARRERA*\\n\\n🐎 ${selectedName} quedó en posición ${place}.\\n💸 Perdiste: -${formatFelCoins(Number(live.raceGame?.amount || 0))}`;
+
+        const finalBody = `🏁 *CARRERA TERMINADA*\\n\\n${renderRaceTrack(live.raceGame?.racers || [], selected, finish)}\\n\\n${result}`;
+        if (messageKey) await sock.sendMessage(chatId, { text: finalBody }, { edit: messageKey });
+        else await sock.sendMessage(chatId, { text: finalBody }, { quoted: message });
+        return;
+      }
+
+      if (messageKey) await sock.sendMessage(chatId, {
+        text: `🏁 *CARRERA FELCOINS*\\n\\n${renderRaceTrack(live.raceGame.racers, selected, finish)}\\n\\n⭐ Tu corredor\\n💰 Apuesta: ${formatFelCoins(live.raceGame.amount)}`
+      }, { edit: messageKey });
+    } catch (error) {
+      clearInterval(timer);
+      console.error('[FELCOINS RACE] Error:', error);
+    }
+  }, 1000);
+}
+
+async function pickRace(sock, chatId, senderId, message, racerId) {
+  const active = await ensureEconomyActive(sock, chatId, message);
+  if (!active) return;
+  const user = await ensureRegisteredWithReply(sock, chatId, senderId, message, message?.pushName || 'Usuario');
+  if (!user?.raceGame?.active) return;
+  if (user.raceGame.selected) return;
+
+  const valid = ['relampago', 'sombra', 'trueno', 'diablo'];
+  if (!valid.includes(racerId)) return;
+
+  user.raceGame.selected = racerId;
+  await user.save();
+
+  const fakeMessage = { ...message, racePick: racerId };
+  return startRace(sock, chatId, senderId, fakeMessage);
+}
+
 async function handleEconomyButton(sock, chatId, senderId, buttonId, message) {
   const active = await ensureEconomyActive(sock, chatId, message);
   if (!active) return;
@@ -1254,6 +1431,7 @@ async function handleEconomyButton(sock, chatId, senderId, buttonId, message) {
     if (label === 'slots') return slotsGame(sock, chatId, senderId, message, 100);
     if (label === 'blackjack') return blackjackInitial(sock, chatId, senderId, message, 100);
     if (label === 'crash') return crashGame(sock, chatId, senderId, message, 100);
+    if (label === 'race') return raceGame(sock, chatId, senderId, message, 0);
     return sock.sendMessage(chatId, {
       text: '🎮 *JUEGOS FELCOINS*\n\nUsa estos comandos:\n• .ruleta 100\n• .slots 100\n• .blackjack 100\n• .crash 100'
     }, { quoted: message });
@@ -1318,6 +1496,17 @@ async function handleEconomyButton(sock, chatId, senderId, buttonId, message) {
     if (extra === 'hit') return blackjackHit(sock, chatId, senderId, message);
     if (extra === 'stand') return blackjackStand(sock, chatId, senderId, message);
   }
+  if (action === 'racebet') {
+    const ownerKey = String(extra2 || '');
+    if (ownerKey && ownerKey !== normalize(senderId)) return;
+    const bet = Number(extra || 0);
+    return raceGame(sock, chatId, senderId, message, bet);
+  }
+  if (action === 'racepick') {
+    const ownerKey = String(extra2 || '');
+    if (ownerKey && ownerKey !== normalize(senderId)) return;
+    return pickRace(sock, chatId, senderId, message, extra);
+  }
   if (action === 'crashbet') {
     const ownerKey = String(extra2 || '');
     if (ownerKey && ownerKey !== normalize(senderId)) return;
@@ -1360,6 +1549,7 @@ module.exports = {
   blackjackStand,
   crashGame,
   withdrawCrash,
+  raceGame,
   handleEconomyButton,
   formatCountdown,
   removeCoinsFromUser,
