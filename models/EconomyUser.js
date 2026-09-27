@@ -35,6 +35,7 @@ const economyUserSchema = new mongoose.Schema({
     }
   },
   companyLevel: { type: Number, default: 0 },
+  raceGame: { type: Object, default: null },
   companyPurchasedAt: { type: Date, default: null },
   companyLastPaidAt: { type: Date, default: null },
   createdAt: { type: Date, default: Date.now },
