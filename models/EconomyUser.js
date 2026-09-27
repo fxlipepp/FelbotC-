@@ -15,6 +15,7 @@ const economyUserSchema = new mongoose.Schema({
   lastMine: { type: Date, default: null },
   lastRob: { type: Date, default: null },
   protectionUntil: { type: Date, default: null },
+  workState: { type: Object, default: null },
   inventory: { type: Object, default: {} },
   stats: {
     type: Object,
