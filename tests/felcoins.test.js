@@ -1,6 +1,6 @@
 const assert = require('node:assert/strict');
 const { getEconomyConfig, getCommandCost, formatFelCoins, parseAmount, hasSufficientBalance } = require('../lib/felcoins');
-const { handleEconomyButton } = require('../commands/felcoins');
+const { handleEconomyButton, showEconomyMenu } = require('../commands/felcoins');
 
 (async () => {
   const cfg = getEconomyConfig();
@@ -33,6 +33,16 @@ const { handleEconomyButton } = require('../commands/felcoins');
 
   await handleEconomyButton(fakeSock, '1234567890@s.whatsapp.net', '1234567890@s.whatsapp.net', 'felcoin::juegos', testMessage);
   assert.ok(sent.some((item) => item.payload?.buttonsMessage || String(item.payload?.text || '').includes('JUEGOS FELCOINS')), 'El botón de juegos debe abrir un menú real');
+
+  const safeSock = {
+    sendMessage: async () => true,
+    relayMessage: async () => ({ key: { id: 'test-econ-menu', remoteJid: '1234567890@s.whatsapp.net', fromMe: false }, message: {} })
+  };
+
+  await assert.doesNotReject(
+    () => showEconomyMenu(safeSock, '1234567890@s.whatsapp.net', '1234567890@s.whatsapp.net', { pushName: 'Usuario sin key' }),
+    'El menú económico no debe romperse si el objeto de mensaje no tiene key'
+  );
 
   console.log('FelCoins tests passed');
 })();
