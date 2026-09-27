@@ -904,7 +904,7 @@ const command = rawText.split(' ')[0].toLowerCase()
             case userMessage.startsWith('.blackjack'):
                 {
                     const amount = parseAmount(rawText.split(/\s+/).slice(1).join(' '));
-                    await blackjackInitial(sock, chatId, senderId, message, amount || 100);
+                    await blackjackInitial(sock, chatId, senderId, message, amount);
                 }
                 commandExecuted = true;
                 break;
@@ -919,7 +919,7 @@ const command = rawText.split(' ')[0].toLowerCase()
             case userMessage.startsWith('.crash'):
                 {
                     const amount = parseAmount(rawText.split(/\s+/).slice(1).join(' '));
-                    await crashGame(sock, chatId, senderId, message, amount || 100);
+                    await crashGame(sock, chatId, senderId, message, amount);
                 }
                 commandExecuted = true;
                 break;
