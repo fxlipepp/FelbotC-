@@ -575,10 +575,10 @@ async function openShop(sock, chatId, senderId, message) {
     .setFooter('FelCoins • Tienda')
     .addButton('🛡️ PROTEGERME 12H', 'felcoin::shop::protect12')
     .addButton('🛡️ PROTEGERME 24H', 'felcoin::shop::protect24')
+    .addButton('🎵 COMPRAR .PLAY', 'felcoin::shop::play')
+    .addButton('🎨 COMPRAR .STICKER', 'felcoin::shop::sticker')
     .addButton('⚡ MULTIPLICADOR', 'felcoin::shop::multiplier')
     .addButton('⛏️ PICO', 'felcoin::shop::pico')
-    .addButton('👑 ADMIN 24H', 'felcoin::shop::admin24')
-    .addButton('👑 ADMIN ∞', 'felcoin::shop::adminInfinity')
     .addButton('👑 MODO REY', 'felcoin::shop::modoRey');
   await menu.send(chatId, { quoted: message });
 }
@@ -616,6 +616,14 @@ async function buyProduct(sock, chatId, senderId, message, product) {
     await sock.sendMessage(chatId, {
       text: `✅ **MODO REY ACTIVADO**\n\n👑 Ahora eres inmune al modo admin del grupo.\n\n💸 Gastaste: ${formatFelCoins(price)}`
     }, { quoted: message });
+    return;
+  }
+
+  const commandProduct = product === 'play' || product === 'sticker';
+  if (commandProduct) {
+    user.inventory[product] = { quantity: 1, expiresAt: null };
+    await user.save();
+    await sock.sendMessage(chatId, { text: `✅ **COMANDO DESBLOQUEADO**\n\n${product === 'play' ? '🎵 .play' : '🎨 .sticker'}\n\n💸 Compra: ${formatFelCoins(price)}\n\n🔓 Ya puedes usar este comando.` }, { quoted: message });
     return;
   }
 
