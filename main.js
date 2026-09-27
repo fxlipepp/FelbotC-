@@ -252,6 +252,24 @@ async function handleNativeMenuButton(sock, chatId, buttonId, message) {
     return false;
 }
 
+async function economyCommandLocked(sock, chatId, senderId, message, product) {
+    try {
+        const enabled = await getEconomyEnabled();
+        if (!enabled || isOwnerAccount(senderId)) return false;
+        const user = await ensureEconomyUser(senderId, message?.pushName || 'Usuario');
+        if (!user || !user.registered) {
+            await sock.sendMessage(chatId, { text: '⚠️ **NO ESTÁS REGISTRADO**\\n\\nUsa .registrarme para entrar al sistema FelCoins.' }, { quoted: message });
+            return true;
+        }
+        if (Number(user.inventory?.[product]?.quantity || 0) <= 0) {
+            const labels = { tiktok: '.tiktok', instagram: '.instagram', brat: '.brat', vv: '.vv' };
+            await sock.sendMessage(chatId, { text: `🔒 **${labels[product] || product} BLOQUEADO**\\n\\nDebes comprar el acceso en .tienda para poder usarlo.` }, { quoted: message });
+            return true;
+        }
+        return false;
+    } catch (error) { console.error('[FELCOINS GATE]', error); return false; }
+}
+
 async function handleMessages(sock, messageUpdate, printLog) {
     let chatId
     let senderId
@@ -1608,6 +1626,7 @@ break
                 break;
 
             case userMessage === '.vv' || userMessage === '.ver':
+                if (await economyCommandLocked(sock, chatId, senderId, message, 'vv')) break;
                 await viewOnceCommand(sock, chatId, message);
                 break;
             case userMessage === '.clearsession' || userMessage === '.clearsesi':
@@ -1743,6 +1762,7 @@ break;
                 await setGroupPhoto(sock, chatId, senderId, message);
                 break;
             case userMessage.startsWith('.instagram') || userMessage.startsWith('.insta') || (userMessage === '.ig' || userMessage.startsWith('.ig ')):
+                if (await economyCommandLocked(sock, chatId, senderId, message, 'instagram')) break;
                 await instagramCommand(sock, chatId, message);
                 break;
             case userMessage.startsWith('.igsc'):
@@ -1759,6 +1779,7 @@ break;
                 break;
                 case userMessage.startsWith('.brat'):
 {
+    if (await economyCommandLocked(sock, chatId, senderId, message, 'brat')) break;
     const text = rawText.slice(5).trim()
 
     await bratCommand(
@@ -1797,6 +1818,7 @@ break;
                 await videoCommand(sock, chatId, message);
                 break;
             case userMessage.startsWith('.tiktok') || userMessage.startsWith('.tt'):
+                if (await economyCommandLocked(sock, chatId, senderId, message, 'tiktok')) break;
                 await tiktokCommand(sock, chatId, message);
                 break;
             case userMessage.startsWith('.gpt') || userMessage.startsWith('.gemini'):
