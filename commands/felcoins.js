@@ -43,6 +43,20 @@ function formatDisplayName(userId, fallback = 'Usuario') {
   return clean ? `@${clean}` : '@usuario';
 }
 
+function isEconomyCommand(rawText = '') {
+  const value = String(rawText || '').trim();
+  if (!value) return false;
+
+  const economyPrefixes = [
+    '.economia', '.registrarme', '.saldo', '.perfil', '.quitar', '.transferir',
+    '.diaria', '.trabajar', '.minar', '.robar', '.protegerse', '.tienda',
+    '.comprar', '.empresas', '.ruleta', '.slots', '.blackjack', '.crash',
+    '.sticker', '.play', '.song', '.mp3', '.ytmp3', '.music', '.modoeconomia'
+  ];
+
+  return economyPrefixes.some((prefix) => value === prefix || value.startsWith(prefix + ' '));
+}
+
 function normalize(value = '') {
   return String(value || '').split(':')[0].split('@')[0].replace(/[^0-9]/g, '');
 }
@@ -129,11 +143,22 @@ async function showPerfil(sock, chatId, senderId, message) {
   if (!user) return;
 
   const stats = user.stats || {};
+  const resolvedStats = {
+    trabajos: Number(stats.trabajos || 0),
+    mineria: Number(stats.mineria || 0),
+    juegos: Number(stats.juegos || 0),
+    transferencias: Number(stats.transferencias || 0),
+    robos: Number(stats.robos || 0),
+    victorias: Number(stats.victorias || 0),
+    derrotas: Number(stats.derrotas || 0),
+    ganancias: Number(stats.ganancias || 0),
+    gastos: Number(stats.gastos || 0)
+  };
   const rawBalance = isOwnerAccount(senderId) ? 9999999999999 : Number(user.saldo || 0);
   const displayBalance = isOwnerAccount(senderId) ? getOwnerDisplayBalance() : rawBalance;
 
   await sock.sendMessage(chatId, {
-    text: `👤 **PERFIL FELCOINS**\n\n👤 ${user.name || 'Usuario'}\n💰 ${formatFelCoins(displayBalance)}\n\n📊 ESTADÍSTICAS\n\n💼 Trabajos: ${Number(stats.trabajos || 0)}\n⛏️ Minería: ${Number(stats.mineria || 0)}\n🎮 Juegos: ${Number(stats.juegos || 0)}\n💸 Transferencias: ${Number(stats.transferencias || 0)}\n🦹 Robos: ${Number(stats.robos || 0)}\n\n🏢 Empresa: ${user.empresa || 'Ninguna'}\n👑 Admin: ${user.modoAdmin ? 'Sí' : 'No'}`
+    text: `👤 **PERFIL FELCOINS**\n\n👤 ${user.name || 'Usuario'}\n💰 ${formatFelCoins(displayBalance)}\n\n📊 ESTADÍSTICAS\n\n💼 Trabajos: ${resolvedStats.trabajos}\n⛏️ Minería: ${resolvedStats.mineria}\n🎮 Juegos: ${resolvedStats.juegos}\n🏆 Victorias: ${resolvedStats.victorias}\n💀 Derrotas: ${resolvedStats.derrotas}\n💸 Transferencias: ${resolvedStats.transferencias}\n🦹 Robos: ${resolvedStats.robos}\n💰 Ganancias: ${formatFelCoins(resolvedStats.ganancias)}\n💸 Gastos: ${formatFelCoins(resolvedStats.gastos)}\n\n🏢 Empresa: ${user.empresa || 'Ninguna'}\n👑 Admin: ${user.modoAdmin ? 'Sí' : 'No'}`
   }, { quoted: message });
 }
 
@@ -161,7 +186,8 @@ async function showTop(sock, chatId, senderId, message) {
 async function registerMe(sock, chatId, senderId, message) {
   const active = await ensureEconomyActive(sock, chatId, message);
   if (!active) return;
-  const user = await ensureEconomyUser(senderId, message?.pushName || 'Usuario');
+  const realTag = formatDisplayName(senderId, message?.pushName || 'Usuario');
+  const user = await ensureEconomyUser(senderId, realTag);
   if (user?.registered) {
     const balance = isOwnerAccount(senderId) ? formatFelCoins(getOwnerDisplayBalance()) : formatFelCoins(Number(user.saldo || 0));
     await sock.sendMessage(chatId, {
@@ -170,9 +196,9 @@ async function registerMe(sock, chatId, senderId, message) {
     return;
   }
 
-  await registerEconomyUser(senderId, message?.pushName || 'Usuario');
+  await registerEconomyUser(senderId, realTag);
   await sock.sendMessage(chatId, {
-    text: `✅ **REGISTRO COMPLETADO**\n\n👤 Usuario: Felipe\n💰 Saldo inicial: 0 FC\n\nAhora puedes comenzar a ganar FelCoins.\n\n💼 Trabaja\n⛏️ Mina\n🎁 Reclama tu diaria\n🏢 Construye tu empresa\n\nUsa .economia para comenzar.`
+    text: `✅ **REGISTRO COMPLETADO**\n\n👤 Usuario: ${realTag}\n💰 Saldo inicial: 0 FC\n\nAhora puedes comenzar a ganar FelCoins.\n\n💼 Trabaja\n⛏️ Mina\n🎁 Reclama tu diaria\n🏢 Construye tu empresa\n\nUsa .economia para comenzar.`
   }, { quoted: message });
 }
 
@@ -812,5 +838,6 @@ module.exports = {
   withdrawCrash,
   handleEconomyButton,
   formatCountdown,
-  removeCoinsFromUser
+  removeCoinsFromUser,
+  isEconomyCommand
 };

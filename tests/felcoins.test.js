@@ -5,7 +5,8 @@ const settings = require('../settings');
 const EconomyUser = require('../models/EconomyUser');
 const EconomyLog = require('../models/EconomyLog');
 const EconomyRob = require('../models/EconomyRob');
-const { handleEconomyButton, showEconomyMenu } = require('../commands/felcoins');
+const EconomyConfig = require('../models/EconomyConfig');
+const { handleEconomyButton, showEconomyMenu, showPerfil, isEconomyCommand } = require('../commands/felcoins');
 
 (async () => {
   const cfg = getEconomyConfig();
@@ -20,6 +21,11 @@ const { handleEconomyButton, showEconomyMenu } = require('../commands/felcoins')
   assert.equal(hasSufficientBalance(50, 100), false);
   assert.equal(isOwnerAccount(settings.ownerNumber), true, 'El número principal del owner debe ser considerado propietario');
   assert.equal(isOwnerAccount(settings.ownerLid), true, 'El LID del owner también debe ser considerado propietario');
+  assert.equal(isEconomyCommand('.saldo'), true, 'Los comandos de economía deben quedar exentos del modo admin del grupo');
+  assert.equal(isEconomyCommand('.transferir 100 @usuario'), true, 'Las transferencias de FelCoins también deben quedar exentas');
+  assert.equal(isEconomyCommand('.play una cancion'), true, 'Los comandos con costo también deben quedar exentos del modo admin');
+  assert.equal(isEconomyCommand('.sticker'), true, 'Los stickers con costo deben quedar exentos del modo admin');
+  assert.equal(isEconomyCommand('.hello'), false, 'Los comandos ajenos no deben ser tratados como de economía');
 
   const readyState = mongoose.connection.readyState;
   const findOneOriginal = EconomyUser.findOne;
@@ -92,11 +98,57 @@ const { handleEconomyButton, showEconomyMenu } = require('../commands/felcoins')
   assert.equal(robberyResult.penalty, 500, 'Si intentan robar al owner, la multa debe ser 500 FC');
   assert.equal(attackerUser.saldo, -100, 'Si el atacante no tiene 500, debe quedar en deuda negativa');
 
+  const profileUser = {
+    userId: '1234567890',
+    name: 'Perfil User',
+    saldo: 5000,
+    registered: true,
+    stats: {
+      trabajos: 3,
+      mineria: 2,
+      juegos: 7,
+      transferencias: 5,
+      robos: 4,
+      victorias: 11,
+      derrotas: 9,
+      ganancias: 1500,
+      gastos: 400
+    },
+    empresa: null,
+    modoAdmin: false,
+    save: async function () { return this; }
+  };
+  EconomyUser.findOne = async ({ userId }) => normalizeJid(userId) === '1234567890' ? profileUser : null;
+  const configFindOneOriginal = EconomyConfig.findOne;
+  EconomyConfig.findOne = () => ({
+    lean: () => ({
+      key: 'main',
+      enabled: true,
+      commandCosts: { play: 100, sticker: 25 },
+      rewards: { daily: 300 },
+      prices: {},
+      cooldowns: {},
+      limits: {},
+      companies: {}
+    })
+  });
+  Object.defineProperty(mongoose.connection, 'readyState', { value: 1, configurable: true });
+  const profileSent = [];
+  const profileSock = {
+    sendMessage: async (chatId, payload, extra) => {
+      profileSent.push({ chatId, payload, extra });
+      return true;
+    }
+  };
+  await showPerfil(profileSock, '1234567890@s.whatsapp.net', '1234567890@s.whatsapp.net', { pushName: 'Perfil User' });
+  assert.ok(profileSent.some((item) => String(item.payload?.text || '').includes('Victorias: 11') && String(item.payload?.text || '').includes('Derrotas: 9') && String(item.payload?.text || '').includes('Ganancias: 1.500 FC') && String(item.payload?.text || '').includes('Gastos: 400 FC')), 'El perfil debe mostrar las estadísticas reales del usuario');
+
   Object.defineProperty(mongoose.connection, 'readyState', { value: readyState, configurable: true });
   EconomyUser.findOne = findOneOriginal;
   EconomyUser.create = createOriginal;
   EconomyLog.create = logCreateOriginal;
   EconomyRob.findOne = robFindOneOriginal;
+  EconomyConfig.findOne = configFindOneOriginal;
 
   await setEconomyEnabled(true);
 
