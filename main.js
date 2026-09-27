@@ -840,8 +840,8 @@ const command = rawText.split(' ')[0].toLowerCase()
                 await handleRobbery(sock, chatId, senderId, message, robMention);
                 commandExecuted = true;
                 break;
-            case userMessage === '.protegerse':
-                await protectMe(sock, chatId, senderId, message);
+            case userMessage === '.protegerse' || userMessage.startsWith('.protegerse '):
+                await protectMe(sock, chatId, senderId, message, userMessage.split(/\s+/)[1] || null);
                 commandExecuted = true;
                 break;
             case userMessage === '.tienda':
