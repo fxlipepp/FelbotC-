@@ -482,65 +482,47 @@ async function processTransfer(sock, chatId, senderId, message, rawText) {
 }
 
 async function handleRobbery(sock, chatId, senderId, message, targetId) {
-  const active = await ensureEconomyActive(sock, chatId, message);
-  if (!active) return;
-  const attackerUser = await ensureRegisteredWithReply(sock, chatId, senderId, message, message?.pushName || 'Usuario');
-  if (!attackerUser) return;
-  const targetInfo = resolveTargetInfo(message, targetId, 'usuario');
-  const target = targetInfo.jid;
-  if (!target) {
-    await sock.sendMessage(chatId, { text: '❌ Debes indicar a quién quieres robar.' }, { quoted: message });
-    return;
+  const active=await ensureEconomyActive(sock,chatId,message); if(!active)return;
+  const attackerUser=await ensureRegisteredWithReply(sock,chatId,senderId,message,message?.pushName||'Usuario'); if(!attackerUser)return;
+  const targetInfo=resolveTargetInfo(message,targetId,'usuario'); const target=targetInfo.jid;
+  if(!target){await sock.sendMessage(chatId,{text:'❌ Debes indicar a quién quieres robar.'},{quoted:message});return;}
+  if(normalize(target)===normalize(senderId)){await sock.sendMessage(chatId,{text:'❌ No puedes robarte a ti mismo.'},{quoted:message});return;}
+
+  const remaining=await getRemainingCooldown(senderId,'rob');
+  if(remaining>0){await sock.sendMessage(chatId,{text:`⏳ **ROBO EN COOLDOWN**\\n\\nPodrás volver a intentarlo en ${formatCountdown(remaining)}.`},{quoted:message});return;}
+
+  const targetUser=await ensureEconomyUser(target,'Usuario');
+  if(!targetUser||!targetUser.registered){await sock.sendMessage(chatId,{text:'❌ Ese usuario no está registrado en FelCoins.'},{quoted:message});return;}
+
+  attackerUser.lastRob=new Date(); await attackerUser.save();
+
+  if(isOwnerAccount(target)){
+    const penalty=2000; await deductBalance(senderId,penalty,'robar','Multa por intentar robar al OWNER');
+    await sock.sendMessage(chatId,{text:`👑 **ROBO AL OWNER BLOQUEADO**\\n\\nNo puedes robar al OWNER.\\n\\n💸 Multa: -${formatFelCoins(penalty)}`},{quoted:message}); return;
   }
 
-  const targetUser = await ensureEconomyUser(target, 'Usuario');
-  if (!targetUser || !targetUser.registered) {
-    await sock.sendMessage(chatId, { text: '❌ Ese usuario no está registrado en FelCoins.' }, { quoted: message });
-    return;
+  if(hasActiveProtection(targetUser)){
+    const remainingProtection=Math.max(0,new Date(targetUser.protectionUntil).getTime()-Date.now());
+    await deductBalance(senderId,500,'robar','Multa por intentar robar a un usuario protegido');
+    await sock.sendMessage(chatId,{text:`🛡️ **ROBO BLOQUEADO**\\n\\n${targetInfo.label} tiene protección activa durante ${formatCountdown(remainingProtection)}.\\n\\n💸 Multa: -500 FC`},{quoted:message,mentions:[target]}); return;
   }
 
-  if (isOwnerAccount(target)) {
-    const penalty = 2000;
-    await deductBalance(senderId, penalty, 'robar', 'Multa por intentar robar al OWNER');
-    await sock.sendMessage(chatId, { text: `👑 **ROBO AL OWNER BLOQUEADO**\n\nNo puedes robar al OWNER.\n\n💸 Multa aplicada: -${formatFelCoins(penalty)}` }, { quoted: message });
-    return;
-  }
+  const config=await ensureEconomyConfig();
+  const victimBalance=Number(targetUser.saldo||0);
+  if(victimBalance<Number(config.limits?.robMin||100)){await sock.sendMessage(chatId,{text:'❌ Ese usuario no tiene suficientes FelCoins para robarle.'},{quoted:message});return;}
+  const amount=Math.min(Math.floor(victimBalance*Number(config.limits?.robPercent||0.50)),Number(config.limits?.robMax||8000));
+  const rob=await createRobbery(senderId,target,Math.max(Number(config.limits?.robMin||100),amount));
+  if(!rob){await sock.sendMessage(chatId,{text:'❌ No se pudo iniciar el robo.'},{quoted:message});return;}
 
-  if (hasActiveProtection(targetUser)) {
-    const remaining = Math.max(0, new Date(targetUser.protectionUntil).getTime() - Date.now());
-    await deductBalance(senderId, 500, 'robar', 'Multa por intentar robar a un usuario protegido');
-    await sock.sendMessage(chatId, { text: `🛡️ **ROBO BLOQUEADO**\n\n${targetInfo.label} está protegido durante ${formatCountdown(remaining)}.\n\n💸 Multa al ladrón: -500 FC` }, { quoted: message });
-    return;
-  }
+  const success=Math.random()<0.70;
+  const result=success
+    ? await resolveRobbery(senderId,target,false)
+    : await resolveRobbery(senderId,target,true,300);
 
-  const config = await ensureEconomyConfig();
-  const maxAmount = Math.min(Number(targetUser.saldo || 0) * Number(config.limits?.robPercent || 0.50), Number(config.limits?.robMax || 8000));
-  if (Number(targetUser.saldo || 0) < Number(config.limits?.robMin || 100)) {
-    await sock.sendMessage(chatId, { text: '❌ Ese usuario no tiene suficientes FelCoins para robarle.' }, { quoted: message });
-    return;
-  }
-  const amount = Math.max(Number(config.limits?.robMin || 100), Math.floor(maxAmount));
-  const rob = await createRobbery(senderId, target, amount);
-  if (!rob) {
-    await sock.sendMessage(chatId, { text: '❌ No se pudo iniciar el robo.' }, { quoted: message });
-    return;
-  }
-
-  const victimMention = mentionTarget(target);
-  await sock.sendMessage(chatId, {
-    text: `🚨 **INTENTO DE ROBO**\n\n${victimMention.text} está intentando robarte.\n\n⏱️ Tienes 5 minutos para protegerte.\n\n🛡️ Pulsa el botón:`,
-    contextInfo: victimMention.jid ? { mentionedJid: [victimMention.jid] } : undefined
-  }, { quoted: message });
-
-  const menu = new ButtonV2(sock)
-    .setBody(`🛡️ **PROTECCIÓN**\n\n${victimMention.text} tiene un robo pendiente.`)
-    .setFooter('FelCoins • Robo')
-    .addButton('🛡️ PROTEGERME', `felcoin::protect::${rob._id}`);
-
-  try {
-    await menu.send(chatId, { quoted: message, mentions: [senderId, target] });
-  } catch (error) {
-    await menu.send(target, { quoted: message, mentions: [senderId, target] });
+  if(success&&result?.ok){
+    await sock.sendMessage(chatId,{text:`🚨 **ROBO EXITOSO**\\n\\n👤 Víctima: ${targetInfo.label}\\n💰 Robaste: +${formatFelCoins(result.amount||0)}\\n📊 Se tomó el 50% de su saldo, con máximo de 8.000 FC.\\n\\n💵 Tu saldo: ${formatFelCoins(Number(attackerUser.saldo||0)+Number(result.amount||0))}` ,contextInfo:targetInfo.jid?{mentionedJid:[targetInfo.jid]}:undefined},{quoted:message}); 
+  }else{
+    await sock.sendMessage(chatId,{text:`🚔 **ROBO FALLIDO**\\n\\n👤 Víctima: ${targetInfo.label}\\n\\n💸 Multa por fallar: -300 FC\\n🎯 Probabilidad de éxito: 70%` ,contextInfo:targetInfo.jid?{mentionedJid:[targetInfo.jid]}:undefined},{quoted:message});
   }
 }
 
