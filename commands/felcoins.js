@@ -7,6 +7,7 @@ const {
   formatFelCoins,
   getBalance,
   getOwnerDisplayBalance,
+  notifyEconomyDisabled,
   claimDaily,
   claimWork,
   claimMine,
@@ -61,6 +62,15 @@ function mentionTarget(value = '') {
   return { text: `@${name}`, jid };
 }
 
+async function ensureEconomyActive(sock, chatId, message) {
+  const enabled = await getEconomyEnabled();
+  if (!enabled) {
+    await notifyEconomyDisabled(sock, chatId, message);
+    return false;
+  }
+  return true;
+}
+
 async function ensureRegisteredWithReply(sock, chatId, senderId, message, userName = 'Usuario') {
   const user = await ensureEconomyUser(senderId, userName);
   if (!user || !user.registered) {
@@ -73,6 +83,8 @@ async function ensureRegisteredWithReply(sock, chatId, senderId, message, userNa
 }
 
 async function showEconomyMenu(sock, chatId, senderId, message) {
+  const active = await ensureEconomyActive(sock, chatId, message);
+  if (!active) return;
   const user = await ensureEconomyUser(senderId, message?.pushName || 'Usuario');
   const balance = isOwnerAccount(senderId) ? getOwnerDisplayBalance() : Number(user?.saldo || 0);
   const text = `💰 **FELCOINS**\n\n👤 ${user?.name || 'Usuario'}\n💵 Saldo: ${formatFelCoins(balance)}\n\n¿Qué quieres hacer?`;
@@ -94,6 +106,8 @@ async function showEconomyMenu(sock, chatId, senderId, message) {
 }
 
 async function showSaldo(sock, chatId, senderId, message) {
+  const active = await ensureEconomyActive(sock, chatId, message);
+  if (!active) return;
   const user = await ensureRegisteredWithReply(sock, chatId, senderId, message, message?.pushName || 'Usuario');
   if (!user) return;
 
@@ -109,6 +123,8 @@ async function showSaldo(sock, chatId, senderId, message) {
 }
 
 async function showPerfil(sock, chatId, senderId, message) {
+  const active = await ensureEconomyActive(sock, chatId, message);
+  if (!active) return;
   const user = await ensureRegisteredWithReply(sock, chatId, senderId, message, message?.pushName || 'Usuario');
   if (!user) return;
 
@@ -122,6 +138,8 @@ async function showPerfil(sock, chatId, senderId, message) {
 }
 
 async function showTop(sock, chatId, senderId, message) {
+  const active = await ensureEconomyActive(sock, chatId, message);
+  if (!active) return;
   const user = await ensureRegisteredWithReply(sock, chatId, senderId, message, message?.pushName || 'Usuario');
   if (!user) return;
   const top = await getTopUsers(10);
@@ -141,6 +159,8 @@ async function showTop(sock, chatId, senderId, message) {
 }
 
 async function registerMe(sock, chatId, senderId, message) {
+  const active = await ensureEconomyActive(sock, chatId, message);
+  if (!active) return;
   const user = await ensureEconomyUser(senderId, message?.pushName || 'Usuario');
   if (user?.registered) {
     const balance = isOwnerAccount(senderId) ? formatFelCoins(getOwnerDisplayBalance()) : formatFelCoins(Number(user.saldo || 0));
@@ -176,6 +196,8 @@ async function toggleEconomy(sock, chatId, senderId, message, enabled) {
 }
 
 async function dailyReward(sock, chatId, senderId, message) {
+  const active = await ensureEconomyActive(sock, chatId, message);
+  if (!active) return;
   const user = await ensureRegisteredWithReply(sock, chatId, senderId, message, message?.pushName || 'Usuario');
   if (!user) return;
   const result = await claimDaily(senderId);
@@ -195,6 +217,8 @@ async function dailyReward(sock, chatId, senderId, message) {
 }
 
 async function workCommand(sock, chatId, senderId, message) {
+  const active = await ensureEconomyActive(sock, chatId, message);
+  if (!active) return;
   const user = await ensureRegisteredWithReply(sock, chatId, senderId, message, message?.pushName || 'Usuario');
   if (!user) return;
   const remaining = await getRemainingCooldown(senderId, 'work');
@@ -226,6 +250,8 @@ async function workCommand(sock, chatId, senderId, message) {
 }
 
 async function mineCommand(sock, chatId, senderId, message) {
+  const active = await ensureEconomyActive(sock, chatId, message);
+  if (!active) return;
   const user = await ensureRegisteredWithReply(sock, chatId, senderId, message, message?.pushName || 'Usuario');
   if (!user) return;
   const result = await claimMine(senderId);
@@ -239,7 +265,46 @@ async function mineCommand(sock, chatId, senderId, message) {
   }, { quoted: message });
 }
 
+async function removeCoinsFromUser(sock, chatId, senderId, message, rawText) {
+  if (!isOwnerAccount(senderId) && !message?.key?.fromMe) {
+    await sock.sendMessage(chatId, { text: '❌ Solo el OWNER puede usar este comando.' }, { quoted: message });
+    return;
+  }
+
+  const args = rawText.trim().split(/\s+/).slice(1);
+  const amount = parseAmount(args[0]);
+  const targetRaw = args[1] || (message.message?.extendedTextMessage?.contextInfo?.mentionedJid?.[0] || '');
+  const target = toRecipientJid(targetRaw);
+
+  if (!amount || amount <= 0) {
+    await sock.sendMessage(chatId, { text: '❌ Cantidad inválida. Usa .quitar 900 @usuario' }, { quoted: message });
+    return;
+  }
+
+  if (!target) {
+    await sock.sendMessage(chatId, { text: '❌ Debes indicar a quién quitarle FelCoins.' }, { quoted: message });
+    return;
+  }
+
+  const targetUser = await ensureEconomyUser(target, 'Usuario');
+  if (!targetUser || !targetUser.registered) {
+    await sock.sendMessage(chatId, { text: '❌ Ese usuario no está registrado en FelCoins.' }, { quoted: message });
+    return;
+  }
+
+  const previous = Number(targetUser.saldo || 0);
+  const updated = await deductBalance(target, amount, 'quitar', `Coins quitados por ${senderId}`);
+  const targetMention = mentionTarget(target);
+
+  await sock.sendMessage(chatId, {
+    text: `⚙️ **COINS QUITADOS**\n\n👤 Usuario: ${targetMention.text}\n💸 Cantidad: -${formatFelCoins(amount)}\n\n💰 Saldo anterior: ${formatFelCoins(previous)}\n💰 Saldo actual: ${formatFelCoins(Number(updated || 0))}`,
+    contextInfo: targetMention.jid ? { mentionedJid: [targetMention.jid] } : undefined
+  }, { quoted: message });
+}
+
 async function processTransfer(sock, chatId, senderId, message, rawText) {
+  const active = await ensureEconomyActive(sock, chatId, message);
+  if (!active) return;
   const user = await ensureRegisteredWithReply(sock, chatId, senderId, message, message?.pushName || 'Usuario');
   if (!user) return;
   const args = rawText.trim().split(/\s+/).slice(1);
@@ -275,11 +340,13 @@ async function processTransfer(sock, chatId, senderId, message, rawText) {
   const recipientMention = mentionTarget(target);
   await sock.sendMessage(chatId, {
     text: `💸 **TRANSFERENCIA REALIZADA**\n\n👤 Destinatario: ${recipientMention.text}\n💰 Cantidad: ${formatFelCoins(amount)}\n\n💵 Saldo anterior: ${formatFelCoins(Number(user.saldo || 0) + amount)}\n💵 Saldo actual: ${formatFelCoins(Number(result.senderBalance || 0))}`,
-    mentions: recipientMention.jid ? [recipientMention.jid] : []
+    contextInfo: recipientMention.jid ? { mentionedJid: [recipientMention.jid] } : undefined
   }, { quoted: message });
 }
 
 async function handleRobbery(sock, chatId, senderId, message, targetId) {
+  const active = await ensureEconomyActive(sock, chatId, message);
+  if (!active) return;
   const attackerUser = await ensureRegisteredWithReply(sock, chatId, senderId, message, message?.pushName || 'Usuario');
   if (!attackerUser) return;
   const targetRaw = targetId || (message.message?.extendedTextMessage?.contextInfo?.mentionedJid?.[0] || '');
@@ -306,7 +373,7 @@ async function handleRobbery(sock, chatId, senderId, message, targetId) {
   const victimMention = mentionTarget(target);
   await sock.sendMessage(chatId, {
     text: `🚨 **INTENTO DE ROBO**\n\n${victimMention.text} está intentando robarte.\n\n⏱️ Tienes 5 minutos para protegerte.\n\n🛡️ Pulsa el botón:`,
-    mentions: victimMention.jid ? [victimMention.jid] : []
+    contextInfo: victimMention.jid ? { mentionedJid: [victimMention.jid] } : undefined
   }, { quoted: message });
 
   const menu = new ButtonV2(sock)
@@ -317,6 +384,8 @@ async function handleRobbery(sock, chatId, senderId, message, targetId) {
 }
 
 async function protectMe(sock, chatId, senderId, message) {
+  const active = await ensureEconomyActive(sock, chatId, message);
+  if (!active) return;
   const pending = await getPendingRobForVictim(senderId);
   if (!pending) {
     await sock.sendMessage(chatId, { text: '⚠️ Este robo ya no está activo.' }, { quoted: message });
@@ -330,6 +399,8 @@ async function protectMe(sock, chatId, senderId, message) {
 }
 
 async function openShop(sock, chatId, senderId, message) {
+  const active = await ensureEconomyActive(sock, chatId, message);
+  if (!active) return;
   const menu = new ButtonV2(sock)
     .setBody('🛒 **TIENDA FELCOINS**\n\nSelecciona un producto:')
     .setFooter('FelCoins • Tienda')
@@ -342,6 +413,8 @@ async function openShop(sock, chatId, senderId, message) {
 }
 
 async function buyProduct(sock, chatId, senderId, message, product) {
+  const active = await ensureEconomyActive(sock, chatId, message);
+  if (!active) return;
   const user = await ensureRegisteredWithReply(sock, chatId, senderId, message, message?.pushName || 'Usuario');
   if (!user) return;
 
@@ -374,6 +447,8 @@ async function buyProduct(sock, chatId, senderId, message, product) {
 }
 
 async function openGamesMenu(sock, chatId, senderId, message) {
+  const active = await ensureEconomyActive(sock, chatId, message);
+  if (!active) return;
   const menu = new ButtonV2(sock)
     .setBody('🎮 **JUEGOS FELCOINS**\n\nElige un juego para apostar y ganar FC.')
     .setFooter('FelCoins • Juegos')
@@ -386,6 +461,8 @@ async function openGamesMenu(sock, chatId, senderId, message) {
 }
 
 async function viewCompanies(sock, chatId, senderId, message) {
+  const active = await ensureEconomyActive(sock, chatId, message);
+  if (!active) return;
   const menu = new ButtonV2(sock)
     .setBody('🏢 **EMPRESAS FELCOINS**\n\nElige una empresa para ver sus detalles.')
     .setFooter('FelCoins • Empresas')
@@ -399,6 +476,8 @@ async function viewCompanies(sock, chatId, senderId, message) {
 }
 
 async function openCompanyDetails(sock, chatId, senderId, message, company) {
+  const active = await ensureEconomyActive(sock, chatId, message);
+  if (!active) return;
   const config = await ensureEconomyConfig();
   const companyData = config.companies?.[company] || { price: 0, income: 0 };
   const labelMap = {
@@ -419,6 +498,8 @@ async function openCompanyDetails(sock, chatId, senderId, message, company) {
 }
 
 async function buyCompany(sock, chatId, senderId, message, company) {
+  const active = await ensureEconomyActive(sock, chatId, message);
+  if (!active) return;
   const user = await ensureRegisteredWithReply(sock, chatId, senderId, message, message?.pushName || 'Usuario');
   if (!user) return;
   const config = await ensureEconomyConfig();
@@ -447,6 +528,8 @@ async function buyCompany(sock, chatId, senderId, message, company) {
 }
 
 async function rouletteGame(sock, chatId, senderId, message, amount) {
+  const active = await ensureEconomyActive(sock, chatId, message);
+  if (!active) return;
   const user = await ensureRegisteredWithReply(sock, chatId, senderId, message, message?.pushName || 'Usuario');
   if (!user) return;
   const value = Math.max(1, Number(amount) || 0);
@@ -475,6 +558,8 @@ async function rouletteGame(sock, chatId, senderId, message, amount) {
 }
 
 async function slotsGame(sock, chatId, senderId, message, amount) {
+  const active = await ensureEconomyActive(sock, chatId, message);
+  if (!active) return;
   const user = await ensureRegisteredWithReply(sock, chatId, senderId, message, message?.pushName || 'Usuario');
   if (!user) return;
   const value = Math.max(1, Number(amount) || 0);
@@ -506,6 +591,8 @@ async function slotsGame(sock, chatId, senderId, message, amount) {
 }
 
 async function blackjackInitial(sock, chatId, senderId, message, amount) {
+  const active = await ensureEconomyActive(sock, chatId, message);
+  if (!active) return;
   const user = await ensureRegisteredWithReply(sock, chatId, senderId, message, message?.pushName || 'Usuario');
   if (!user) return;
   const value = Math.max(1, Number(amount) || 0);
@@ -531,6 +618,8 @@ async function blackjackInitial(sock, chatId, senderId, message, amount) {
 }
 
 async function blackjackHit(sock, chatId, senderId, message) {
+  const active = await ensureEconomyActive(sock, chatId, message);
+  if (!active) return;
   const user = await ensureRegisteredWithReply(sock, chatId, senderId, message, message?.pushName || 'Usuario');
   if (!user) return;
   if (!user.blackjack) {
@@ -557,6 +646,8 @@ async function blackjackHit(sock, chatId, senderId, message) {
 }
 
 async function blackjackStand(sock, chatId, senderId, message) {
+  const active = await ensureEconomyActive(sock, chatId, message);
+  if (!active) return;
   const user = await ensureRegisteredWithReply(sock, chatId, senderId, message, message?.pushName || 'Usuario');
   if (!user) return;
   if (!user.blackjack) {
@@ -579,6 +670,8 @@ async function blackjackStand(sock, chatId, senderId, message) {
 }
 
 async function crashGame(sock, chatId, senderId, message, amount) {
+  const active = await ensureEconomyActive(sock, chatId, message);
+  if (!active) return;
   const user = await ensureRegisteredWithReply(sock, chatId, senderId, message, message?.pushName || 'Usuario');
   if (!user) return;
   const value = Math.max(1, Number(amount) || 0);
@@ -597,6 +690,8 @@ async function crashGame(sock, chatId, senderId, message, amount) {
 }
 
 async function withdrawCrash(sock, chatId, senderId, message) {
+  const active = await ensureEconomyActive(sock, chatId, message);
+  if (!active) return;
   const user = await ensureRegisteredWithReply(sock, chatId, senderId, message, message?.pushName || 'Usuario');
   if (!user) return;
   if (!user.crash || !user.crash.active) {
@@ -615,6 +710,8 @@ async function withdrawCrash(sock, chatId, senderId, message) {
 }
 
 async function handleEconomyButton(sock, chatId, senderId, buttonId, message) {
+  const active = await ensureEconomyActive(sock, chatId, message);
+  if (!active) return;
   const parts = String(buttonId).split('::');
   const action = parts[1];
   const extra = parts[2];
@@ -709,5 +806,6 @@ module.exports = {
   crashGame,
   withdrawCrash,
   handleEconomyButton,
-  formatCountdown
+  formatCountdown,
+  removeCoinsFromUser
 };

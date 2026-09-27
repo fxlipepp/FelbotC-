@@ -1,6 +1,6 @@
 const assert = require('node:assert/strict');
 const mongoose = require('mongoose');
-const { getEconomyConfig, getCommandCost, formatFelCoins, parseAmount, hasSufficientBalance, isOwnerAccount, transferBalance, normalizeJid } = require('../lib/felcoins');
+const { getEconomyConfig, getCommandCost, formatFelCoins, parseAmount, hasSufficientBalance, isOwnerAccount, transferBalance, normalizeJid, setEconomyEnabled } = require('../lib/felcoins');
 const settings = require('../settings');
 const EconomyUser = require('../models/EconomyUser');
 const EconomyLog = require('../models/EconomyLog');
@@ -62,6 +62,8 @@ const { handleEconomyButton, showEconomyMenu } = require('../commands/felcoins')
   EconomyUser.create = createOriginal;
   EconomyLog.create = logCreateOriginal;
 
+  await setEconomyEnabled(true);
+
   const sent = [];
   const fakeSock = {
     sendMessage: async (chatId, payload, extra) => {
@@ -88,10 +90,18 @@ const { handleEconomyButton, showEconomyMenu } = require('../commands/felcoins')
     relayMessage: async () => ({ key: { id: 'test-econ-menu', remoteJid: '1234567890@s.whatsapp.net', fromMe: false }, message: {} })
   };
 
-  await assert.doesNotReject(
-    () => showEconomyMenu(safeSock, '1234567890@s.whatsapp.net', '1234567890@s.whatsapp.net', { pushName: 'Usuario sin key' }),
-    'El menú económico no debe romperse si el objeto de mensaje no tiene key'
-  );
+  await setEconomyEnabled(false);
+  const disabledSent = [];
+  const disabledSock = {
+    sendMessage: async (chatId, payload, extra) => {
+      disabledSent.push({ chatId, payload, extra });
+      return true;
+    },
+    relayMessage: async () => ({ key: { id: 'test-disabled', remoteJid: '1234567890@s.whatsapp.net', fromMe: false }, message: {} })
+  };
+  await showEconomyMenu(disabledSock, '1234567890@s.whatsapp.net', '1234567890@s.whatsapp.net', { pushName: 'Usuario' });
+  assert.ok(disabledSent.some((item) => String(item.payload?.text || '').includes('ECONOMÍA DESACTIVADA') || String(item.payload?.text || '').includes('desactivado') || String(item.payload?.text || '').includes('owner')), 'Cuando la economía está apagada, el comando debe informar que está desactivada');
+  await setEconomyEnabled(true);
 
   console.log('FelCoins tests passed');
 })();
