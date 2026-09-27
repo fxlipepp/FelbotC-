@@ -11,8 +11,8 @@ const { handleEconomyButton, showEconomyMenu, showPerfil, isEconomyCommand, form
 (async () => {
   const cfg = getEconomyConfig();
   assert.equal(cfg.enabled, false, 'La economía debe iniciar desactivada');
-  assert.ok(cfg.commandCosts.play === 500, 'El costo de .play debe quedar en 500 FC');
-  assert.equal(await getCommandCost('play'), 500, 'El costo del comando debe venir de la config compartida');
+  assert.ok(cfg.commandCosts.play === 100, 'El costo base legacy de .play debe quedar en 100 FC');
+  assert.equal(await getCommandCost('play'), 100, 'El costo base legacy debe venir de la config compartida');
   assert.equal(await getCommandCost('sticker'), 25, 'El costo del comando sticker debe quedar en 25 FC');
   assert.equal(formatFelCoins(5000), '5.000 FC');
   assert.equal(formatFelCoins(1000000), '1.000.000 FC');
@@ -102,8 +102,8 @@ const { handleEconomyButton, showEconomyMenu, showPerfil, isEconomyCommand, form
   });
 
   const robberyResult = await resolveRobbery(attackerId, settings.ownerNumber, true);
-  assert.equal(robberyResult.penalty, 500, 'Si intentan robar al owner, la multa debe ser 500 FC');
-  assert.equal(attackerUser.saldo, -100, 'Si el atacante no tiene 500, debe quedar en deuda negativa');
+  assert.equal(robberyResult.penalty, 2000, 'Si intentan robar al owner, la multa debe ser 2000 FC');
+  assert.equal(attackerUser.saldo, -1600, 'La multa del owner debe descontarse completa aunque deje saldo negativo');
 
   const resetResult = await resetEconomyState();
   assert.equal(resetResult.resetCount, 2, 'El reinicio debe limpiar todas las economías no owner');
@@ -160,7 +160,7 @@ const { handleEconomyButton, showEconomyMenu, showPerfil, isEconomyCommand, form
     saldo: 0,
     registered: true,
     stats: { trabajos: 0, mineria: 0, juegos: 0, transferencias: 0, robos: 0, victorias: 0, derrotas: 0, ganancias: 0, gastos: 0 },
-    workState: null,
+    workState: { type: 'job', step: 'route', jobs: ['delivery', 'cashier', 'repair', 'restaurant', 'warehouse', 'event'] },
     save: async function () { return this; }
   };
   EconomyUser.findOne = async ({ userId }) => normalizeJid(userId) === '9876543210' ? workUser : null;
@@ -168,29 +168,28 @@ const { handleEconomyButton, showEconomyMenu, showPerfil, isEconomyCommand, form
     lean: () => ({
       key: 'main',
       enabled: true,
-      commandCosts: { play: 500, sticker: 25 },
+      commandCosts: { play: 100, sticker: 25 },
       rewards: { daily: 300, work: { min: 200, max: 900 } },
       prices: {},
-      cooldowns: {},
+      cooldowns: { work: 0 },
       limits: {},
       companies: {}
     })
   });
-  const workReward = await claimWork('9876543210@s.whatsapp.net');
-  assert.equal(workReward.ok, true, 'El trabajo debe iniciar correctamente sin pagar aún el premio final');
-  assert.equal(workUser.saldo, 0, 'El trabajo no debe abonar saldo antes de que el usuario elija la ruta');
 
-  workUser.workState = { type: 'delivery', step: 'route', reward: workReward.amount };
   const workSent = [];
   const workSock = {
     sendMessage: async (chatId, payload, extra) => {
       workSent.push({ chatId, payload, extra });
       return true;
-    }
+    },
+    relayMessage: async () => true
   };
-  await handleEconomyButton(workSock, '9876543210@s.whatsapp.net', '9876543210@s.whatsapp.net', 'felcoin::work::safe', { pushName: 'Trabajo User' });
-  assert.ok(workSent.some((item) => String(item.payload?.text || '').includes('RUTA SEGURA') && String(item.payload?.text || '').includes('520 FC')), 'La ruta seleccionada debe mostrar el resultado final del trabajo');
-  assert.equal(workUser.saldo, 520, 'La recompensa del trabajo debe aplicarse sólo cuando se seleccione la ruta');
+
+  await handleEconomyButton(workSock, '9876543210@s.whatsapp.net', '9876543210@s.whatsapp.net', 'felcoin::work::delivery', { pushName: 'Trabajo User' });
+  assert.ok(workSent.some((item) => String(item.payload?.text || '').includes('ENTREGA A DOMICILIO')), 'El trabajo seleccionado debe mostrar el resultado');
+  assert.ok(workUser.saldo > 0, 'La recompensa debe aplicarse al seleccionar el trabajo');
+  assert.equal(workUser.workState, null, 'El trabajo seleccionado debe consumirse');
 
   Object.defineProperty(mongoose.connection, 'readyState', { value: readyState, configurable: true });
   EconomyUser.findOne = findOneOriginal;
