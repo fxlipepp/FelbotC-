@@ -8,6 +8,7 @@ const economyUserSchema = new mongoose.Schema({
   empresa: { type: String, default: null },
   ingresoDiario: { type: Number, default: 0 },
   modoAdmin: { type: Boolean, default: false },
+  modoRey: { type: Boolean, default: false },
   adminUntil: { type: Date, default: null },
   lastDaily: { type: Date, default: null },
   lastWork: { type: Date, default: null },

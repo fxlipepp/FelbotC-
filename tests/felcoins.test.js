@@ -1,6 +1,6 @@
 const assert = require('node:assert/strict');
 const mongoose = require('mongoose');
-const { getEconomyConfig, getCommandCost, formatFelCoins, parseAmount, hasSufficientBalance, isOwnerAccount, transferBalance, normalizeJid, setEconomyEnabled, resolveRobbery } = require('../lib/felcoins');
+const { getEconomyConfig, getCommandCost, formatFelCoins, parseAmount, hasSufficientBalance, isOwnerAccount, transferBalance, normalizeJid, setEconomyEnabled, resolveRobbery, hasRoyalProtection } = require('../lib/felcoins');
 const settings = require('../settings');
 const EconomyUser = require('../models/EconomyUser');
 const EconomyLog = require('../models/EconomyLog');
@@ -21,6 +21,8 @@ const { handleEconomyButton, showEconomyMenu, showPerfil, isEconomyCommand } = r
   assert.equal(hasSufficientBalance(50, 100), false);
   assert.equal(isOwnerAccount(settings.ownerNumber), true, 'El número principal del owner debe ser considerado propietario');
   assert.equal(isOwnerAccount(settings.ownerLid), true, 'El LID del owner también debe ser considerado propietario');
+  assert.equal(hasRoyalProtection({ modoRey: true }), true, 'El modo rey debe proteger al usuario del modo admin');
+  assert.equal(hasRoyalProtection({ modoRey: false }), false, 'Sin modo rey, la protección debe estar desactivada');
   assert.equal(isEconomyCommand('.saldo'), true, 'Los comandos de economía deben quedar exentos del modo admin del grupo');
   assert.equal(isEconomyCommand('.transferir 100 @usuario'), true, 'Las transferencias de FelCoins también deben quedar exentas');
   assert.equal(isEconomyCommand('.play una cancion'), true, 'Los comandos con costo también deben quedar exentos del modo admin');

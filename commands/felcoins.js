@@ -17,6 +17,7 @@ const {
   getRemainingCooldown,
   ensureEconomyConfig,
   isOwnerAccount,
+  hasRoyalProtection,
   deductBalance,
   addBalance,
   createRobbery,
@@ -127,12 +128,14 @@ async function showSaldo(sock, chatId, senderId, message) {
 
   const companyText = user.empresa ? user.empresa : 'Ninguna';
   const adminText = user.modoAdmin ? 'Sí' : 'No';
+  const royalText = hasRoyalProtection(user) ? 'Sí' : 'No';
   const rawBalance = isOwnerAccount(senderId) ? 9999999999999 : Number(user.saldo || 0);
   const displayBalance = isOwnerAccount(senderId) ? getOwnerDisplayBalance() : rawBalance;
   const dailyIncome = Number(user.ingresoDiario || 0);
 
   await sock.sendMessage(chatId, {
-    text: `💰 **SALDO FELCOINS**\n\n👤 ${user.name || 'Usuario'}\n💵 ${formatFelCoins(displayBalance)}\n\n🏢 Empresa: ${companyText}\n📈 Ingreso diario: +${dailyIncome} FC\n\n👑 Admin: ${adminText}`
+    text: `💰 **SALDO FELCOINS**\n\n👤 ${user.name || 'Usuario'}\n💵 ${formatFelCoins(displayBalance)}\n\n🏢 Empresa: ${companyText}\n📈 Ingreso diario: +${dailyIncome} FC\n\n👑 Admin: ${adminText}
+👑 Modo Rey: ${royalText}`
   }, { quoted: message });
 }
 
@@ -156,9 +159,10 @@ async function showPerfil(sock, chatId, senderId, message) {
   };
   const rawBalance = isOwnerAccount(senderId) ? 9999999999999 : Number(user.saldo || 0);
   const displayBalance = isOwnerAccount(senderId) ? getOwnerDisplayBalance() : rawBalance;
+  const reyText = hasRoyalProtection(user) ? 'Sí' : 'No';
 
   await sock.sendMessage(chatId, {
-    text: `👤 **PERFIL FELCOINS**\n\n👤 ${user.name || 'Usuario'}\n💰 ${formatFelCoins(displayBalance)}\n\n📊 ESTADÍSTICAS\n\n💼 Trabajos: ${resolvedStats.trabajos}\n⛏️ Minería: ${resolvedStats.mineria}\n🎮 Juegos: ${resolvedStats.juegos}\n🏆 Victorias: ${resolvedStats.victorias}\n💀 Derrotas: ${resolvedStats.derrotas}\n💸 Transferencias: ${resolvedStats.transferencias}\n🦹 Robos: ${resolvedStats.robos}\n💰 Ganancias: ${formatFelCoins(resolvedStats.ganancias)}\n💸 Gastos: ${formatFelCoins(resolvedStats.gastos)}\n\n🏢 Empresa: ${user.empresa || 'Ninguna'}\n👑 Admin: ${user.modoAdmin ? 'Sí' : 'No'}`
+    text: `👤 **PERFIL FELCOINS**\n\n👤 ${user.name || 'Usuario'}\n💰 ${formatFelCoins(displayBalance)}\n\n📊 ESTADÍSTICAS\n\n💼 Trabajos: ${resolvedStats.trabajos}\n⛏️ Minería: ${resolvedStats.mineria}\n🎮 Juegos: ${resolvedStats.juegos}\n🏆 Victorias: ${resolvedStats.victorias}\n💀 Derrotas: ${resolvedStats.derrotas}\n💸 Transferencias: ${resolvedStats.transferencias}\n🦹 Robos: ${resolvedStats.robos}\n💰 Ganancias: ${formatFelCoins(resolvedStats.ganancias)}\n💸 Gastos: ${formatFelCoins(resolvedStats.gastos)}\n\n🏢 Empresa: ${user.empresa || 'Ninguna'}\n👑 Admin: ${user.modoAdmin ? 'Sí' : 'No'}\n👑 Modo Rey: ${reyText}`
   }, { quoted: message });
 }
 
@@ -439,7 +443,8 @@ async function openShop(sock, chatId, senderId, message) {
     .addButton('⚡ MULTIPLICADOR', 'felcoin::shop::multiplier')
     .addButton('⛏️ PICO', 'felcoin::shop::pico')
     .addButton('👑 ADMIN 24H', 'felcoin::shop::admin24')
-    .addButton('👑 ADMIN ∞', 'felcoin::shop::adminInfinity');
+    .addButton('👑 ADMIN ∞', 'felcoin::shop::adminInfinity')
+    .addButton('👑 MODO REY', 'felcoin::shop::modoRey');
   await menu.send(chatId, { quoted: message });
 }
 
@@ -469,6 +474,16 @@ async function buyProduct(sock, chatId, senderId, message, product) {
   }
 
   user.inventory = user.inventory || {};
+  if (product === 'modoRey') {
+    user.modoRey = true;
+    user.inventory[product] = { quantity: 1, expiresAt: null };
+    await user.save();
+    await sock.sendMessage(chatId, {
+      text: `✅ **MODO REY ACTIVADO**\n\n👑 Ahora eres inmune al modo admin del grupo.\n\n💸 Gastaste: ${formatFelCoins(price)}`
+    }, { quoted: message });
+    return;
+  }
+
   user.inventory[product] = { quantity: Number(user.inventory[product]?.quantity || 0) + 1, expiresAt: new Date(Date.now() + (product === 'glove' ? 12 * 60 * 60 * 1000 : 0)) };
   await user.save();
 

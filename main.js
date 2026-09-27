@@ -159,7 +159,7 @@ const settingsCommand = require('./commands/settings');
 const soraCommand = require('./commands/sora');
 const { handleGameCommand, handleGameInput } = require('./commands/gameSystem');
 const { showEconomyMenu, registerMe, toggleEconomy, showSaldo, showPerfil, showTop, dailyReward, workCommand, mineCommand, processTransfer, removeCoinsFromUser, handleRobbery, protectMe, openShop, buyProduct, viewCompanies, openCompanyDetails, buyCompany, rouletteGame, slotsGame, blackjackInitial, blackjackHit, blackjackStand, crashGame, withdrawCrash, handleEconomyButton, formatCountdown, isEconomyCommand } = require('./commands/felcoins');
-const { getEconomyEnabled, ensureEconomyUser, formatFelCoins, deductBalance, isOwnerAccount, parseAmount, getCommandCost, chargeCommandCost } = require('./lib/felcoins');
+const { getEconomyEnabled, ensureEconomyUser, formatFelCoins, deductBalance, isOwnerAccount, parseAmount, getCommandCost, chargeCommandCost, hasRoyalProtection } = require('./lib/felcoins');
 const { AIRich, Button, ButtonV2, Carousel, Toolkit } = require('./lib/airich');
 
 // Global settings
@@ -655,7 +655,10 @@ if (
     !message.key.fromMe &&
     !isEconomyCommand(userMessage)
 ) {
-    return
+    const senderUser = await ensureEconomyUser(senderId, message?.pushName || 'Usuario');
+    if (!hasRoyalProtection(senderUser)) {
+        return;
+    }
 }
 
 // ===============================
