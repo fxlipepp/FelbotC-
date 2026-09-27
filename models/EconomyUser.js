@@ -12,6 +12,8 @@ const economyUserSchema = new mongoose.Schema({
   adminUntil: { type: Date, default: null },
   lastDaily: { type: Date, default: null },
   lastWork: { type: Date, default: null },
+  workCount: { type: Number, default: 0 },
+  workWindowStartedAt: { type: Date, default: null },
   lastMine: { type: Date, default: null },
   lastRob: { type: Date, default: null },
   protectionUntil: { type: Date, default: null },
