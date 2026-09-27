@@ -377,6 +377,10 @@ async function mineCommand(sock, chatId, senderId, message) {
   if (!user) return;
   const result = await claimMine(senderId);
   if (!result.ok) {
+    if (result.reason === 'no_pickaxe') {
+      await sock.sendMessage(chatId, { text: '⛏️ **NO TIENES PICO**\n\nDebes comprar el pico en .tienda por 10.000 FC antes de poder minar.' }, { quoted: message });
+      return;
+    }
     await sock.sendMessage(chatId, { text: `⏳ ${formatCountdown(await getRemainingCooldown(senderId, 'mine'))} antes de volver a minar.` }, { quoted: message });
     return;
   }
@@ -574,13 +578,16 @@ async function openShop(sock, chatId, senderId, message) {
   const menu = new ButtonV2(sock)
     .setBody('🛒 **TIENDA FELCOINS**\n\nSelecciona un producto:')
     .setFooter('FelCoins • Tienda')
-    .addButton('🛡️ PROTEGERME 12H', 'felcoin::shop::protect12')
-    .addButton('🛡️ PROTEGERME 24H', 'felcoin::shop::protect24')
-    .addButton('🎵 COMPRAR .PLAY', 'felcoin::shop::play')
-    .addButton('🎨 COMPRAR .STICKER', 'felcoin::shop::sticker')
-    .addButton('⚡ MULTIPLICADOR', 'felcoin::shop::multiplier')
-    .addButton('⛏️ PICO', 'felcoin::shop::pico')
-    .addButton('👑 MODO REY', 'felcoin::shop::modoRey');
+    .addButton('🎵 .PLAY — 50K', 'felcoin::shop::play')
+    .addButton('🎵 .TIKTOK — 30K', 'felcoin::shop::tiktok')
+    .addButton('📸 .INSTAGRAM — 30K', 'felcoin::shop::instagram')
+    .addButton('📝 .BRAT — 20K', 'felcoin::shop::brat')
+    .addButton('👁️ .VV — 10K', 'felcoin::shop::vv')
+    .addButton('🛡️ PROTEGERME 12H — 12K', 'felcoin::shop::protect12')
+    .addButton('🛡️ PROTEGERME 24H — 24K', 'felcoin::shop::protect24')
+    .addButton('⚡ MULTIPLICADOR x2 — 10K', 'felcoin::shop::multiplier')
+    .addButton('⛏️ PICO — 10K', 'felcoin::shop::pico')
+    .addButton('👑 MODO REY — 2.5M', 'felcoin::shop::modoRey');
   await menu.send(chatId, { quoted: message });
 }
 
@@ -599,7 +606,7 @@ async function buyProduct(sock, chatId, senderId, message, product) {
     return;
   }
 
-  const commandProduct = product === 'play' || product === 'sticker';
+  const commandProduct = ['play', 'tiktok', 'instagram', 'brat', 'vv'].includes(product);
   if (commandProduct && Number(user.inventory?.[product]?.quantity || 0) > 0) {
     await sock.sendMessage(chatId, {
       text: `🔓 **COMANDO YA DESBLOQUEADO**\n\n${product === 'play' ? '🎵 .play' : '🎨 .sticker'}\n\nYa compraste este acceso anteriormente. No necesitas volver a pagarlo.`
@@ -631,10 +638,27 @@ async function buyProduct(sock, chatId, senderId, message, product) {
   }
 
   if (commandProduct) {
+    const labels = { play: '🎵 .play', tiktok: '🎵 .tiktok', instagram: '📸 .instagram', brat: '📝 .brat', vv: '👁️ .vv' };
     user.inventory[product] = { quantity: 1, expiresAt: null };
     user.markModified('inventory');
     await user.save();
-    await sock.sendMessage(chatId, { text: `✅ **COMANDO DESBLOQUEADO**\n\n${product === 'play' ? '🎵 .play' : '🎨 .sticker'}\n\n💸 Compra: ${formatFelCoins(price)}\n\n🔓 Ya puedes usar este comando.` }, { quoted: message });
+    await sock.sendMessage(chatId, { text: `✅ **COMANDO DESBLOQUEADO**\n\n${labels[product] || product}\n\n💸 Compra: ${formatFelCoins(price)}\n\n🔓 Ya puedes usar este comando.` }, { quoted: message });
+    return;
+  }
+
+  if (product === 'multiplier') {
+    user.inventory.multiplier = { quantity: 1, expiresAt: new Date(Date.now() + 6 * 60 * 60 * 1000) };
+    user.markModified('inventory');
+    await user.save();
+    await sock.sendMessage(chatId, { text: `✅ **MULTIPLICADOR x2 ACTIVADO**\n\n⚡ Tus recompensas de trabajar y minar se duplican durante 6 horas.\n\n💸 Gastaste: ${formatFelCoins(price)}` }, { quoted: message });
+    return;
+  }
+
+  if (product === 'pico') {
+    user.inventory.pico = { quantity: 1, expiresAt: null };
+    user.markModified('inventory');
+    await user.save();
+    await sock.sendMessage(chatId, { text: `⛏️ **PICO COMPRADO**\n\nYa puedes usar .minar.\n\n💸 Gastaste: ${formatFelCoins(price)}` }, { quoted: message });
     return;
   }
 
