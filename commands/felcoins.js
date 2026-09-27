@@ -630,30 +630,56 @@ async function protectMe(sock, chatId, senderId, message, requestedHours = null)
   const active = await ensureEconomyActive(sock, chatId, message);
   if (!active) return;
 
-  const raw = String(requestedHours || '').trim() || String(message?.message?.conversation || message?.message?.extendedTextMessage?.text || '').trim().split(/\s+/)[1] || '';
+  const raw = String(requestedHours || '').trim() ||
+    String(message?.message?.conversation || message?.message?.extendedTextMessage?.text || '')
+      .trim().split(/\s+/)[1] || '';
+
   if (raw === '12' || raw === '24') {
     const result = await activateProtection(senderId, Number(raw));
     if (!result.ok) {
-      const reason = result.reason === 'no_item' ? `No tienes una protección de ${result.hours} horas. Cómprala en .tienda.` : 'No se pudo activar la protección.';
+      const reason = result.reason === 'no_item'
+        ? `No tienes una protección de ${result.hours} horas. Cómprala en .tienda.`
+        : 'No se pudo activar la protección.';
       await sock.sendMessage(chatId, { text: `❌ ${reason}` }, { quoted: message });
       return;
     }
-    await sock.sendMessage(chatId, { text: `🛡️ *PROTECCIÓN ACTIVADA*\n\n⏱️ Duración: ${result.hours} horas\n\nAhora los robos contra ti serán bloqueados mientras esté activa.` }, { quoted: message });
+
+    await sock.sendMessage(chatId, {
+      text: `🛡️ *PROTECCIÓN ACTIVADA*\n\n⏱️ Duración: ${result.hours} horas\n\nAhora los robos contra ti serán bloqueados mientras esté activa.`
+    }, { quoted: message });
     return;
   }
+
+  const victim = await ensureEconomyUser(senderId, message?.pushName || 'Usuario');
+  if (!victim || !victim.registered) return;
 
   const pending = await getPendingRobForVictim(senderId);
   if (!pending) {
-    await sock.sendMessage(chatId, { text: '⚠️ Este robo ya no está activo.' }, { quoted: message });
+    await sock.sendMessage(chatId, {
+      text: '⚠️ Este intento de robo ya no está activo.'
+    }, { quoted: message });
     return;
   }
+
+  if (!hasActiveProtection(victim)) {
+    await sock.sendMessage(chatId, {
+      text: '🛡️ Para bloquear este robo necesitas tener una protección activa. Cómprala en .tienda.'
+    }, { quoted: message });
+    return;
+  }
+
   const result = await resolveRobbery(pending.attacker, pending.victim, true);
-  const penalty = result.penalty || 500;
+  if (!result?.ok) {
+    await sock.sendMessage(chatId, {
+      text: '⚠️ Este intento de robo ya fue resuelto.'
+    }, { quoted: message });
+    return;
+  }
+
   await sock.sendMessage(chatId, {
-    text: `🛡️ *ROBO BLOQUEADO*\n\nLograste proteger tus FelCoins.\n\n💸 El ladrón recibió una multa de ${penalty} FC.`
+    text: `🛡️ *ROBO BLOQUEADO*\n\nLograste proteger tus FelCoins.\n\n💸 El ladrón recibió una multa de ${result.penalty || 500} FC.`
   }, { quoted: message });
 }
-
 async function resetEconomy(sock, chatId, senderId, message) {
   if (!isOwnerAccount(senderId) && !message?.key?.fromMe) {
     await sock.sendMessage(chatId, { text: '❌ Solo el OWNER puede reiniciar la economía.' }, { quoted: message });
