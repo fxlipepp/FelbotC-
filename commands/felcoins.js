@@ -26,6 +26,9 @@ const {
   getPendingRobForVictim,
   resolveRobbery,
   computeCompanyIncome,
+  getCompanyLevel,
+  getCompanyUpgradeCost,
+  openMysteryBox,
   parseAmount,
   getEconomyMenuText,
   canUseEconomy
@@ -76,7 +79,7 @@ function isEconomyCommand(rawText = '') {
   const economyPrefixes = [
     '.economia', '.registrarme', '.saldo', '.perfil', '.quitar', '.transferir',
     '.diaria', '.trabajar', '.minar', '.robar', '.protegerse', '.tienda',
-    '.comprar', '.empresas', '.ruleta', '.slots', '.blackjack', '.crash',
+    '.comprar', '.caja', '.mejorarempresa', '.empresas', '.ruleta', '.slots', '.blackjack', '.crash',
     '.sticker', '.play', '.song', '.mp3', '.ytmp3', '.music', '.modoeconomia'
   ];
 
@@ -154,6 +157,7 @@ async function showEconomyMenu(sock, chatId, senderId, message) {
     .addButton('🎁 DIARIA', 'felcoin::diaria')
     .addButton('🛒 TIENDA', 'felcoin::tienda')
     .addButton('🏢 EMPRESAS', 'felcoin::empresas')
+    .addButton('🎁 CAJA — 2K', 'felcoin::caja')
     .addButton('🎮 JUEGOS', 'felcoin::juegos')
     .addButton('🏆 TOP', 'felcoin::top');
 
@@ -200,10 +204,13 @@ async function showPerfil(sock, chatId, senderId, message) {
   const rawBalance = isOwnerAccount(senderId) ? 9999999999999 : Number(user.saldo || 0);
   const displayBalance = isOwnerAccount(senderId) ? getOwnerDisplayBalance() : rawBalance;
   const reyText = hasRoyalProtection(user) ? 'Sí' : 'No';
+  const companyLevel = Number(user.companyLevel || (user.empresa ? 1 : 0));
+  const protectionRemaining = user.protectionUntil ? Math.max(0, new Date(user.protectionUntil).getTime() - Date.now()) : 0;
+  const boxCount = Number(stats.cajas || 0);
   const profileMention = mentionTarget(senderId, user.name || message?.pushName || 'usuario');
 
   await sock.sendMessage(chatId, {
-    text: `👤 **PERFIL FELCOINS**\n\n👤 ${profileMention.text}\n💰 ${formatFelCoins(displayBalance)}\n\n📊 ESTADÍSTICAS\n\n💼 Trabajos: ${resolvedStats.trabajos}\n⛏️ Minería: ${resolvedStats.mineria}\n🎮 Juegos: ${resolvedStats.juegos}\n🏆 Victorias: ${resolvedStats.victorias}\n💀 Derrotas: ${resolvedStats.derrotas}\n💸 Transferencias: ${resolvedStats.transferencias}\n🦹 Robos: ${resolvedStats.robos}\n💰 Ganancias: ${formatFelCoins(resolvedStats.ganancias)}\n💸 Gastos: ${formatFelCoins(resolvedStats.gastos)}\n\n🏢 Empresa: ${user.empresa || 'Ninguna'}\n👑 Admin: ${user.modoAdmin ? 'Sí' : 'No'}\n👑 Modo Rey: ${reyText}`,
+    text: `👤 **PERFIL FELCOINS**\n\n👤 ${profileMention.text}\n💰 ${formatFelCoins(displayBalance)}\n\n📊 ESTADÍSTICAS\n\n💼 Trabajos: ${resolvedStats.trabajos}\n⛏️ Minería: ${resolvedStats.mineria}\n🎮 Juegos: ${resolvedStats.juegos}\n🏆 Victorias: ${resolvedStats.victorias}\n💀 Derrotas: ${resolvedStats.derrotas}\n💸 Transferencias: ${resolvedStats.transferencias}\n🦹 Robos: ${resolvedStats.robos}\n💰 Ganancias: ${formatFelCoins(resolvedStats.ganancias)}\n💸 Gastos: ${formatFelCoins(resolvedStats.gastos)}\n🎁 Cajas abiertas: ${boxCount}\n\n🏢 Empresa: ${user.empresa || 'Ninguna'}\n📈 Nivel empresa: ${companyLevel || '—'}\n🛡️ Protección: ${protectionRemaining > 0 ? formatCountdown(protectionRemaining) : 'Inactiva'}\n👑 Admin: ${user.modoAdmin ? 'Sí' : 'No'}\n👑 Modo Rey: ${reyText}`,
     contextInfo: profileMention.jid ? { mentionedJid: [profileMention.jid] } : undefined
   }, { quoted: message });
 }
@@ -592,6 +599,7 @@ async function openShop(sock, chatId, senderId, message) {
     .addButton('🛡️ PROTEGERME 24H — 24K', 'felcoin::shop::protect24')
     .addButton('⚡ MULTIPLICADOR x2 — 10K', 'felcoin::shop::multiplier')
     .addButton('⛏️ PICO — 2K', 'felcoin::shop::pico')
+    .addButton('🎁 CAJA MISTERIOSA — 2K', 'felcoin::shop::mysteryBox')
     .addButton('👑 MODO REY — 2.5M', 'felcoin::shop::modoRey');
   await menu.send(chatId, { quoted: message });
 }
@@ -700,7 +708,7 @@ async function viewCompanies(sock, chatId, senderId, message) {
   const active = await ensureEconomyActive(sock, chatId, message);
   if (!active) return;
   const menu = new ButtonV2(sock)
-    .setBody('🏢 **EMPRESAS FELCOINS**\n\nElige una empresa para ver sus detalles.')
+    .setBody('🏢 **EMPRESAS FELCOINS**\n\nCompra una empresa y mejórala hasta nivel 5.\nCada nivel aumenta el ingreso diario en +50%.')
     .setFooter('FelCoins • Empresas')
     .addButton('👕 ROPA', 'felcoin::company::ropa')
     .addButton('🍕 PIZZERÍA', 'felcoin::company::pizzeria')
@@ -712,55 +720,56 @@ async function viewCompanies(sock, chatId, senderId, message) {
 }
 
 async function openCompanyDetails(sock, chatId, senderId, message, company) {
-  const active = await ensureEconomyActive(sock, chatId, message);
-  if (!active) return;
-  const config = await ensureEconomyConfig();
-  const companyData = config.companies?.[company] || { price: 0, income: 0 };
-  const labelMap = {
-    ropa: '👕 ROPA',
-    pizzeria: '🍕 PIZZERÍA',
-    gamer: '🎮 GAMER STORE',
-    tecnologia: '💻 TECNOLOGÍA',
-    banco: '🏦 BANCO',
-    felbot: '🌐 FELBOT ORG'
-  };
-
-  const menu = new ButtonV2(sock)
-    .setBody(`${labelMap[company] || company}\n\n💰 Precio: ${formatFelCoins(companyData.price || 0)}\n📈 Ingreso: +${companyData.income || 0} FC/día\n\n[🛒 COMPRAR] [⬅️ VOLVER]`)
-    .setFooter('FelCoins • Empresa')
-    .addButton('🛒 COMPRAR', `felcoin::buyCompany::${company}`)
-    .addButton('⬅️ VOLVER', 'felcoin::empresas');
-  await menu.send(chatId, { quoted: message });
+  const active=await ensureEconomyActive(sock,chatId,message); if(!active)return;
+  const config=await ensureEconomyConfig(); const data=config.companies?.[company]; if(!data)return;
+  const user=await ensureEconomyUser(senderId,message?.pushName||'Usuario');
+  const labels={ropa:'👕 ROPA',pizzeria:'🍕 PIZZERÍA',gamer:'🎮 GAMER STORE',tecnologia:'💻 TECNOLOGÍA',banco:'🏦 BANCO',felbot:'🌐 FELBOT ORG'};
+  const owned=user?.empresa===company; const level=owned?Math.max(1,Number(user.companyLevel||1)):0; const max=Number(data.maxLevel||5);
+  const income=owned?Math.round(Number(data.income||0)*(1+((level-1)*0.5))):Number(data.income||0);
+  const cost=owned&&level<max?Math.max(1000,Math.round(Number(data.price||0)*level*0.75)):0;
+  const body=`${labels[company]||company}\\n\\n💰 Compra: ${formatFelCoins(data.price||0)}\\n📈 Ingreso base: +${formatFelCoins(data.income||0)}/día\\n🏢 Nivel: ${level||'—'} / ${max}\\n💵 Ingreso actual: +${formatFelCoins(income)}/día\\n${owned&&level<max?`⬆️ Mejora: ${formatFelCoins(cost)}`:owned?'🏆 NIVEL MÁXIMO':'🛒 Compra esta empresa para empezar'}`;
+  const menu=new ButtonV2(sock).setBody(body).setFooter('FelCoins • Empresa').addButton(owned?(level<max?'⬆️ MEJORAR':'🏆 NIVEL 5'):'🛒 COMPRAR',owned&&level<max?`felcoin::upgradeCompany::${company}`:owned?'felcoin::empresas':`felcoin::buyCompany::${company}`).addButton('⬅️ VOLVER','felcoin::empresas');
+  await menu.send(chatId,{quoted:message});
 }
 
 async function buyCompany(sock, chatId, senderId, message, company) {
-  const active = await ensureEconomyActive(sock, chatId, message);
-  if (!active) return;
-  const user = await ensureRegisteredWithReply(sock, chatId, senderId, message, message?.pushName || 'Usuario');
-  if (!user) return;
-  const config = await ensureEconomyConfig();
-  const companyData = config.companies?.[company];
-  if (!companyData) {
-    await sock.sendMessage(chatId, { text: '❌ Empresa no disponible.' }, { quoted: message });
-    return;
-  }
+  const active=await ensureEconomyActive(sock,chatId,message); if(!active)return;
+  const user=await ensureRegisteredWithReply(sock,chatId,senderId,message,message?.pushName||'Usuario'); if(!user)return;
+  const config=await ensureEconomyConfig(); const data=config.companies?.[company];
+  if(!data){await sock.sendMessage(chatId,{text:'❌ Empresa no disponible.'},{quoted:message});return;}
+  if(user.empresa){await sock.sendMessage(chatId,{text:`⚠️ Ya tienes la empresa ${user.empresa}. Mejora esa empresa antes de comprar otra.`},{quoted:message});return;}
+  const price=Number(data.price||0);
+  if(!isOwnerAccount(senderId)&&Number(user.saldo||0)<price){await sock.sendMessage(chatId,{text:`❌ **FELCOINS INSUFICIENTES**\\n\\nNecesitas: ${formatFelCoins(price)}`},{quoted:message});return;}
+  if(!isOwnerAccount(senderId)){user.saldo-=price;user.stats=user.stats||{};user.stats.gastos=Number(user.stats.gastos||0)+price;}
+  user.empresa=company; user.companyLevel=1; user.companyPurchasedAt=new Date(); user.companyLastPaidAt=new Date(); user.ingresoDiario=Number(data.income||0); user.markModified('stats'); await user.save();
+  await sock.sendMessage(chatId,{text:`✅ **EMPRESA ADQUIRIDA**\\n\\n🏢 ${company}\\n⭐ Nivel: 1\\n📈 Ingreso: +${formatFelCoins(user.ingresoDiario)}/día\\n💰 Inversión: ${formatFelCoins(price)}\\n\\n⬆️ Mejora con .mejorarempresa.`},{quoted:message});
+}
 
-  const amount = Number(companyData.price || 0);
-  if (!isOwnerAccount(senderId) && Number(user.saldo || 0) < amount) {
-    await sock.sendMessage(chatId, { text: `❌ **FELCOINS INSUFICIENTES**\n\nNecesitas: ${formatFelCoins(amount)}` }, { quoted: message });
-    return;
-  }
+async function upgradeCompany(sock, chatId, senderId, message, company) {
+  const active=await ensureEconomyActive(sock,chatId,message); if(!active)return;
+  const user=await ensureRegisteredWithReply(sock,chatId,senderId,message,message?.pushName||'Usuario'); if(!user)return;
+  const config=await ensureEconomyConfig(); const data=config.companies?.[company];
+  if(!data||user.empresa!==company){await sock.sendMessage(chatId,{text:'❌ Debes ser dueño de esa empresa para mejorarla.'},{quoted:message});return;}
+  const level=Math.max(1,Number(user.companyLevel||1)); const max=Number(data.maxLevel||5);
+  if(level>=max){await sock.sendMessage(chatId,{text:`🏆 **EMPRESA AL MÁXIMO**\\n\\nNivel ${max}.`},{quoted:message});return;}
+  const cost=Math.max(1000,Math.round(Number(data.price||0)*level*0.75));
+  if(!isOwnerAccount(senderId)&&Number(user.saldo||0)<cost){await sock.sendMessage(chatId,{text:`❌ **FELCOINS INSUFICIENTES**\\n\\nMejora a nivel ${level+1}: ${formatFelCoins(cost)}`},{quoted:message});return;}
+  if(!isOwnerAccount(senderId)){user.saldo-=cost;user.stats=user.stats||{};user.stats.gastos=Number(user.stats.gastos||0)+cost;}
+  user.companyLevel=level+1; user.ingresoDiario=Math.round(Number(data.income||0)*(1+((user.companyLevel-1)*0.5))); user.markModified('stats'); await user.save();
+  await sock.sendMessage(chatId,{text:`⬆️ **EMPRESA MEJORADA**\\n\\n🏢 ${company}\\n⭐ Nivel: ${user.companyLevel}/${max}\\n📈 Ingreso diario: +${formatFelCoins(user.ingresoDiario)}\\n💸 Inversión: ${formatFelCoins(cost)}`},{quoted:message});
+}
 
-  if (!isOwnerAccount(senderId)) user.saldo = Number(user.saldo || 0) - amount;
-  user.empresa = company;
-  user.companyPurchasedAt = new Date();
-  user.companyLastPaidAt = new Date();
-  user.ingresoDiario = Number(companyData.income || 0);
-  await user.save();
-
-  await sock.sendMessage(chatId, {
-    text: `✅ **COMPRA REALIZADA**\n\n🏢 Empresa: ${company}\n💰 Gastaste: ${formatFelCoins(amount)}`
-  }, { quoted: message });
+async function mysteryBox(sock, chatId, senderId, message) {
+  const active=await ensureEconomyActive(sock,chatId,message); if(!active)return;
+  const result=await openMysteryBox(senderId);
+  if(!result.ok){const text=result.reason==='insufficient'?`❌ **FELCOINS INSUFICIENTES**\\n\\nLa caja cuesta ${formatFelCoins(result.price||2000)}.\\nTienes: ${formatFelCoins(result.balance||0)}`:'⚠️ No se pudo abrir la caja.'; await sock.sendMessage(chatId,{text},{quoted:message});return;}
+  const r=result.result; let outcome='';
+  if(r.type==='command') outcome=`🍀 **¡COMANDO RARO!**\\n\\n🎁 Encontraste acceso permanente a *.${r.command}*.\\n\\n⭐ Probabilidad: 1.5%`;
+  else if(r.type==='loss') outcome=`💀 **MALA SUERTE**\\n\\nPerdiste ${formatFelCoins(r.amount)} adicionales.`;
+  else if(r.type==='big') outcome=`💎 **PREMIO GRANDE**\\n\\nGanaste +${formatFelCoins(r.amount)}.`;
+  else if(r.type==='refund') outcome=`🔁 **COMANDO REPETIDO**\\n\\nRecibiste +${formatFelCoins(r.amount)}.`;
+  else outcome=`💰 **MONEDAS**\\n\\nGanaste +${formatFelCoins(r.amount)}.`;
+  await sock.sendMessage(chatId,{text:`🎁 **CAJA MISTERIOSA**\\n\\n💸 Precio: 2.000 FC\\n\\n${outcome}\\n\\n💵 Saldo: ${formatFelCoins(result.saldo)}`},{quoted:message});
 }
 
 async function rouletteGame(sock, chatId, senderId, message, amount) {
@@ -977,12 +986,14 @@ async function handleEconomyButton(sock, chatId, senderId, buttonId, message) {
   if (action === 'minar') return mineCommand(sock, chatId, senderId, message);
   if (action === 'diaria') return dailyReward(sock, chatId, senderId, message);
   if (action === 'tienda') return openShop(sock, chatId, senderId, message);
+  if (action === 'caja') return mysteryBox(sock, chatId, senderId, message);
   if (action === 'empresas') return viewCompanies(sock, chatId, senderId, message);
   if (action === 'juegos') return openGamesMenu(sock, chatId, senderId, message);
   if (action === 'economia') return showEconomyMenu(sock, chatId, senderId, message);
   if (action === 'shop') return buyProduct(sock, chatId, senderId, message, extra);
   if (action === 'company') return openCompanyDetails(sock, chatId, senderId, message, extra);
   if (action === 'buyCompany') return buyCompany(sock, chatId, senderId, message, extra);
+  if (action === 'upgradeCompany') return upgradeCompany(sock, chatId, senderId, message, extra);
   if (action === 'game') {
     const label = String(extra || '').toLowerCase();
     if (label === 'ruleta') return rouletteGame(sock, chatId, senderId, message, 100);
@@ -1064,6 +1075,8 @@ module.exports = {
   viewCompanies,
   openCompanyDetails,
   buyCompany,
+  upgradeCompany,
+  mysteryBox,
   rouletteGame,
   slotsGame,
   blackjackInitial,
