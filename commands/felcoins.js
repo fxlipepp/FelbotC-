@@ -380,7 +380,12 @@ async function handleRobbery(sock, chatId, senderId, message, targetId) {
     .setBody(`🛡️ **PROTECCIÓN**\n\n${victimMention.text} tiene un robo pendiente.`)
     .setFooter('FelCoins • Robo')
     .addButton('🛡️ PROTEGERME', `felcoin::protect::${rob._id}`);
-  await menu.send(target, { quoted: message, mentions: [senderId, target] });
+
+  try {
+    await menu.send(chatId, { quoted: message, mentions: [senderId, target] });
+  } catch (error) {
+    await menu.send(target, { quoted: message, mentions: [senderId, target] });
+  }
 }
 
 async function protectMe(sock, chatId, senderId, message) {

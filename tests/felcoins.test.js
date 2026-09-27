@@ -1,9 +1,10 @@
 const assert = require('node:assert/strict');
 const mongoose = require('mongoose');
-const { getEconomyConfig, getCommandCost, formatFelCoins, parseAmount, hasSufficientBalance, isOwnerAccount, transferBalance, normalizeJid, setEconomyEnabled } = require('../lib/felcoins');
+const { getEconomyConfig, getCommandCost, formatFelCoins, parseAmount, hasSufficientBalance, isOwnerAccount, transferBalance, normalizeJid, setEconomyEnabled, resolveRobbery } = require('../lib/felcoins');
 const settings = require('../settings');
 const EconomyUser = require('../models/EconomyUser');
 const EconomyLog = require('../models/EconomyLog');
+const EconomyRob = require('../models/EconomyRob');
 const { handleEconomyButton, showEconomyMenu } = require('../commands/felcoins');
 
 (async () => {
@@ -57,10 +58,45 @@ const { handleEconomyButton, showEconomyMenu } = require('../commands/felcoins')
   const ownerTransfer = await transferBalance(settings.ownerNumber, '1234567890@s.whatsapp.net', 50, 'transferir');
   assert.equal(ownerTransfer.ok, true, 'El owner debe poder transferir FelCoins aunque tenga saldo infinito');
 
+  const robFindOneOriginal = EconomyRob.findOne;
+  const victimOwnerId = normalizeJid(settings.ownerNumber);
+  const attackerId = '1234567890';
+  const attackerUser = {
+    userId: attackerId,
+    name: 'Ladrón',
+    saldo: 400,
+    registered: true,
+    stats: { trabajos: 0, mineria: 0, juegos: 0, transferencias: 0, robos: 0, victorias: 0, derrotas: 0, ganancias: 0, gastos: 0 },
+    save: async function () { return this; }
+  };
+  const ownerUser = {
+    userId: victimOwnerId,
+    name: 'Owner',
+    saldo: 9999999999999,
+    registered: true,
+    stats: { trabajos: 0, mineria: 0, juegos: 0, transferencias: 0, robos: 0, victorias: 0, derrotas: 0, ganancias: 0, gastos: 0 },
+    save: async function () { return this; }
+  };
+  const userMap = new Map([[attackerId, attackerUser], [victimOwnerId, ownerUser]]);
+  EconomyUser.findOne = async ({ userId }) => userMap.get(normalizeJid(userId)) || null;
+  EconomyRob.findOne = async () => ({
+    attacker: attackerId,
+    victim: victimOwnerId,
+    amount: 400,
+    status: 'pending',
+    expiresAt: new Date(Date.now() + 60000),
+    save: async function () { this.status = 'blocked'; return this; }
+  });
+
+  const robberyResult = await resolveRobbery(attackerId, settings.ownerNumber, true);
+  assert.equal(robberyResult.penalty, 500, 'Si intentan robar al owner, la multa debe ser 500 FC');
+  assert.equal(attackerUser.saldo, -100, 'Si el atacante no tiene 500, debe quedar en deuda negativa');
+
   Object.defineProperty(mongoose.connection, 'readyState', { value: readyState, configurable: true });
   EconomyUser.findOne = findOneOriginal;
   EconomyUser.create = createOriginal;
   EconomyLog.create = logCreateOriginal;
+  EconomyRob.findOne = robFindOneOriginal;
 
   await setEconomyEnabled(true);
 
