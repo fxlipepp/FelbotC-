@@ -82,11 +82,12 @@ async function showSaldo(sock, chatId, senderId, message) {
 
   const companyText = user.empresa ? user.empresa : 'Ninguna';
   const adminText = user.modoAdmin ? 'Sí' : 'No';
-  const balance = isOwnerAccount(senderId) ? '∞' : Number(user.saldo || 0);
+  const rawBalance = isOwnerAccount(senderId) ? 9999999999999 : Number(user.saldo || 0);
+  const displayBalance = isOwnerAccount(senderId) ? '∞' : rawBalance;
   const dailyIncome = Number(user.ingresoDiario || 0);
 
   await sock.sendMessage(chatId, {
-    text: `💰 **SALDO FELCOINS**\n\n👤 ${user.name || 'Usuario'}\n💵 ${formatFelCoins(balance)}\n\n🏢 Empresa: ${companyText}\n📈 Ingreso diario: +${dailyIncome} FC\n\n👑 Admin: ${adminText}`
+    text: `💰 **SALDO FELCOINS**\n\n👤 ${user.name || 'Usuario'}\n💵 ${formatFelCoins(displayBalance)}\n\n🏢 Empresa: ${companyText}\n📈 Ingreso diario: +${dailyIncome} FC\n\n👑 Admin: ${adminText}`
   }, { quoted: message });
 }
 
@@ -95,8 +96,11 @@ async function showPerfil(sock, chatId, senderId, message) {
   if (!user) return;
 
   const stats = user.stats || {};
+  const rawBalance = isOwnerAccount(senderId) ? 9999999999999 : Number(user.saldo || 0);
+  const displayBalance = isOwnerAccount(senderId) ? '∞' : rawBalance;
+
   await sock.sendMessage(chatId, {
-    text: `👤 **PERFIL FELCOINS**\n\n👤 ${user.name || 'Usuario'}\n💰 ${formatFelCoins(isOwnerAccount(senderId) ? '∞' : Number(user.saldo || 0))}\n\n📊 ESTADÍSTICAS\n\n💼 Trabajos: ${Number(stats.trabajos || 0)}\n⛏️ Minería: ${Number(stats.mineria || 0)}\n🎮 Juegos: ${Number(stats.juegos || 0)}\n💸 Transferencias: ${Number(stats.transferencias || 0)}\n🦹 Robos: ${Number(stats.robos || 0)}\n\n🏢 Empresa: ${user.empresa || 'Ninguna'}\n👑 Admin: ${user.modoAdmin ? 'Sí' : 'No'}`
+    text: `👤 **PERFIL FELCOINS**\n\n👤 ${user.name || 'Usuario'}\n💰 ${formatFelCoins(displayBalance)}\n\n📊 ESTADÍSTICAS\n\n💼 Trabajos: ${Number(stats.trabajos || 0)}\n⛏️ Minería: ${Number(stats.mineria || 0)}\n🎮 Juegos: ${Number(stats.juegos || 0)}\n💸 Transferencias: ${Number(stats.transferencias || 0)}\n🦹 Robos: ${Number(stats.robos || 0)}\n\n🏢 Empresa: ${user.empresa || 'Ninguna'}\n👑 Admin: ${user.modoAdmin ? 'Sí' : 'No'}`
   }, { quoted: message });
 }
 
