@@ -200,6 +200,7 @@ async function showPerfil(sock, chatId, senderId, message) {
   const rawBalance = isOwnerAccount(senderId) ? 9999999999999 : Number(user.saldo || 0);
   const displayBalance = isOwnerAccount(senderId) ? getOwnerDisplayBalance() : rawBalance;
   const reyText = hasRoyalProtection(user) ? 'Sí' : 'No';
+  const profileMention = mentionTarget(senderId, user.name || message?.pushName || 'usuario');
 
   await sock.sendMessage(chatId, {
     text: `👤 **PERFIL FELCOINS**\n\n👤 ${profileMention.text}\n💰 ${formatFelCoins(displayBalance)}\n\n📊 ESTADÍSTICAS\n\n💼 Trabajos: ${resolvedStats.trabajos}\n⛏️ Minería: ${resolvedStats.mineria}\n🎮 Juegos: ${resolvedStats.juegos}\n🏆 Victorias: ${resolvedStats.victorias}\n💀 Derrotas: ${resolvedStats.derrotas}\n💸 Transferencias: ${resolvedStats.transferencias}\n🦹 Robos: ${resolvedStats.robos}\n💰 Ganancias: ${formatFelCoins(resolvedStats.ganancias)}\n💸 Gastos: ${formatFelCoins(resolvedStats.gastos)}\n\n🏢 Empresa: ${user.empresa || 'Ninguna'}\n👑 Admin: ${user.modoAdmin ? 'Sí' : 'No'}\n👑 Modo Rey: ${reyText}`,
