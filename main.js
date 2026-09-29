@@ -70,6 +70,8 @@ const ttsCommand = require('./commands/tts');
 const { tictactoeCommand, handleTicTacToeMove } = require('./commands/tictactoe');
 const { incrementMessageCount, topMembers } = require('./commands/topmembers');
 const { versusCommand, handleVersusReaction, handleVersusButton, upVersusCommand} = require('./commands/versus');
+const { testBotonesCommand } = require('./commands/testbotones');
+
 const {propuestaCommand,aceptarPropuesta,rechazarPropuesta,handleProposalButton,divorcioCommand,divortioCommand} = require('./commands/propuesta')
 const ownerCommand = require('./commands/owner');
 const deleteCommand = require('./commands/delete');
@@ -1034,6 +1036,10 @@ break;
             case userMessage.startsWith('.tts'):
                 const text = userMessage.slice(4).trim();
                 await ttsCommand(sock, chatId, text, message);
+                break;
+            case userMessage === '.testbotones':
+                await testBotonesCommand(sock, chatId, message);
+                commandExecuted = true;
                 break;
             case userMessage.startsWith('.2vs2') || userMessage.startsWith('.2v2') || userMessage.startsWith('.4vs4') || userMessage.startsWith('.4v4') || userMessage.startsWith('.6vs6') || userMessage.startsWith('.6v6') || userMessage.startsWith('.int2') || userMessage.startsWith('.int4') || userMessage.startsWith('.int6'):
                 await versusCommand(sock, chatId, senderId, message);
