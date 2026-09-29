@@ -234,7 +234,7 @@ async function versusCommand(sock, chatId, senderId, message) {
             .addButton(match.type.startsWith('int') ? '👍 Equipo 2' : '👍 Suplente', `versus::${match.matchId}::suplente`)
             .addButton('💔 Salir', `versus::${match.matchId}::remove`)
 
-        const sent = await buttonMenu.send(chatId, { quoted: message })
+        const sent = await buttonMenu.send(chatId, { quoted: message, viewOnce: false })
 
         match.messageId = sent.key.id
         match.key = sent.key
@@ -345,9 +345,9 @@ async function handleVersusReaction(sock, status) {
             .addButton('💔 Salir', `versus::${match.matchId}::remove`)
 
         await buttonMenu.send(match.chatId, {
-            quoted: status,
             edit: match.key,
-            mentions
+            mentions,
+            viewOnce: false
         })
 
         // IMPORTANTE:
@@ -441,9 +441,9 @@ async function handleVersusButton(sock, senderId, buttonId, message) {
             .addButton('💔 Salir', `versus::${match.matchId}::remove`)
 
         await buttonMenu.send(match.chatId, {
-            quoted: message,
             edit: match.key,
-            mentions
+            mentions,
+            viewOnce: false
         })
 
         // El mensaje editado conserva la misma key/messageId.
@@ -492,7 +492,7 @@ async function upVersusCommand(sock, chatId, message) {
             .addButton(match.type.startsWith('int') ? '👍 Equipo 2' : '👍 Suplente', `versus::${match.matchId}::suplente`)
             .addButton('💔 Salir', `versus::${match.matchId}::remove`)
 
-        const sent = await buttonMenu.send(chatId, { quoted: message, mentions })
+        const sent = await buttonMenu.send(chatId, { quoted: message, mentions, viewOnce: false })
 
         const oldKey = getMatchKey(
             match.chatId,
