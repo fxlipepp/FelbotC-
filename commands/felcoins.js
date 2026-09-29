@@ -907,16 +907,13 @@ async function upgradeCompany(sock, chatId, senderId, message, company) {
 async function mysteryBox(sock, chatId, senderId, message) {
   const active=await ensureEconomyActive(sock,chatId,message); if(!active)return;
   const result=await openMysteryBox(senderId);
-  if(!result.ok){const text=result.reason==='insufficient'?`❌ *FELCOINS INSUFICIENTES*\n\nLa caja cuesta ${formatFelCoins(result.price||2000)}.\nTienes: ${formatFelCoins(result.balance||0)}`:'⚠️ No se pudo abrir la caja.'; await sock.sendMessage(chatId,{text},{quoted:message});return;}
-  const r=result.result; let outcome='';
-  if(r.type==='command') outcome=`🍀 *¡COMANDO RARO!*\n\n🎁 Encontraste acceso permanente a *.${r.command}*.\n\n⭐ Probabilidad: 1.5%`;
-  else if(r.type==='loss') outcome=`💀 *MALA SUERTE*\n\nPerdiste ${formatFelCoins(r.amount)} adicionales.`;
-  else if(r.type==='big') outcome=`💎 *PREMIO GRANDE*\n\nGanaste +${formatFelCoins(r.amount)}.`;
-  else if(r.type==='refund') outcome=`🔁 *COMANDO REPETIDO*\n\nRecibiste +${formatFelCoins(r.amount)}.`;
-  else outcome=`💰 *MONEDAS*\n\nGanaste +${formatFelCoins(r.amount)}.`;
-  await sock.sendMessage(chatId,{text:`🎁 *CAJA MISTERIOSA*\n\n💸 Precio: 2.000 FC\n\n${outcome}\n\n💵 Saldo: ${formatFelCoins(result.saldo)}`},{quoted:message});
+  if(!result.ok){const text=result.reason==='insufficient'?`❌ *FELCOINS INSUFICIENTES*\n\nLa caja cuesta ${formatFelCoins(result.price||2000)}.\nTienes: ${formatFelCoins(result.balance||0)}`:'⚠️ No se pudo abrir la caja.';await sock.sendMessage(chatId,{text},{quoted:message});return;}
+  const r=result.result||{}; let outcome='';
+  if(r.type==='item'){const labels={diamante:'💎 Diamante',cristal:'💠 Cristal raro',protect24:'🛡️ Protección 24h',protect12:'🛡️ Protección 12h',multiplier:'⚡ Multiplicador',oro:'🥇 Oro',plata:'🥈 Plata',cofre:'📦 Cofre'};outcome='🎁 *OBJETO OBTENIDO*\n\n'+(labels[r.item]||r.item)+' ×'+(r.quantity||1)+'\n🏷️ Rareza: '+(r.label||'RECOMPENSA');}
+  else if(r.type==='coins'){outcome=(r.label||'💰 RECOMPENSA')+'\n\n💰 Ganaste +'+formatFelCoins(r.amount||0)+' FC.';}
+  else {outcome='🎁 *RECOMPENSA*\n\n'+JSON.stringify(r);}
+  await sock.sendMessage(chatId,{text:'🎁 *CAJA MISTERIOSA*\n\n💸 Precio: 2.000 FC\n\n'+outcome+'\n\n💵 Saldo: '+formatFelCoins(result.saldo)}, {quoted:message});
 }
-
 async function rouletteGame(sock, chatId, senderId, message, amount) {
   const active = await ensureEconomyActive(sock, chatId, message);
   if (!active) return;
