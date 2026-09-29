@@ -4,6 +4,17 @@ const crypto = require('crypto')
 const { ButtonV2 } = require('../lib/airich')
 const versusFile = path.join(__dirname, '../data/versus.json')
 
+// En estos grupos el VS usa reacciones y edita siempre el mismo mensaje.
+// Fuera de ellos se mantiene el sistema clásico con botones.
+const REACTION_VERSUS_GROUPS = new Set([
+    '120363411245707852@g.us',
+    '120363425282487642@g.us'
+])
+
+function usesReactionVersus(chatId) {
+    return REACTION_VERSUS_GROUPS.has(chatId)
+}
+
 function loadVersusData() {
     try {
         if (!fs.existsSync(versusFile)) {
@@ -234,17 +245,26 @@ async function versusCommand(sock, chatId, senderId, message) {
             equipo2: []
         }
 
-        const buttonMenu = new ButtonV2(sock)
-            .setBody(buildVersusText(match))
-            .setFooter('FelbotC - Registro Versus')
-            .addButton('❤️ Titular', `versus::${match.matchId}::titular`)
-            .addButton(match.type.startsWith('int') ? '👍 Equipo 2' : '👍 Suplente', `versus::${match.matchId}::suplente`)
-            .addButton('💔 Salir', `versus::${match.matchId}::remove`)
+        let sent
 
-        const sent = await buttonMenu.send(chatId, {
-            quoted: message,
-            viewOnce: false
-        })
+        if (usesReactionVersus(chatId)) {
+            sent = await sock.sendMessage(chatId, {
+                text: buildVersusText(match),
+                mentions: mentionsForMatch(match)
+            }, { quoted: message })
+        } else {
+            const buttonMenu = new ButtonV2(sock)
+                .setBody(buildVersusText(match))
+                .setFooter('FelbotC - Registro Versus')
+                .addButton('❤️ Titular', `versus::${match.matchId}::titular`)
+                .addButton(match.type.startsWith('int') ? '👍 Equipo 2' : '👍 Suplente', `versus::${match.matchId}::suplente`)
+                .addButton('💔 Salir', `versus::${match.matchId}::remove`)
+
+            sent = await buttonMenu.send(chatId, {
+                quoted: message,
+                viewOnce: false
+            })
+        }
 
         match.messageId = sent.key.id
         match.key = sent.key
@@ -267,6 +287,7 @@ async function handleVersusReaction(sock, status) {
         const original = status.key
 
         if (!original?.remoteJid || !original?.id) return
+        if (!usesReactionVersus(original.remoteJid)) return
 
         const emoji = getReactionEmoji(status)
 
@@ -341,17 +362,14 @@ async function handleVersusReaction(sock, status) {
 
         const mentions = mentionsForMatch(match)
 
-        const buttonMenu = new ButtonV2(sock)
-            .setBody(buildVersusText(match))
-            .setFooter('FelbotC - Registro Versus')
-            .addButton('❤️ Titular', `versus::${match.matchId}::titular`)
-            .addButton(match.type.startsWith('int') ? '👍 Equipo 2' : '👍 Suplente', `versus::${match.matchId}::suplente`)
-            .addButton('💔 Salir', `versus::${match.matchId}::remove`)
+        // Este handler solo modifica VS por reacciones en los dos grupos permitidos.
+        if (!usesReactionVersus(match.chatId)) return
 
-        await buttonMenu.send(match.chatId, {
-            edit: match.key,
-            mentions,
-            viewOnce: false
+        await sock.sendMessage(match.chatId, {
+            text: buildVersusText(match),
+            mentions
+        }, {
+            edit: match.key
         })
 
         // IMPORTANTE:
@@ -470,6 +488,34 @@ async function upVersusCommand(sock, chatId, message) {
         const match = matches[matches.length - 1]
 
         const mentions = mentionsForMatch(match)
+
+        if (usesReactionVersus(chatId)) {
+            // En estos grupos .up conserva la misma publicación y solo la actualiza.
+            try {
+                await sock.sendMessage(chatId, {
+                    text: buildVersusText(match),
+                    mentions
+                }, {
+                    edit: match.key
+                })
+                return
+            } catch (error) {
+                console.error('Error editando VS con .up:', error)
+                // Si WhatsApp ya no permite editar ese mensaje, se crea uno nuevo.
+            }
+
+            const sent = await sock.sendMessage(chatId, {
+                text: buildVersusText(match),
+                mentions
+            }, { quoted: message })
+
+            delete data[getMatchKey(match.chatId, match.messageId)]
+            match.messageId = sent.key.id
+            match.key = sent.key
+            data[getMatchKey(chatId, sent.key.id)] = match
+            saveVersusData(data)
+            return
+        }
 
         const buttonMenu = new ButtonV2(sock)
             .setBody(buildVersusText(match))
