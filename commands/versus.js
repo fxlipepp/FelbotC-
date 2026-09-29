@@ -350,6 +350,11 @@ async function handleVersusReaction(sock, status) {
             mentions
         })
 
+        // IMPORTANTE:
+        // No cambiamos match.key ni match.messageId.
+        // El mensaje del versus debe conservar SIEMPRE su clave original
+        // para que las siguientes reacciones encuentren la misma partida.
+
     } catch (error) {
         console.error('Error en handleVersusReaction:', error)
     }
@@ -435,13 +440,14 @@ async function handleVersusButton(sock, senderId, buttonId, message) {
             .addButton(match.type.startsWith('int') ? '👍 Equipo 2' : '👍 Suplente', `versus::${match.matchId}::suplente`)
             .addButton('💔 Salir', `versus::${match.matchId}::remove`)
 
-        const sent = await buttonMenu.send(match.chatId, {
+        await buttonMenu.send(match.chatId, {
             quoted: message,
             edit: match.key,
             mentions
         })
 
-        match.key = sent.key
+        // El mensaje editado conserva la misma key/messageId.
+        // NO creamos un nuevo registro ni cambiamos la referencia.
         data[getMatchKey(match.chatId, match.messageId)] = match
         saveVersusData(data)
     } catch (error) {
