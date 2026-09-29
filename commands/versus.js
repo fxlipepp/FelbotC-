@@ -146,7 +146,7 @@ const mentionsForMatch = (match) => [
         ...match.suplentes,
         ...(match.equipo2 || [])
     ])
-}
+]
 
 function getReactionEmoji(event) {
     return event.reaction?.text || event.reaction?.emoji || null
