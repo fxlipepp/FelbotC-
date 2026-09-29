@@ -79,7 +79,7 @@ function isEconomyCommand(rawText = '') {
   const economyPrefixes = [
     '.economia', '.registrarme', '.saldo', '.perfil', '.quitar', '.transferir',
     '.diaria', '.trabajar', '.minar', '.robar', '.protegerse', '.tienda',
-    '.comprar', '.caja', '.mejorarempresa', '.empresas', '.ruleta', '.slots', '.blackjack', '.crash',
+    '.comprar', '.caja', '.inventario', '.vender', '.mejorarempresa', '.empresas', '.ruleta', '.slots', '.blackjack', '.crash',
     '.sticker', '.play', '.song', '.mp3', '.ytmp3', '.music', '.modoeconomia'
   ];
 
@@ -390,7 +390,7 @@ async function mineCommand(sock, chatId, senderId, message) {
   const result = await claimMine(senderId);
   if (!result.ok) {
     if (result.reason === 'no_pickaxe') {
-      await sock.sendMessage(chatId, { text: '⛏️ *NO TIENES PICO*\n\nDebes comprar el pico en .tienda por 10.000 FC antes de poder minar.' }, { quoted: message });
+      await sock.sendMessage(chatId, { text: '⛏️ *NO TIENES PICO*\n\nDebes comprar el pico en .tienda por 2.000 FC antes de poder minar.' }, { quoted: message });
       return;
     }
     await sock.sendMessage(chatId, { text: `⏳ ${formatCountdown(await getRemainingCooldown(senderId, 'mine'))} antes de volver a minar.` }, { quoted: message });
@@ -398,7 +398,7 @@ async function mineCommand(sock, chatId, senderId, message) {
   }
 
   await sock.sendMessage(chatId, {
-    text: `⛏️ *MINERÍA*\n\nHas excavado...\n\n🪨 Encontraste:\n\n💎 ${result.mineral}\n\n💰 Valor: +${result.amount} FC\n\n💵 Saldo: ${formatFelCoins(Number(user.saldo || 0) + result.amount)}`
+    text: `⛏️ *MINERÍA*\n\nHas excavado...\n\n🪨 Encontraste:\n\n💎 ${result.mineral} ×${result.quantity}\n💰 Valor de venta: ${formatFelCoins(result.unitValue)} FC/u\n\n🎒 Guardado en tu inventario.\n🛒 Usa .vender para venderlo.\n\n💵 Saldo: ${formatFelCoins(Number(user.saldo || 0))}`
   }, { quoted: message });
 }
 
@@ -667,6 +667,45 @@ async function resetEconomy(sock, chatId, senderId, message) {
   }, { quoted: message });
 }
 
+const ECONOMY_ITEM_LABELS = {
+  pico: '⛏️ Pico', multiplier: '⚡ Multiplicador', protect12: '🛡️ Protección 12h', protect24: '🛡️ Protección 24h',
+  play: '🎵 Acceso .play', tiktok: '🎵 Acceso .tiktok', instagram: '📸 Acceso .instagram', brat: '📝 Acceso .brat', vv: '👁️ Acceso .vv',
+  cofre: '📦 Cofre', carbon: '🪨 Carbón', hierro: '⚙️ Hierro', plata: '🥈 Plata', oro: '🥇 Oro', diamante: '💎 Diamante', cristal: '💠 Cristal raro'
+};
+const ECONOMY_SELL_PRICES = { carbon:80, hierro:160, plata:300, oro:650, diamante:1200, cristal:2200, cofre:1500 };
+function economyInventoryEntries(user) {
+  return Object.entries(user?.inventory || {}).map(([key,data]) => ({key, quantity:Number(data?.quantity || 0)})).filter(x => x.quantity > 0);
+}
+async function inventoryCommand(sock, chatId, senderId, message) {
+  if (!await ensureEconomyActive(sock,chatId,message)) return;
+  const user=await ensureRegisteredWithReply(sock,chatId,senderId,message,message?.pushName||'Usuario'); if(!user)return;
+  const entries=economyInventoryEntries(user);
+  if(!entries.length){ const m=new ButtonV2(sock).setBody('🎒 *INVENTARIO*\n\nTu inventario está vacío.\n\n⛏️ Compra un pico en .tienda y usa .minar.').setFooter('FelCoins • Inventario').addButton('🛒 TIENDA','felcoin::tienda'); await m.send(chatId,{quoted:message}); return; }
+  const lines=entries.map((x,i)=>(i+1)+'. '+(ECONOMY_ITEM_LABELS[x.key]||x.key)+' ×'+x.quantity).join('\n');
+  const m=new ButtonV2(sock).setBody('🎒 *INVENTARIO FELCOINS*\n\n'+lines+'\n\nSelecciona un objeto.').setFooter('FelCoins • Inventario');
+  for(const x of entries.slice(0,9)) m.addButton((ECONOMY_ITEM_LABELS[x.key]||x.key)+' ×'+x.quantity,'felcoin::inv::view::'+x.key);
+  m.addButton('🛒 VENDER','felcoin::vender'); await m.send(chatId,{quoted:message});
+}
+async function sellMenu(sock, chatId, senderId, message) {
+  if (!await ensureEconomyActive(sock,chatId,message)) return;
+  const user=await ensureRegisteredWithReply(sock,chatId,senderId,message,message?.pushName||'Usuario'); if(!user)return;
+  const entries=economyInventoryEntries(user).filter(x=>ECONOMY_SELL_PRICES[x.key]);
+  if(!entries.length){await sock.sendMessage(chatId,{text:'🛒 *VENDER*\n\nNo tienes objetos vendibles.\n\n⛏️ Usa .minar para conseguir minerales.'},{quoted:message});return;}
+  const lines=entries.map(x=>(ECONOMY_ITEM_LABELS[x.key]||x.key)+' ×'+x.quantity+' — '+formatFelCoins(ECONOMY_SELL_PRICES[x.key])+' FC/u').join('\n');
+  const m=new ButtonV2(sock).setBody('🛒 *¿QUÉ DESEAS VENDER?*\n\n'+lines+'\n\nCada botón vende 1 unidad.').setFooter('FelCoins • Venta');
+  for(const x of entries.slice(0,9)) m.addButton('💰 '+(ECONOMY_ITEM_LABELS[x.key]||x.key)+' ×'+x.quantity,'felcoin::sell::'+x.key);
+  m.addButton('🎒 INVENTARIO','felcoin::inventario'); await m.send(chatId,{quoted:message});
+}
+async function sellItem(sock, chatId, senderId, message, itemKey) {
+  if (!await ensureEconomyActive(sock,chatId,message)) return;
+  const user=await ensureRegisteredWithReply(sock,chatId,senderId,message,message?.pushName||'Usuario'); if(!user)return;
+  const key=String(itemKey||'').toLowerCase(), price=Number(ECONOMY_SELL_PRICES[key]||0), qty=Number(user.inventory?.[key]?.quantity||0);
+  if(!price||qty<=0){await sock.sendMessage(chatId,{text:'⚠️ Ese objeto ya no está disponible para vender.'},{quoted:message});return;}
+  user.inventory[key].quantity=qty-1; if(user.inventory[key].quantity<=0) delete user.inventory[key];
+  user.saldo=Number(user.saldo||0)+price; user.stats=user.stats||{}; user.stats.ganancias=Number(user.stats.ganancias||0)+price; user.markModified('inventory'); user.markModified('stats'); await user.save();
+  await sock.sendMessage(chatId,{text:'🛒 *VENTA COMPLETADA*\n\n📦 '+(ECONOMY_ITEM_LABELS[key]||key)+' ×1\n💰 Recibiste: +'+formatFelCoins(price)+' FC\n📦 Te quedan: '+Math.max(0,qty-1)+'\n💵 Saldo: '+formatFelCoins(Number(user.saldo||0))},{quoted:message});
+  if(Number(user.inventory?.[key]?.quantity||0)>0) await sellMenu(sock,chatId,senderId,message);
+}
 async function openShop(sock, chatId, senderId, message) {
   const active = await ensureEconomyActive(sock, chatId, message);
   if (!active) return;
@@ -683,6 +722,8 @@ async function openShop(sock, chatId, senderId, message) {
     .addButton('⚡ MULTIPLICADOR x2 — 10K', 'felcoin::shop::multiplier')
     .addButton('⛏️ PICO — 2K', 'felcoin::shop::pico')
     .addButton('🎁 CAJA MISTERIOSA — 2K', 'felcoin::caja')
+    .addButton('🎒 INVENTARIO', 'felcoin::inventario')
+    .addButton('🛒 VENDER', 'felcoin::vender')
     .addButton('👑 MODO REY — 2.5M', 'felcoin::shop::modoRey');
   await menu.send(chatId, { quoted: message });
 }
@@ -802,6 +843,8 @@ async function openGamesMenu(sock, chatId, senderId, message) {
     .addButton('🃏 BLACKJACK', 'felcoin::game::blackjack')
     .addButton('💥 CRASH', 'felcoin::game::crash')
     .addButton('🏇 CARRERAS', 'felcoin::game::race')
+    .addButton('🪙 CARA O CRUZ', 'felcoin::game::coinflip')
+    .addButton('🎲 DADOS', 'felcoin::game::dice')
     .addButton('⬅️ VOLVER', 'felcoin::economia');
   await menu.send(chatId, { quoted: message });
 }
@@ -892,7 +935,7 @@ async function rouletteGame(sock, chatId, senderId, message, amount) {
 
   if (!isOwnerAccount(senderId)) user.saldo = Number(user.saldo || 0) - value;
 
-  if (roll < 0.2) {
+  if (roll < 0.02) {
     const jackpotPrize = 1000000;
     user.saldo = Number(user.saldo || 0) + jackpotPrize;
     user.stats.victorias = Number(user.stats.victorias || 0) + 1;
@@ -922,38 +965,35 @@ async function rouletteGame(sock, chatId, senderId, message, amount) {
 }
 
 async function slotsGame(sock, chatId, senderId, message, amount) {
-  const active = await ensureEconomyActive(sock, chatId, message);
-  if (!active) return;
-  const user = await ensureRegisteredWithReply(sock, chatId, senderId, message, message?.pushName || 'Usuario');
-  if (!user) return;
-  const value = Math.max(1, Number(amount) || 0);
-  if (!isOwnerAccount(senderId) && Number(user.saldo || 0) < value) {
-    await sock.sendMessage(chatId, { text: `❌ *FELCOINS INSUFICIENTES*\n\nNecesitas: ${formatFelCoins(value)}` }, { quoted: message });
-    return;
-  }
-
-  const icons = ['🍒', '⭐', '💎', '7️⃣', '🍋'];
-  const draw = Array.from({ length: 3 }, () => icons[Math.floor(Math.random() * icons.length)]);
-  const jackpot = draw.every((icon) => icon === '💎');
-  if (!isOwnerAccount(senderId)) user.saldo = Number(user.saldo || 0) - value;
-  if (jackpot) {
-    const prize = value * 10;
-    user.saldo = Number(user.saldo || 0) + prize;
-    user.stats = user.stats || {};
-    user.stats.juegos = Number(user.stats.juegos || 0) + 1;
-    user.stats.victorias = Number(user.stats.victorias || 0) + 1;
-    await user.save();
-    await sock.sendMessage(chatId, { text: `🎰 *SLOTS*\n\n🎯 Apuesta: ${formatFelCoins(value)}\n\n${draw.join(' | ')}\n\n🎉 JACKPOT\n\n💰 Premio: +${formatFelCoins(prize)}` }, { quoted: message });
-    return;
-  }
-
-  user.stats = user.stats || {};
-  user.stats.juegos = Number(user.stats.juegos || 0) + 1;
-  user.stats.derrotas = Number(user.stats.derrotas || 0) + 1;
-  await user.save();
-  await sock.sendMessage(chatId, { text: `🎰 *SLOTS*\n\n🎯 Apuesta: ${formatFelCoins(value)}\n\n${draw.join(' | ')}\n\n❌ Sin combinación.\n\n💸 -${formatFelCoins(value)}` }, { quoted: message });
+  const active=await ensureEconomyActive(sock,chatId,message); if(!active)return;
+  const user=await ensureRegisteredWithReply(sock,chatId,senderId,message,message?.pushName||'Usuario'); if(!user)return;
+  const value=Math.max(100,Number(amount)||0);
+  if(!isOwnerAccount(senderId)&&Number(user.saldo||0)<value){await sock.sendMessage(chatId,{text:'❌ *FELCOINS INSUFICIENTES*\n\nNecesitas: '+formatFelCoins(value)},{quoted:message});return;}
+  const icons=['🍒','⭐','💎','7️⃣','🍋','🔔']; const draw=Array.from({length:3},()=>icons[Math.floor(Math.random()*icons.length)]);
+  const counts={}; for(const icon of draw)counts[icon]=(counts[icon]||0)+1; const maxSame=Math.max(...Object.values(counts));
+  let mult=0,label='❌ SIN COMBINACIÓN';
+  if(draw.every(x=>x==='💎')){mult=15;label='💎💎💎 JACKPOT';} else if(draw.every(x=>x==='7️⃣')){mult=10;label='7️⃣7️⃣7️⃣ SUPER PREMIO';} else if(maxSame===3){mult=5;label='🎉 TRIPLE';} else if(maxSame===2){mult=1.5;label='✨ PAREJA';}
+  if(!isOwnerAccount(senderId))user.saldo=Number(user.saldo||0)-value;
+  user.stats=user.stats||{}; user.stats.juegos=Number(user.stats.juegos||0)+1;
+  if(mult>0){const prize=Math.round(value*mult); if(!isOwnerAccount(senderId))user.saldo+=prize; user.stats.victorias=Number(user.stats.victorias||0)+1; await user.save(); await sock.sendMessage(chatId,{text:'🎰 *SLOTS*\n\n🎯 Apuesta: '+formatFelCoins(value)+'\n\n'+draw.join(' | ')+'\n\n'+label+'\n💰 Premio: +'+formatFelCoins(prize)+' ('+mult+'x)\n\n💵 Saldo: '+formatFelCoins(Number(user.saldo||0))},{quoted:message});return;}
+  user.stats.derrotas=Number(user.stats.derrotas||0)+1; user.stats.gastos=Number(user.stats.gastos||0)+value; await user.save();
+  await sock.sendMessage(chatId,{text:'🎰 *SLOTS*\n\n🎯 Apuesta: '+formatFelCoins(value)+'\n\n'+draw.join(' | ')+'\n\n'+label+'\n\n💸 -'+formatFelCoins(value)+'\n💵 Saldo: '+formatFelCoins(Number(user.saldo||0))},{quoted:message});
 }
-
+async function coinflipBet(sock,chatId,senderId,message,amount){
+  if(!await ensureEconomyActive(sock,chatId,message))return; const user=await ensureRegisteredWithReply(sock,chatId,senderId,message,message?.pushName||'Usuario'); if(!user)return;
+  const value=Math.max(100,Number(amount)||0); if(!isOwnerAccount(senderId)&&Number(user.saldo||0)<value){await sock.sendMessage(chatId,{text:'❌ Necesitas '+formatFelCoins(value)+' FC para jugar.'},{quoted:message});return;}
+  const guess=Math.random()<0.5?'CARA':'CRUZ', result=Math.random()<0.5?'CARA':'CRUZ'; if(!isOwnerAccount(senderId))user.saldo-=value; user.stats=user.stats||{}; user.stats.juegos=Number(user.stats.juegos||0)+1;
+  if(guess===result){const prize=value*2;if(!isOwnerAccount(senderId))user.saldo+=prize;user.stats.victorias=Number(user.stats.victorias||0)+1;await user.save();return sock.sendMessage(chatId,{text:'🪙 *CARA O CRUZ*\n\n🎯 Elegiste: '+guess+'\n🪙 Salió: '+result+'\n\n🎉 ¡GANASTE! +'+formatFelCoins(prize)+' FC'},{quoted:message});}
+  user.stats.derrotas=Number(user.stats.derrotas||0)+1;await user.save();return sock.sendMessage(chatId,{text:'🪙 *CARA O CRUZ*\n\n🎯 Elegiste: '+guess+'\n🪙 Salió: '+result+'\n\n❌ Perdiste '+formatFelCoins(value)+' FC.'},{quoted:message});
+}
+async function diceBet(sock,chatId,senderId,message,amount){
+  if(!await ensureEconomyActive(sock,chatId,message))return; const user=await ensureRegisteredWithReply(sock,chatId,senderId,message,message?.pushName||'Usuario'); if(!user)return;
+  const value=Math.max(100,Number(amount)||0); if(!isOwnerAccount(senderId)&&Number(user.saldo||0)<value){await sock.sendMessage(chatId,{text:'❌ Necesitas '+formatFelCoins(value)+' FC para jugar.'},{quoted:message});return;}
+  const player=1+Math.floor(Math.random()*6), bot=1+Math.floor(Math.random()*6); if(!isOwnerAccount(senderId))user.saldo-=value; user.stats=user.stats||{}; user.stats.juegos=Number(user.stats.juegos||0)+1;
+  if(player>bot){const prize=value*2;if(!isOwnerAccount(senderId))user.saldo+=prize;user.stats.victorias=Number(user.stats.victorias||0)+1;await user.save();return sock.sendMessage(chatId,{text:'🎲 *DADOS*\n\n👤 Tú: '+player+'\n🤖 Bot: '+bot+'\n\n🏆 Ganaste +'+formatFelCoins(prize)+' FC.'},{quoted:message});}
+  if(player===bot){if(!isOwnerAccount(senderId))user.saldo+=value;await user.save();return sock.sendMessage(chatId,{text:'🎲 *DADOS*\n\n👤 Tú: '+player+'\n🤖 Bot: '+bot+'\n\n🤝 Empate. Recuperas tu apuesta.'},{quoted:message});}
+  user.stats.derrotas=Number(user.stats.derrotas||0)+1;await user.save();return sock.sendMessage(chatId,{text:'🎲 *DADOS*\n\n👤 Tú: '+player+'\n🤖 Bot: '+bot+'\n\n❌ Perdiste '+formatFelCoins(value)+' FC.'},{quoted:message});
+}
 async function sendBetMenu(sock, chatId, senderId, message, game) {
   const label = game === 'crash' ? '💥 CRASH' : '🃏 BLACKJACK';
   const prefix = game === 'crash' ? 'felcoin::crashbet::' : 'felcoin::blackjackbet::';
@@ -1420,6 +1460,10 @@ async function handleEconomyButton(sock, chatId, senderId, buttonId, message) {
   if (action === 'diaria') return dailyReward(sock, chatId, senderId, message);
   if (action === 'tienda') return openShop(sock, chatId, senderId, message);
   if (action === 'caja') return mysteryBox(sock, chatId, senderId, message);
+  if (action === 'inventario') return inventoryCommand(sock, chatId, senderId, message);
+  if (action === 'vender') return sellMenu(sock, chatId, senderId, message);
+  if (action === 'inv' && extra === 'view') { const u=await ensureEconomyUser(senderId,message?.pushName||'Usuario'); const k=extra2||''; const q=Number(u?.inventory?.[k]?.quantity||0); const label=ECONOMY_ITEM_LABELS[k]||k; return sock.sendMessage(chatId,{text:'📦 *'+label+'*\n\nCantidad: '+q+'\n'+(ECONOMY_SELL_PRICES[k]?'Venta: '+formatFelCoins(ECONOMY_SELL_PRICES[k])+' FC/u':'Este objeto no se puede vender.')},{quoted:message}); }
+  if (action === 'sell') return sellItem(sock, chatId, senderId, message, extra);
   if (action === 'empresas') return viewCompanies(sock, chatId, senderId, message);
   if (action === 'juegos') return openGamesMenu(sock, chatId, senderId, message);
   if (action === 'economia') return showEconomyMenu(sock, chatId, senderId, message);
@@ -1434,6 +1478,8 @@ async function handleEconomyButton(sock, chatId, senderId, buttonId, message) {
     if (label === 'blackjack') return blackjackInitial(sock, chatId, senderId, message, 100);
     if (label === 'crash') return crashGame(sock, chatId, senderId, message, 100);
     if (label === 'race') return raceGame(sock, chatId, senderId, message, 0);
+    if (label === 'coinflip') return coinflipBet(sock, chatId, senderId, message, 100);
+    if (label === 'dice') return diceBet(sock, chatId, senderId, message, 100);
     return sock.sendMessage(chatId, {
       text: '🎮 *JUEGOS FELCOINS*\n\nUsa estos comandos:\n• .ruleta 100\n• .slots 100\n• .blackjack 100\n• .crash 100'
     }, { quoted: message });
@@ -1539,6 +1585,9 @@ module.exports = {
   protectMe,
   openShop,
   buyProduct,
+  inventoryCommand,
+  sellMenu,
+  sellItem,
   openGamesMenu,
   viewCompanies,
   openCompanyDetails,
