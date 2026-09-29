@@ -367,8 +367,7 @@ async function handleVersusReaction(sock, status) {
 
         await sock.sendMessage(match.chatId, {
             text: buildVersusText(match),
-            mentions
-        }, {
+            mentions,
             edit: match.key
         })
 
@@ -451,8 +450,7 @@ async function handleVersusButton(sock, senderId, buttonId, message) {
 
         await sock.sendMessage(match.chatId, {
             text: buildVersusText(match),
-            mentions
-        }, {
+            mentions,
             edit: match.key
         })
 
@@ -494,8 +492,7 @@ async function upVersusCommand(sock, chatId, message) {
             try {
                 await sock.sendMessage(chatId, {
                     text: buildVersusText(match),
-                    mentions
-                }, {
+                    mentions,
                     edit: match.key
                 })
                 return
