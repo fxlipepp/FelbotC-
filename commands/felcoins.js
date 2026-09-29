@@ -911,6 +911,7 @@ async function mysteryBox(sock, chatId, senderId, message) {
   const r=result.result||{}; let outcome='';
   if(r.type==='item'){const labels={diamante:'💎 Diamante',cristal:'💠 Cristal raro',protect24:'🛡️ Protección 24h',protect12:'🛡️ Protección 12h',multiplier:'⚡ Multiplicador',oro:'🥇 Oro',plata:'🥈 Plata',cofre:'📦 Cofre'};outcome='🎁 *OBJETO OBTENIDO*\n\n'+(labels[r.item]||r.item)+' ×'+(r.quantity||1)+'\n🏷️ Rareza: '+(r.label||'RECOMPENSA');}
   else if(r.type==='coins'){outcome=(r.label||'💰 RECOMPENSA')+'\n\n💰 Ganaste +'+formatFelCoins(r.amount||0)+' FC.';}
+  else if(r.type==='clown'){outcome='🤡 *¡EL PAYASO SALIÓ DE LA CAJA!*\n\n😈 Te robó '+formatFelCoins(r.amount||0)+' FC.\n\n💸 Ese dinero desapareció de tu saldo.';}
   else {outcome='🎁 *RECOMPENSA*\n\n'+JSON.stringify(r);}
   await sock.sendMessage(chatId,{text:'🎁 *CAJA MISTERIOSA*\n\n💸 Precio: 2.000 FC\n\n'+outcome+'\n\n💵 Saldo: '+formatFelCoins(result.saldo)}, {quoted:message});
 }
