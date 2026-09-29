@@ -18,7 +18,7 @@ const configSchema = new mongoose.Schema({
     default: {
       daily: 300,
       work: { min: 200, max: 900 },
-      mine: { min: 50, max: 1500 },
+      mine: { min: 0, max: 0 },
       robbery: { min: 120, max: 800 },
       business: {
         ropa: 100,
