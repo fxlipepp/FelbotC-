@@ -1,6 +1,7 @@
 const fs = require('fs')
 const path = require('path')
 const crypto = require('crypto')
+const { ButtonV2 } = require('../lib/airich')
 const versusFile = path.join(__dirname, '../data/versus.json')
 
 function loadVersusData() {
@@ -233,9 +234,17 @@ async function versusCommand(sock, chatId, senderId, message) {
             equipo2: []
         }
 
-        const sent = await sock.sendMessage(chatId, {
-            text: buildVersusText(match)
-        }, { quoted: message })
+        const buttonMenu = new ButtonV2(sock)
+            .setBody(buildVersusText(match))
+            .setFooter('FelbotC - Registro Versus')
+            .addButton('❤️ Titular', `versus::${match.matchId}::titular`)
+            .addButton(match.type.startsWith('int') ? '👍 Equipo 2' : '👍 Suplente', `versus::${match.matchId}::suplente`)
+            .addButton('💔 Salir', `versus::${match.matchId}::remove`)
+
+        const sent = await buttonMenu.send(chatId, {
+            quoted: message,
+            viewOnce: false
+        })
 
         match.messageId = sent.key.id
         match.key = sent.key
@@ -332,11 +341,17 @@ async function handleVersusReaction(sock, status) {
 
         const mentions = mentionsForMatch(match)
 
-        await sock.sendMessage(match.chatId, {
-            text: buildVersusText(match),
-            mentions
-        }, {
-            edit: match.key
+        const buttonMenu = new ButtonV2(sock)
+            .setBody(buildVersusText(match))
+            .setFooter('FelbotC - Registro Versus')
+            .addButton('❤️ Titular', `versus::${match.matchId}::titular`)
+            .addButton(match.type.startsWith('int') ? '👍 Equipo 2' : '👍 Suplente', `versus::${match.matchId}::suplente`)
+            .addButton('💔 Salir', `versus::${match.matchId}::remove`)
+
+        await buttonMenu.send(match.chatId, {
+            edit: match.key,
+            mentions,
+            viewOnce: false
         })
 
         // IMPORTANTE:
@@ -456,10 +471,18 @@ async function upVersusCommand(sock, chatId, message) {
 
         const mentions = mentionsForMatch(match)
 
-        const sent = await sock.sendMessage(chatId, {
-            text: buildVersusText(match),
-            mentions
-        }, { quoted: message })
+        const buttonMenu = new ButtonV2(sock)
+            .setBody(buildVersusText(match))
+            .setFooter('FelbotC - Registro Versus')
+            .addButton('❤️ Titular', `versus::${match.matchId}::titular`)
+            .addButton(match.type.startsWith('int') ? '👍 Equipo 2' : '👍 Suplente', `versus::${match.matchId}::suplente`)
+            .addButton('💔 Salir', `versus::${match.matchId}::remove`)
+
+        const sent = await buttonMenu.send(chatId, {
+            quoted: message,
+            mentions,
+            viewOnce: false
+        })
 
         const oldKey = getMatchKey(
             match.chatId,
