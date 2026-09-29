@@ -1369,9 +1369,17 @@ async function startRace(sock, chatId, senderId, message) {
         const multiplier = Number(multiplierByPlace[place] || 0);
         const amountWon = Math.round(betAmount * multiplier);
 
-        if (amountWon > 0 && !isOwnerAccount(senderId)) {
-          live.saldo = Number(live.saldo || 0) + amountWon;
+        // El premio se acredita ANTES de borrar la partida y se guarda
+        // nuevamente en MongoDB para evitar que se pierda al finalizar.
+        live.stats = live.stats || {};
+        live.stats.ganancias = Number(live.stats.ganancias || 0);
+
+        if (amountWon > 0) {
+          if (!isOwnerAccount(senderId)) {
+            live.saldo = Number(live.saldo || 0) + amountWon;
+          }
           live.stats.victorias = Number(live.stats.victorias || 0) + 1;
+          live.stats.ganancias += amountWon;
         } else {
           live.stats.derrotas = Number(live.stats.derrotas || 0) + 1;
         }
