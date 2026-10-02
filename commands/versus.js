@@ -396,11 +396,26 @@ async function handleVersusReaction(sock, status) {
         // Este handler solo modifica VS por reacciones en los dos grupos permitidos.
         if (!usesReactionVersus(match.chatId)) return
 
-        await sock.sendMessage(match.chatId, {
-            text: buildVersusText(match),
+        const oldKey = getMatchKey(match.chatId, match.messageId)
+
+        const buttonMenu = new ButtonV2(sock)
+            .setBody(buildVersusText(match))
+            .setFooter('FelbotC - Registro Versus')
+            .addButton('❤️ Titular', `versus::${match.matchId}::titular`)
+            .addButton(match.type.startsWith('int') ? '👍 Equipo 2' : '👍 Suplente', `versus::${match.matchId}::suplente`)
+            .addButton('💔 Salir', `versus::${match.matchId}::remove`)
+
+        const sent = await buttonMenu.send(match.chatId, {
+            quoted: message,
             mentions,
-            edit: match.key
+            viewOnce: false
         })
+
+        delete data[oldKey]
+        match.messageId = sent.key.id
+        match.key = sent.key
+        match.updatedAt = Date.now()
+        data[getMatchKey(match.chatId, sent.key.id)] = match
 
         // IMPORTANTE:
         // No cambiamos match.key ni match.messageId.
@@ -485,9 +500,7 @@ async function handleVersusButton(sock, senderId, buttonId, message) {
             edit: match.key
         })
 
-        // El mensaje editado conserva la misma key/messageId.
-        // NO creamos un nuevo registro ni cambiamos la referencia.
-        data[getMatchKey(match.chatId, match.messageId)] = match
+        // Los botones requieren una nueva publicación; no se intenta editar.
         saveVersusData(data)
     } catch (error) {
         console.error('Error en handleVersusButton:', error)
