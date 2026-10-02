@@ -544,7 +544,6 @@ if (/^\d+$/.test(userMessage)) {
                 }
             } catch (e) { }
             }
-        }
 
 
         if (/^\d+$/.test(userMessage)) {
