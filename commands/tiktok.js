@@ -2,6 +2,26 @@ const { ttdl } = require("ruhend-scraper");
 const axios = require("axios");
 
 const processedMessages = new Set();
+const resultCache = new Map();
+const inflightDownloads = new Map();
+
+function cacheGet(url) {
+    const item = resultCache.get(url);
+    if (!item) return null;
+    if (item.expiresAt < Date.now()) {
+        resultCache.delete(url);
+        return null;
+    }
+    return item.value;
+}
+
+function cacheSet(url, value, ttl = 2 * 60 * 1000) {
+    resultCache.set(url, { value, expiresAt: Date.now() + ttl });
+    if (resultCache.size > 50) {
+        const first = resultCache.keys().next().value;
+        if (first) resultCache.delete(first);
+    }
+}
 
 // ==============================
 // ⚡ HELPERS
@@ -125,19 +145,40 @@ async function fallback(url) {
 // ⚡ ENGINE
 // ==============================
 async function getVideo(url) {
+    const cached = cacheGet(url);
+    if (cached?.video) return cached;
 
-    let r;
+    if (inflightDownloads.has(url)) {
+        return inflightDownloads.get(url);
+    }
 
-    r = await siputzx(url);
-    if (r?.video) return r;
+    const task = (async () => {
+        // Ask the lightweight extractors at the same time instead of waiting
+        // 12 seconds for one service before trying the next.
+        const results = await Promise.allSettled([
+            siputzx(url),
+            tikwm(url),
+            ssstik(url)
+        ]);
 
-    r = await tikwm(url);
-    if (r?.video) return r;
+        for (const result of results) {
+            if (result.status === 'fulfilled' && result.value?.video) {
+                cacheSet(url, result.value);
+                return result.value;
+            }
+        }
 
-    r = await ssstik(url);
-    if (r?.video) return r;
+        const fallbackResult = await fallback(url);
+        if (fallbackResult?.video) cacheSet(url, fallbackResult);
+        return fallbackResult;
+    })();
 
-    return await fallback(url);
+    inflightDownloads.set(url, task);
+    try {
+        return await task;
+    } finally {
+        inflightDownloads.delete(url);
+    }
 }
 
 // ==============================
@@ -175,16 +216,28 @@ async function tiktokCommand(sock, chatId, message) {
             }, { quoted: message });
         }
 
-        const video = await axios.get(result.video, {
-            responseType: "arraybuffer",
-            timeout: 60000,
+        const cachedBuffer = cacheGet(result.video);
+        let buffer;
+
+        if (cachedBuffer?.buffer) {
+            buffer = cachedBuffer.buffer;
+        } else {
+            const video = await axios.get(result.video, {
+                responseType: "arraybuffer",
+                timeout: 45000,
             headers: {
                 "User-Agent": "Mozilla/5.0",
                 "Referer": "https://www.tiktok.com/"
-            }
-        });
+                }
+            });
 
-        const buffer = Buffer.from(video.data);
+            buffer = Buffer.from(video.data);
+            // Keep only a very short-lived copy to make repeated requests fast.
+            // Limit memory usage to videos up to ~15 MB.
+            if (buffer.length <= 15 * 1024 * 1024) {
+                cacheSet(result.video, { buffer }, 60 * 1000);
+            }
+        }
 
         // 🟢 reacción final (check verde)
         await sock.sendMessage(chatId, {
