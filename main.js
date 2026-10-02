@@ -814,7 +814,7 @@ const command = rawText.split(' ')[0].toLowerCase()
 
             case userMessage.startsWith('.ban'):
                 if (!isGroup) {
-                    if (!message.key.fromMe && !senderIsSudo) {
+                    if (!message.key.fromMe && !(await getOwnerStatus())) {
                         await sock.sendMessage(chatId, { text: 'Only owner/sudo can use .ban in private chat.' }, { quoted: message });
                         break;
                     }
@@ -823,7 +823,7 @@ const command = rawText.split(' ')[0].toLowerCase()
                 break;
             case userMessage.startsWith('.unban'):
                 if (!isGroup) {
-                    if (!message.key.fromMe && !senderIsSudo) {
+                    if (!message.key.fromMe && !(await getOwnerStatus())) {
                         await sock.sendMessage(chatId, { text: 'Only owner/sudo can use .unban in private chat.' }, { quoted: message });
                         break;
                     }
@@ -854,7 +854,7 @@ const command = rawText.split(' ')[0].toLowerCase()
                 commandExecuted = true;
                 break;
             case userMessage === '.reiniciar economia' || userMessage === '.reiniciarEconomia' || userMessage.startsWith('.reiniciar') && userMessage.includes('economia'):
-                if (!message.key.fromMe && !senderIsOwnerOrSudo) {
+                if (!message.key.fromMe && !(await getOwnerStatus())) {
                     await sock.sendMessage(chatId, { text: '❌ Solo el OWNER puede reiniciar la economía.' }, { quoted: message });
                     break;
                 }
@@ -1159,7 +1159,7 @@ break;
                 break;
             case userMessage.startsWith('.mode'):
                 // Check if sender is the owner
-                if (!message.key.fromMe && !senderIsOwnerOrSudo) {
+                if (!message.key.fromMe && !(await getOwnerStatus())) {
                     await sock.sendMessage(chatId, { text: 'Only bot owner can use this command!', ...channelInfo }, { quoted: message });
                     return;
                 }
@@ -1206,7 +1206,7 @@ break;
                 }
                 break;
             case userMessage.startsWith('.anticall'):
-                if (!message.key.fromMe && !senderIsOwnerOrSudo) {
+                if (!message.key.fromMe && !(await getOwnerStatus())) {
                     await sock.sendMessage(chatId, { text: 'Only owner/sudo can use anticall.' }, { quoted: message });
                     break;
                 }
@@ -1500,13 +1500,13 @@ break
             case userMessage.startsWith('.mention '):
                 {
                     const args = userMessage.split(' ').slice(1).join(' ');
-                    const isOwner = message.key.fromMe || senderIsSudo;
+                    const isOwner = message.key?.fromMe || await getOwnerStatus();
                     await mentionToggleCommand(sock, chatId, message, args, isOwner);
                 }
                 break;
             case userMessage === '.setmention':
                 {
-                    const isOwner = message.key.fromMe || senderIsSudo;
+                    const isOwner = message.key?.fromMe || await getOwnerStatus();
                     await setMentionCommand(sock, chatId, message, isOwner);
                 }
                 break;
