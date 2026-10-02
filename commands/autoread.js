@@ -7,15 +7,21 @@ const fs = require('fs');
 const path = require('path');
 const isOwnerOrSudo = require('../lib/isOwner');
 
+let autoreadConfigCache = null;
+
 // Path to store the configuration
 const configPath = path.join(__dirname, '..', 'data', 'autoread.json');
 
 // Initialize configuration file if it doesn't exist
 function initConfig() {
+    if (autoreadConfigCache) return autoreadConfigCache;
     if (!fs.existsSync(configPath)) {
-        fs.writeFileSync(configPath, JSON.stringify({ enabled: false }, null, 2));
+        autoreadConfigCache = { enabled: false };
+        fs.writeFileSync(configPath, JSON.stringify(autoreadConfigCache, null, 2));
+        return autoreadConfigCache;
     }
-    return JSON.parse(fs.readFileSync(configPath));
+    autoreadConfigCache = JSON.parse(fs.readFileSync(configPath));
+    return autoreadConfigCache;
 }
 
 // Toggle autoread feature
@@ -76,6 +82,7 @@ async function autoreadCommand(sock, chatId, message) {
         }
         
         // Save updated configuration
+        autoreadConfigCache = config;
         fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
         
         // Send confirmation message
