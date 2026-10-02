@@ -312,7 +312,12 @@ async function handleMessages(sock, messageUpdate, printLog) {
         if (!message?.message) return;
 
         chatId = message.key?.remoteJid;
-        senderId = message.key?.participant || message.participant || message.key?.remoteJid;
+        senderId =
+            message.key?.participant ||
+            message.participant ||
+            message.key?.participantAlt ||
+            message.participantAlt ||
+            message.key?.remoteJid;
         isGroup = chatId?.endsWith('@g.us');
 
 
