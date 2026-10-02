@@ -10,12 +10,26 @@ const isOwnerOrSudo = require('../lib/isOwner');
 // Path to store the configuration
 const configPath = path.join(__dirname, '..', 'data', 'autotyping.json');
 
-// Initialize configuration file if it doesn't exist
+let configCache = null;
+
+// Initialize/load configuration once and keep it in memory.
 function initConfig() {
-    if (!fs.existsSync(configPath)) {
-        fs.writeFileSync(configPath, JSON.stringify({ enabled: false }, null, 2));
+    if (configCache) return configCache;
+
+    try {
+        if (!fs.existsSync(configPath)) {
+            configCache = { enabled: false };
+            fs.writeFileSync(configPath, JSON.stringify(configCache, null, 2));
+            return configCache;
+        }
+
+        configCache = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+        if (typeof configCache.enabled !== 'boolean') configCache.enabled = false;
+        return configCache;
+    } catch {
+        configCache = { enabled: false };
+        return configCache;
     }
-    return JSON.parse(fs.readFileSync(configPath));
 }
 
 // Toggle autotyping feature
@@ -76,6 +90,7 @@ async function autotypingCommand(sock, chatId, message) {
         }
         
         // Save updated configuration
+        configCache = config;
         fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
         
         // Send confirmation message
