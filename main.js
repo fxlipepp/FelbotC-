@@ -839,7 +839,7 @@ const command = rawText.split(' ')[0].toLowerCase()
                 commandExecuted = true;
                 break;
             case userMessage.startsWith('.modoeconomia'):
-                if (!message.key.fromMe && !senderIsOwnerOrSudo) {
+                if (!message.key.fromMe && !(await getOwnerStatus())) {
                     await sock.sendMessage(chatId, { text: '❌ Solo el OWNER puede activar la economía.' }, { quoted: message });
                     break;
                 }
