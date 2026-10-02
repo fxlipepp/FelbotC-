@@ -1214,7 +1214,7 @@ break;
 {
     if (!isGroup) return
 
-    if (!senderIsOwnerOrSudo && !message.key.fromMe) {
+    if (!message.key.fromMe && !(await getOwnerStatus())) {
         await sock.sendMessage(chatId, {
             text: '🚫 Solo el owner puede ejecutar este comando.'
         }, { quoted: message })
