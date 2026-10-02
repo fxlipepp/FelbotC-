@@ -155,17 +155,19 @@ async function getVideo(url) {
     const task = (async () => {
         // Ask the lightweight extractors at the same time instead of waiting
         // 12 seconds for one service before trying the next.
-        const results = await Promise.allSettled([
-            siputzx(url),
-            tikwm(url),
-            ssstik(url)
-        ]);
+        try {
+            // First successful extractor wins. This avoids waiting for slower
+            // providers after one has already returned a valid video URL.
+            const result = await Promise.any([
+                siputzx(url).then(r => r?.video ? r : Promise.reject(new Error('no video'))),
+                tikwm(url).then(r => r?.video ? r : Promise.reject(new Error('no video'))),
+                ssstik(url).then(r => r?.video ? r : Promise.reject(new Error('no video')))
+            ]);
 
-        for (const result of results) {
-            if (result.status === 'fulfilled' && result.value?.video) {
-                cacheSet(url, result.value);
-                return result.value;
-            }
+            cacheSet(url, result);
+            return result;
+        } catch {
+            // All fast providers failed; use the slower scraper as a final fallback.
         }
 
         const fallbackResult = await fallback(url);
