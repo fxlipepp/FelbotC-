@@ -2,6 +2,8 @@ const { igdl } = require("ruhend-scraper");
 
 // Store processed message IDs to prevent duplicates
 const processedMessages = new Set();
+const mediaCache = new Map();
+const inflightRequests = new Map();
 
 // Function to extract unique media URLs with simple deduplication
 function extractUniqueMedia(mediaData) {
@@ -29,6 +31,29 @@ function isValidMediaUrl(url) {
     return url.includes('cdninstagram.com') || 
            url.includes('instagram') || 
            url.includes('http');
+}
+
+async function getInstagramMedia(url) {
+    const cached = mediaCache.get(url);
+    if (cached && cached.expiresAt > Date.now()) return cached.data;
+    if (cached) mediaCache.delete(url);
+
+    if (inflightRequests.has(url)) return inflightRequests.get(url);
+
+    const task = igdl(url).then(data => {
+        if (data?.data?.length) {
+            mediaCache.set(url, {
+                data,
+                expiresAt: Date.now() + 2 * 60 * 1000
+            });
+        }
+        return data;
+    }).finally(() => {
+        inflightRequests.delete(url);
+    });
+
+    inflightRequests.set(url, task);
+    return task;
 }
 
 async function instagramCommand(sock, chatId, message) {
@@ -75,7 +100,7 @@ async function instagramCommand(sock, chatId, message) {
             react: { text: '🔄', key: message.key }
         });
 
-        const downloadData = await igdl(text);
+        const downloadData = await getInstagramMedia(text);
         
         if (!downloadData || !downloadData.data || downloadData.data.length === 0) {
             return await sock.sendMessage(chatId, { 
@@ -88,8 +113,8 @@ async function instagramCommand(sock, chatId, message) {
         // Simple deduplication - just remove exact URL duplicates
         const uniqueMedia = extractUniqueMedia(mediaData);
         
-        // Limit to maximum 20 unique media items
-        const mediaToDownload = uniqueMedia.slice(0, 20);
+        // Limit to a reasonable number. Most Instagram posts contain 1-10 items.
+        const mediaToDownload = uniqueMedia.slice(0, 10);
         
         if (mediaToDownload.length === 0) {
             return await sock.sendMessage(chatId, { 
@@ -122,10 +147,8 @@ async function instagramCommand(sock, chatId, message) {
                     }, { quoted: message });
                 }
                 
-                // Add small delay between downloads to prevent rate limiting
-                if (i < mediaToDownload.length - 1) {
-                    await new Promise(resolve => setTimeout(resolve, 1000));
-                }
+                // WhatsApp upload itself already provides backpressure.
+                // Avoid an artificial 1-second delay between every media item.
                 
             } catch (mediaError) {
                 console.error(`Error downloading media ${i + 1}:`, mediaError);
