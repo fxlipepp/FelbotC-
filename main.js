@@ -192,21 +192,92 @@ const menuButtonIds = new Set([
 ]);
 
 function getButtonId(messageContent) {
-    const nativeParamsJson = messageContent?.interactiveResponseMessage?.nativeFlowResponseMessage?.paramsJson;
+    if (!messageContent) return null;
 
-    if (nativeParamsJson) {
+    // WhatsApp puede entregar la respuesta dentro de uno o varios wrappers.
+    const unwrap = (content) => {
+        if (!content || typeof content !== 'object') return content;
+
+        return (
+            content.ephemeralMessage?.message ||
+            content.viewOnceMessage?.message ||
+            content.viewOnceMessageV2?.message ||
+            content.viewOnceMessageV2Extension?.message ||
+            content
+        );
+    };
+
+    let content = unwrap(messageContent);
+
+    // Botones nativos / Native Flow.
+    const nativeResponse =
+        content?.interactiveResponseMessage?.nativeFlowResponseMessage;
+
+    if (nativeResponse?.paramsJson) {
         try {
-            const params = JSON.parse(nativeParamsJson);
-            return params?.id || params?.button_id || params?.selected_id || null;
+            const params = JSON.parse(nativeResponse.paramsJson);
+
+            const id =
+                params?.id ||
+                params?.button_id ||
+                params?.buttonId ||
+                params?.selected_id ||
+                params?.selectedId ||
+                params?.row_id ||
+                params?.rowId;
+
+            if (id) return String(id);
         } catch (error) {
             console.error('❌ Error leyendo botón nativo:', error.message);
         }
     }
 
-    return messageContent?.buttonsResponseMessage?.selectedButtonId
-        || messageContent?.templateButtonReplyMessage?.selectedId
-        || messageContent?.listResponseMessage?.singleSelectReply?.selectedRowId
-        || null;
+    // Botones clásicos usados por ButtonV2.
+    const classicId =
+        content?.buttonsResponseMessage?.selectedButtonId ||
+        content?.templateButtonReplyMessage?.selectedId ||
+        content?.listResponseMessage?.singleSelectReply?.selectedRowId;
+
+    if (classicId) return String(classicId);
+
+    // Algunos mensajes llegan todavía envueltos después del primer unwrap.
+    const nested = [
+        content?.interactiveMessage,
+        content?.interactiveResponseMessage,
+        content?.buttonsMessage,
+        content?.templateMessage,
+        content?.listMessage
+    ];
+
+    for (const item of nested) {
+        if (!item) continue;
+
+        const id =
+            item?.buttonsResponseMessage?.selectedButtonId ||
+            item?.templateButtonReplyMessage?.selectedId ||
+            item?.listResponseMessage?.singleSelectReply?.selectedRowId ||
+            item?.nativeFlowResponseMessage?.paramsJson;
+
+        if (id && typeof id === 'string' && !id.trim().startsWith('{')) {
+            return id;
+        }
+
+        if (item?.nativeFlowResponseMessage?.paramsJson) {
+            try {
+                const params = JSON.parse(item.nativeFlowResponseMessage.paramsJson);
+                const parsedId =
+                    params?.id ||
+                    params?.button_id ||
+                    params?.buttonId ||
+                    params?.selected_id ||
+                    params?.selectedId;
+
+                if (parsedId) return String(parsedId);
+            } catch {}
+        }
+    }
+
+    return null;
 }
 
 async function handleNativeMenuButton(sock, chatId, buttonId, message) {
