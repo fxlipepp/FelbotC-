@@ -665,35 +665,39 @@ if (/^\d+$/.test(userMessage)) {
         }
 
 
-        const groupData = await Group.findOne({
-    groupId: chatId
-})
+        const isCommand = userMessage.startsWith('.')
+        let groupData = null
 
-const isCommand = userMessage.startsWith('.')
+        // Mongo y metadata de grupo solo se consultan cuando realmente hacen falta.
+        if (isGroup && isCommand) {
+            groupData = await Group.findOne({ groupId: chatId }).lean()
 
-// 🔴 FELBOT GLOBAL BLOCK
-if (isGroup && isCommand) {
+            // FELBOT GLOBAL BLOCK
+            if (groupData?.felbot?.enabled === false && !userMessage.startsWith('.felbot')) {
+                return
+            }
 
-    const groupData = await Group.findOne({ groupId: chatId })
+            // En adminMode necesitamos saber si el usuario es admin incluso
+            // cuando el comando no pertenece a la lista de comandos admin.
+            if (groupData?.adminMode && !isSenderAdmin && !message.key.fromMe && !isAdminCommand) {
+                const adminStatus = await isAdmin(sock, chatId, senderId)
+                isSenderAdmin = adminStatus.isSenderAdmin
+                isBotAdmin = adminStatus.isBotAdmin
+            }
+        }
 
-    // si está apagado y NO es el comando de control
-    if (groupData && groupData.felbot?.enabled === false && !userMessage.startsWith('.felbot')) {
-        return
-    }
-}
-
-if (
-    isGroup &&
-    groupData?.adminMode &&
-    !isSenderAdmin &&
-    !message.key.fromMe &&
-    !isEconomyCommand(userMessage)
-) {
-    const senderUser = await ensureEconomyUser(senderId, message?.pushName || 'Usuario');
-    if (!hasRoyalProtection(senderUser)) {
-        return;
-    }
-}
+        if (
+            isGroup &&
+            groupData?.adminMode &&
+            !isSenderAdmin &&
+            !message.key.fromMe &&
+            !isEconomyCommand(userMessage)
+        ) {
+            const senderUser = await ensureEconomyUser(senderId, message?.pushName || 'Usuario')
+            if (!hasRoyalProtection(senderUser)) {
+                return
+            }
+        }
 
 // ===============================
 // 🔞 XNXX NUMBER REPLY
