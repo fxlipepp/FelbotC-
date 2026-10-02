@@ -3,17 +3,63 @@ const path = require('path');
 
 const dataFilePath = path.join(__dirname, '..', 'data', 'messageCount.json');
 
+let messageCountsCache = null;
+let saveTimer = null;
+let savePending = false;
+
 function loadMessageCounts() {
-    if (fs.existsSync(dataFilePath)) {
-        const data = fs.readFileSync(dataFilePath);
-        return JSON.parse(data);
+    if (messageCountsCache) return messageCountsCache;
+
+    try {
+        if (!fs.existsSync(dataFilePath)) {
+            messageCountsCache = {};
+            return messageCountsCache;
+        }
+
+        const raw = fs.readFileSync(dataFilePath, 'utf8');
+        messageCountsCache = JSON.parse(raw);
+        return messageCountsCache;
+    } catch {
+        messageCountsCache = {};
+        return messageCountsCache;
     }
-    return {};
+}
+
+function flushMessageCounts() {
+    if (!messageCountsCache || !savePending) return;
+
+    try {
+        fs.writeFileSync(
+            dataFilePath,
+            JSON.stringify(messageCountsCache, null, 2)
+        );
+        savePending = false;
+    } catch (error) {
+        console.error('Error saving message counts:', error);
+    }
+}
+
+function scheduleSave() {
+    savePending = true;
+
+    if (saveTimer) return;
+
+    // Batch frequent message-count updates instead of blocking the event loop
+    // with a disk write for every single WhatsApp message.
+    saveTimer = setTimeout(() => {
+        saveTimer = null;
+        flushMessageCounts();
+    }, 5000);
 }
 
 function saveMessageCounts(messageCounts) {
-    fs.writeFileSync(dataFilePath, JSON.stringify(messageCounts, null, 2));
+    messageCountsCache = messageCounts;
+    scheduleSave();
 }
+
+// Flush pending counters before process shutdown.
+process.once('SIGINT', flushMessageCounts);
+process.once('SIGTERM', flushMessageCounts);
 
 function incrementMessageCount(groupId, userId) {
     const messageCounts = loadMessageCounts();
@@ -27,7 +73,6 @@ function incrementMessageCount(groupId, userId) {
     }
 
     messageCounts[groupId][userId] += 1;
-
     saveMessageCounts(messageCounts);
 }
 
@@ -42,7 +87,7 @@ function topMembers(sock, chatId, isGroup) {
 
     const sortedMembers = Object.entries(groupCounts)
         .sort(([, a], [, b]) => b - a)
-        .slice(0, 5); // Get top 5 members
+        .slice(0, 5);
 
     if (sortedMembers.length === 0) {
         sock.sendMessage(chatId, { text: 'No message activity recorded yet.' });
