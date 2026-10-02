@@ -121,7 +121,7 @@ function resolveTargetInfo(message, rawValue = '', fallbackName = 'usuario') {
 }
 
 async function ensureEconomyActive(sock, chatId, message) {
-  const enabled = await getEconomyEnabled();
+  const enabled = await getEconomyEnabled(chatId);
   if (!enabled) {
     await notifyEconomyDisabled(sock, chatId, message);
     return false;
@@ -263,7 +263,7 @@ async function toggleEconomy(sock, chatId, senderId, message, enabled) {
   }
 
   // owner check handled in main.js before calling
-  await setEconomyEnabled(enabled);
+  await setEconomyEnabled(chatId, enabled);
   if (enabled) {
     await sock.sendMessage(chatId, {
       text: `💰 *FELCOINS ACTIVADO*\n\nEl sistema de economía está disponible nuevamente.\n\n𝕱𝖊𝖑𝖇𝖔𝖙 夜`
