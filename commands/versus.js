@@ -68,6 +68,33 @@ function getMatchKey(chatId, messageId) {
     return `${chatId}|${messageId}`
 }
 
+function removeOtherMatches(data, chatId, keepMatchId) {
+    for (const key of Object.keys(data)) {
+        const match = data[key]
+        if (
+            match &&
+            match.chatId === chatId &&
+            match.matchId !== keepMatchId
+        ) {
+            delete data[key]
+        }
+    }
+}
+
+function getActiveMatch(data, chatId) {
+    const matches = Object.values(data)
+        .filter(match => match && match.chatId === chatId)
+
+    if (!matches.length) return null
+
+    matches.sort((a, b) =>
+        Number(b.updatedAt || b.createdAt || 0) -
+        Number(a.updatedAt || a.createdAt || 0)
+    )
+
+    return matches[0]
+}
+
 function formatSlotList(users, slots, emoji = '🥷') {
     return Array.from({ length: slots }, (_, index) => {
         const user = users[index]
@@ -242,7 +269,9 @@ async function versusCommand(sock, chatId, senderId, message) {
             maxSuplentes: info.maxSuplentes,
             titular: [],
             suplentes: [],
-            equipo2: []
+            equipo2: [],
+            createdAt: Date.now(),
+            updatedAt: Date.now()
         }
 
         let sent
@@ -270,6 +299,7 @@ async function versusCommand(sock, chatId, senderId, message) {
         match.key = sent.key
 
         const data = loadVersusData()
+        removeOtherMatches(data, chatId, match.matchId)
         data[getMatchKey(chatId, sent.key.id)] = match
         saveVersusData(data)
 
@@ -357,6 +387,7 @@ async function handleVersusReaction(sock, status) {
 
         if (!updated) return
 
+        match.updatedAt = Date.now()
         data[key] = match
         saveVersusData(data)
 
@@ -474,16 +505,13 @@ async function upVersusCommand(sock, chatId, message) {
 
         const data = loadVersusData()
 
-        const matches = Object.values(data)
-            .filter(m => m.chatId === chatId)
+        const match = getActiveMatch(data, chatId)
 
-        if (!matches.length) {
+        if (!match) {
             return await sock.sendMessage(chatId, {
                 text: '⚠️ No hay ninguna lista activa en este grupo.'
             }, { quoted: message })
         }
-
-        const match = matches[matches.length - 1]
 
         const mentions = mentionsForMatch(match)
 
