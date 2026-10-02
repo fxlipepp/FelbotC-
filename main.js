@@ -283,7 +283,7 @@ async function handleNativeMenuButton(sock, chatId, buttonId, message) {
 
 async function economyCommandLocked(sock, chatId, senderId, message, product) {
     try {
-        const enabled = await getEconomyEnabled();
+        const enabled = await getEconomyEnabled(chatId);
         if (!enabled || isOwnerAccount(senderId)) return false;
         const user = await ensureEconomyUser(senderId, message?.pushName || 'Usuario');
         if (!user || !user.registered) {
@@ -968,7 +968,7 @@ const command = rawText.split(' ')[0].toLowerCase()
                 break;
             case userMessage === '.sticker' || userMessage === '.s':
                 {
-                    const enabled = await getEconomyEnabled();
+                    const enabled = await getEconomyEnabled(chatId);
                     if (enabled) {
                         const currentUser = await ensureEconomyUser(senderId, message?.pushName || 'Usuario');
                         if (!currentUser || !currentUser.registered) {
@@ -1848,7 +1848,7 @@ break;
                 break;
             case userMessage.startsWith('.play') || userMessage.startsWith('.mp3') || userMessage.startsWith('.ytmp3') || userMessage.startsWith('.song'):
                 {
-                    const enabled = await getEconomyEnabled();
+                    const enabled = await getEconomyEnabled(chatId);
                     if (enabled) {
                         const currentUser = await ensureEconomyUser(senderId, message?.pushName || 'Usuario');
                         if (!currentUser || !currentUser.registered) {
