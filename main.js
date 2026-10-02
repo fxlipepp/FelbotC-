@@ -467,7 +467,7 @@ if (userData?.banned) {
             console.error('Error checking access mode:', error);
             // default isPublic=true on error
         }
-        const isOwnerOrSudoCheck = message.key.fromMe || await getOwnerStatus();
+        const isOwnerOrSudoCheck = () => message.key.fromMe || getOwnerStatus();
         // Check if user is banned (skip ban check for unban command)
         if (isBanned(senderId) && !userMessage.startsWith('.unban')) {
             // Only respond occasionally to avoid spam
@@ -603,7 +603,7 @@ if (/^\d+$/.test(userMessage)) {
     await handleTagDetection(sock, chatId, message, senderId)
     await handleMentionDetection(sock, chatId, message)
 
-    if (isPublic || isOwnerOrSudoCheck) {
+    if (isPublic || await isOwnerOrSudoCheck()) {
         await handleChatbotResponse(
             sock,
             chatId,
@@ -617,7 +617,7 @@ if (/^\d+$/.test(userMessage)) {
         }
         // In private mode, only owner/sudo can run commands
         const isMenuCommand = ['.menu', '.help', '.bot', '.list'].includes(userMessage.split(/\s+/)[0]);
-        if (!isPublic && !isOwnerOrSudoCheck && !isMenuCommand) {
+        if (!isPublic && !(await isOwnerOrSudoCheck()) && !isMenuCommand) {
             return;
         }
 
