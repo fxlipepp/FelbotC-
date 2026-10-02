@@ -437,16 +437,9 @@ if (userData?.banned) {
             const sourceLabel = isGroup ? 'Grupo' : 'Privado';
             const commandLabel = userMessage.split(' ')[0];
             const senderName = message.pushName || senderId.split('@')[0];
-            let groupName = sourceLabel;
-
-            if (isGroup) {
-                try {
-                    const metadata = await sock.groupMetadata(chatId);
-                    groupName = metadata?.subject || chatId;
-                } catch (error) {
-                    groupName = chatId;
-                }
-            }
+            // Do not fetch group metadata just for console logging.
+            // That network request used to delay every group command.
+            const groupName = isGroup ? chatId : sourceLabel;
 
             console.log(chalk.blue('────────────────────────────────────────'));
             console.log(chalk.cyan.bold('📝 COMANDO EJECUTADO'));
