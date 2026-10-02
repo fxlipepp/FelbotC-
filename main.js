@@ -477,7 +477,10 @@ if (userData?.banned) {
             console.error('Error checking access mode:', error);
             // default isPublic=true on error
         }
-        const isOwnerOrSudoCheck = () => message.key.fromMe || getOwnerStatus();
+        const isOwnerOrSudoCheck = async () => {
+            if (message.key?.fromMe) return true;
+            return await getOwnerStatus();
+        };
         // Check if user is banned (skip ban check for unban command)
         if (isBanned(senderId) && !userMessage.startsWith('.unban')) {
             // Only respond occasionally to avoid spam
