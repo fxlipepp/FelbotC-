@@ -413,7 +413,8 @@ if (userData?.banned) {
         }
 
         const senderIsOwnerOrSudo = await isOwnerOrSudo(senderId, sock, chatId);
-        const senderIsSudo = senderIsOwnerOrSudo || await isSudo(senderId);
+        // isOwnerOrSudo already includes the sudo fallback; avoid a second disk lookup.
+        const senderIsSudo = senderIsOwnerOrSudo;
 
         const userMessage = (
             message.message?.conversation?.trim() ||
@@ -626,19 +627,7 @@ if (/^\d+$/.test(userMessage)) {
         let isSenderAdmin = false;
         let isBotAdmin = false;
 
-        if (isGroup) {
-
-    const adminStatus = await isAdmin(
-        sock,
-        chatId,
-        senderId
-    )
-
-    isSenderAdmin = adminStatus.isSenderAdmin
-    isBotAdmin = adminStatus.isBotAdmin
-}
-
-        // Check admin status only for admin commands in groups
+        // Admin metadata is expensive. Only fetch it for commands that actually need it.
         if (isGroup && isAdminCommand) {
             const adminStatus = await isAdmin(sock, chatId, senderId);
             isSenderAdmin = adminStatus.isSenderAdmin;
