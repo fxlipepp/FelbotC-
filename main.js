@@ -412,9 +412,17 @@ if (userData?.banned) {
             }
         }
 
-        const senderIsOwnerOrSudo = await isOwnerOrSudo(senderId, sock, chatId);
-        // isOwnerOrSudo already includes the sudo fallback; avoid a second disk lookup.
-        const senderIsSudo = senderIsOwnerOrSudo;
+        // Owner/sudo checks can hit storage. Do them lazily only when a feature
+        // actually needs owner privileges instead of on every incoming message.
+        let senderIsOwnerOrSudo = false;
+        let ownerStatusChecked = false;
+        const getOwnerStatus = async () => {
+            if (!ownerStatusChecked) {
+                senderIsOwnerOrSudo = await isOwnerOrSudo(senderId, sock, chatId);
+                ownerStatusChecked = true;
+            }
+            return senderIsOwnerOrSudo;
+        };
 
         const userMessage = (
             message.message?.conversation?.trim() ||
@@ -459,7 +467,7 @@ if (userData?.banned) {
             console.error('Error checking access mode:', error);
             // default isPublic=true on error
         }
-        const isOwnerOrSudoCheck = message.key.fromMe || senderIsOwnerOrSudo;
+        const isOwnerOrSudoCheck = message.key.fromMe || await getOwnerStatus();
         // Check if user is banned (skip ban check for unban command)
         if (isBanned(senderId) && !userMessage.startsWith('.unban')) {
             // Only respond occasionally to avoid spam
@@ -521,8 +529,11 @@ if (/^\d+$/.test(userMessage)) {
         }
 
         // PM blocker: block non-owner DMs when enabled (do not ban)
-        if (!isGroup && !message.key.fromMe && !senderIsSudo) {
-            try {
+        if (!isGroup && !message.key.fromMe) {
+            const senderIsSudo = await getOwnerStatus();
+            if (senderIsSudo) {
+                // Owner/sudo bypasses the PM blocker.
+            } else try {
                 const pmState = readPmBlockerState();
                 if (pmState.enabled) {
                     // Inform user, delay, then block without banning globally
@@ -532,6 +543,7 @@ if (/^\d+$/.test(userMessage)) {
                     return;
                 }
             } catch (e) { }
+            }
         }
 
 
@@ -651,7 +663,7 @@ if (/^\d+$/.test(userMessage)) {
 
         // Check owner status for owner commands
         if (isOwnerCommand) {
-            if (!message.key.fromMe && !senderIsOwnerOrSudo) {
+            if (!message.key.fromMe && !(await getOwnerStatus())) {
                 await sock.sendMessage(chatId, { text: '❌ This command is only available for the owner or sudo!' }, { quoted: message });
                 return;
             }
