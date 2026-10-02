@@ -6,6 +6,7 @@ const { writeFile } = require('fs/promises');
 
 const messageStore = new Map();
 const CONFIG_PATH = path.join(__dirname, '../data/antidelete.json');
+let antideleteConfigCache = null;
 const TEMP_MEDIA_DIR = path.join(__dirname, '../tmp');
 
 // Ensure tmp dir exists
@@ -55,17 +56,27 @@ setInterval(cleanTempFolderIfLarge, 60 * 1000);
 
 // Load config
 function loadAntideleteConfig() {
+    if (antideleteConfigCache) return antideleteConfigCache;
+
     try {
-        if (!fs.existsSync(CONFIG_PATH)) return { enabled: false };
-        return JSON.parse(fs.readFileSync(CONFIG_PATH));
+        if (!fs.existsSync(CONFIG_PATH)) {
+            antideleteConfigCache = { enabled: false };
+            return antideleteConfigCache;
+        }
+
+        antideleteConfigCache = JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8'));
+        if (typeof antideleteConfigCache.enabled !== 'boolean') antideleteConfigCache.enabled = false;
+        return antideleteConfigCache;
     } catch {
-        return { enabled: false };
+        antideleteConfigCache = { enabled: false };
+        return antideleteConfigCache;
     }
 }
 
 // Save config
 function saveAntideleteConfig(config) {
     try {
+        antideleteConfigCache = config;
         fs.writeFileSync(CONFIG_PATH, JSON.stringify(config, null, 2));
     } catch (err) {
         console.error('Config save error:', err);
