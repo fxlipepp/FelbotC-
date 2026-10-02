@@ -192,94 +192,50 @@ const menuButtonIds = new Set([
 ]);
 
 function getButtonId(messageContent) {
-    if (!messageContent) return null;
+    if (!messageContent || typeof messageContent !== 'object') return null;
 
-    // WhatsApp puede entregar la respuesta dentro de uno o varios wrappers.
-    const unwrap = (content) => {
-        if (!content || typeof content !== 'object') return content;
+    const visited = new Set();
 
-        return (
-            content.ephemeralMessage?.message ||
-            content.viewOnceMessage?.message ||
-            content.viewOnceMessageV2?.message ||
-            content.viewOnceMessageV2Extension?.message ||
-            content
-        );
-    };
+    const scan = (node) => {
+        if (!node || typeof node !== 'object' || visited.has(node)) return null;
+        visited.add(node);
 
-    let content = unwrap(messageContent);
-
-    // Botones nativos / Native Flow.
-    const nativeResponse =
-        content?.interactiveResponseMessage?.nativeFlowResponseMessage;
-
-    if (nativeResponse?.paramsJson) {
-        try {
-            const params = JSON.parse(nativeResponse.paramsJson);
-
-            const id =
-                params?.id ||
-                params?.button_id ||
-                params?.buttonId ||
-                params?.selected_id ||
-                params?.selectedId ||
-                params?.row_id ||
-                params?.rowId;
-
-            if (id) return String(id);
-        } catch (error) {
-            console.error('❌ Error leyendo botón nativo:', error.message);
-        }
-    }
-
-    // Botones clásicos usados por ButtonV2.
-    const classicId =
-        content?.buttonsResponseMessage?.selectedButtonId ||
-        content?.templateButtonReplyMessage?.selectedId ||
-        content?.listResponseMessage?.singleSelectReply?.selectedRowId;
-
-    if (classicId) return String(classicId);
-
-    // Algunos mensajes llegan todavía envueltos después del primer unwrap.
-    const nested = [
-        content?.interactiveMessage,
-        content?.interactiveResponseMessage,
-        content?.buttonsMessage,
-        content?.templateMessage,
-        content?.listMessage
-    ];
-
-    for (const item of nested) {
-        if (!item) continue;
-
-        const id =
-            item?.buttonsResponseMessage?.selectedButtonId ||
-            item?.templateButtonReplyMessage?.selectedId ||
-            item?.listResponseMessage?.singleSelectReply?.selectedRowId ||
-            item?.nativeFlowResponseMessage?.paramsJson;
-
-        if (id && typeof id === 'string' && !id.trim().startsWith('{')) {
-            return id;
-        }
-
-        if (item?.nativeFlowResponseMessage?.paramsJson) {
+        if (node.paramsJson && typeof node.paramsJson === 'string') {
             try {
-                const params = JSON.parse(item.nativeFlowResponseMessage.paramsJson);
-                const parsedId =
+                const params = JSON.parse(node.paramsJson);
+                const id =
                     params?.id ||
                     params?.button_id ||
                     params?.buttonId ||
                     params?.selected_id ||
-                    params?.selectedId;
-
-                if (parsedId) return String(parsedId);
+                    params?.selectedId ||
+                    params?.row_id ||
+                    params?.rowId;
+                if (id) return String(id);
             } catch {}
         }
-    }
 
-    return null;
+        const direct =
+            node.selectedButtonId ||
+            node.selectedId ||
+            node.selectedRowId ||
+            node.buttonId ||
+            node.button_id;
+
+        if (direct) return String(direct);
+
+        for (const value of Object.values(node)) {
+            if (value && typeof value === 'object') {
+                const found = scan(value);
+                if (found) return found;
+            }
+        }
+
+        return null;
+    };
+
+    return scan(messageContent);
 }
-
 async function handleNativeMenuButton(sock, chatId, buttonId, message) {
     if (buttonId === 'owner') {
         const ownerCommand = require('./commands/owner');
@@ -426,6 +382,7 @@ if (userData?.banned) {
 
         if (buttonId) {
             const chatId = message.key.remoteJid;
+            console.log(`🔘 Botón detectado: ${buttonId} | Usuario: ${senderId} | Chat: ${chatId}`);
 
             if (buttonId === 'channel') {
                 await sock.sendMessage(chatId, {
