@@ -316,12 +316,12 @@ async function handleMessages(sock, messageUpdate, printLog) {
         isGroup = chatId?.endsWith('@g.us');
 
 
-        // Handle autoread functionality
-        await handleAutoread(sock, message);
+        // Non-critical middleware must not block command execution.
+        // Run it in the background so commands can be processed immediately.
+        handleAutoread(sock, message).catch(() => {});
 
-        // Store message for antidelete feature
         if (message.message) {
-            storeMessage(sock, message);
+            Promise.resolve(storeMessage(sock, message)).catch(() => {});
         }
 
         // Handle message revocation
@@ -352,9 +352,10 @@ async function handleMessages(sock, messageUpdate, printLog) {
             return;
         }
 
-        const mutedUser = await User.findOne({ userId: senderId })
+        // One lightweight DB lookup for moderation state instead of two queries.
+        const userData = await User.findOne({ userId: senderId }).select('muted banned').lean()
 
-if (mutedUser?.muted) {
+        if (userData?.muted) {
 
     // opcional: borrar mensaje
     try {
@@ -368,10 +369,6 @@ if (mutedUser?.muted) {
 
         //Ban
         message.key.participant || message.key.remoteJid
-
-let userData = await User.findOne({
-   userId: senderId
-})
 
 if (userData?.banned) {
    return
@@ -2235,7 +2232,7 @@ break
         // If a command was executed, show typing status after command execution
         if (commandExecuted !== false) {
             // Command was executed, now show typing status after command execution
-            await showTypingAfterCommand(sock, chatId);
+            showTypingAfterCommand(sock, chatId).catch(() => {});
         }
 
         // Function to handle .groupjid command
@@ -2257,7 +2254,7 @@ break
 
         if (userMessage.startsWith('.')) {
             // After command is processed successfully
-            await addCommandReaction(sock, message);
+            addCommandReaction(sock, message).catch(() => {});
         }
     } catch (error) {
         console.error('❌ Error in message handler:', error.message);
