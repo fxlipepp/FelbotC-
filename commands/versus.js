@@ -320,27 +320,17 @@ async function handleVersusReaction(sock, status) {
         if (!usesReactionVersus(original.remoteJid)) return
 
         const emoji = getReactionEmoji(status)
-
         if (!['❤️', '👍', '💔'].includes(emoji)) return
 
         const userId = getReactingUser(status)
-
         if (!userId) return
 
-        const key = getMatchKey(
-            original.remoteJid,
-            original.id
-        )
-
+        const key = getMatchKey(original.remoteJid, original.id)
         const data = loadVersusData()
         const match = data[key]
-
         if (!match) return
 
-        if (!match.equipo2) {
-            match.equipo2 = []
-        }
-
+        if (!match.equipo2) match.equipo2 = []
         if (userId === sock.user?.id) return
 
         let updated = false
@@ -373,15 +363,13 @@ async function handleVersusReaction(sock, status) {
                     match.equipo2.push(userId)
                     updated = true
                 }
-            } else {
-                if (
-                    !match.suplentes.includes(userId) &&
-                    match.suplentes.length < match.maxSuplentes
-                ) {
-                    removeUserFromMatch(match, userId)
-                    match.suplentes.push(userId)
-                    updated = true
-                }
+            } else if (
+                !match.suplentes.includes(userId) &&
+                match.suplentes.length < match.maxSuplentes
+            ) {
+                removeUserFromMatch(match, userId)
+                match.suplentes.push(userId)
+                updated = true
             }
         }
 
@@ -391,46 +379,14 @@ async function handleVersusReaction(sock, status) {
         data[key] = match
         saveVersusData(data)
 
-        const mentions = mentionsForMatch(match)
-
-        // Este handler solo modifica VS por reacciones en los dos grupos permitidos.
-        if (!usesReactionVersus(match.chatId)) return
-
-        const oldKey = getMatchKey(match.chatId, match.messageId)
-
-        const buttonMenu = new ButtonV2(sock)
-            .setBody(buildVersusText(match))
-            .setFooter('FelbotC - Registro Versus')
-            .addButton('❤️ Titular', `versus::${match.matchId}::titular`)
-            .addButton(match.type.startsWith('int') ? '👍 Equipo 2' : '👍 Suplente', `versus::${match.matchId}::suplente`)
-            .addButton('💔 Salir', `versus::${match.matchId}::remove`)
-
-        const sent = await buttonMenu.send(match.chatId, {
-            quoted: message,
-            mentions,
-            viewOnce: false
+        await sock.sendMessage(match.chatId, {
+            text: buildVersusText(match),
+            mentions: mentionsForMatch(match),
+            edit: match.key
         })
-
-        delete data[oldKey]
-        match.messageId = sent.key.id
-        match.key = sent.key
-        match.updatedAt = Date.now()
-        data[getMatchKey(match.chatId, sent.key.id)] = match
-
-        // IMPORTANTE:
-        // No cambiamos match.key ni match.messageId.
-        // El mensaje del versus debe conservar SIEMPRE su clave original
-        // para que las siguientes reacciones encuentren la misma partida.
-
     } catch (error) {
         console.error('Error en handleVersusReaction:', error)
     }
-}
-
-function parseVersusButtonId(buttonId) {
-    const parts = buttonId.split('::')
-    if (parts.length !== 3 || parts[0] !== 'versus') return null
-    return { matchId: parts[1], action: parts[2] }
 }
 
 async function handleVersusButton(sock, senderId, buttonId, message) {
@@ -475,32 +431,43 @@ async function handleVersusButton(sock, senderId, buttonId, message) {
                     match.equipo2.push(senderId)
                     updated = true
                 }
-            } else {
-                if (
-                    !match.suplentes.includes(senderId) &&
-                    match.suplentes.length < match.maxSuplentes
-                ) {
-                    removeUserFromMatch(match, senderId)
-                    match.suplentes.push(senderId)
-                    updated = true
-                }
+            } else if (
+                !match.suplentes.includes(senderId) &&
+                match.suplentes.length < match.maxSuplentes
+            ) {
+                removeUserFromMatch(match, senderId)
+                match.suplentes.push(senderId)
+                updated = true
             }
         }
 
         if (!updated) return
 
-        const mentions = mentionsForMatch(match)
+        const oldKey = getMatchKey(match.chatId, match.messageId)
 
-        data[getMatchKey(match.chatId, match.messageId)] = match
-        saveVersusData(data)
+        const buttonMenu = new ButtonV2(sock)
+            .setBody(buildVersusText(match))
+            .setFooter('FelbotC - Registro Versus')
+            .addButton('❤️ Titular', `versus::${match.matchId}::titular`)
+            .addButton(
+                match.type.startsWith('int') ? '👍 Equipo 2' : '👍 Suplente',
+                `versus::${match.matchId}::suplente`
+            )
+            .addButton('💔 Salir', `versus::${match.matchId}::remove`)
 
-        await sock.sendMessage(match.chatId, {
-            text: buildVersusText(match),
-            mentions,
-            edit: match.key
+        const sent = await buttonMenu.send(match.chatId, {
+            quoted: message,
+            mentions: mentionsForMatch(match),
+            viewOnce: false
         })
 
-        // Los botones requieren una nueva publicación; no se intenta editar.
+        delete data[oldKey]
+
+        match.messageId = sent.key.id
+        match.key = sent.key
+        match.updatedAt = Date.now()
+
+        data[getMatchKey(match.chatId, sent.key.id)] = match
         saveVersusData(data)
     } catch (error) {
         console.error('Error en handleVersusButton:', error)
