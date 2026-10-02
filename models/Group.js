@@ -28,6 +28,12 @@ const groupSchema = new mongoose.Schema({
       default: false
    },
 
+   // 💰 FelCoins: activación independiente por grupo
+   economyEnabled: {
+      type: Boolean,
+      default: false
+   },
+
    welcome: {
       enabled: {
          type: Boolean,
