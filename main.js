@@ -1084,7 +1084,7 @@ break;
                 await testBotonesCommand(sock, chatId, message);
                 commandExecuted = true;
                 break;
-            case userMessage.startsWith('.2vs2') || userMessage.startsWith('.2v2') || userMessage.startsWith('.4vs4') || userMessage.startsWith('.4v4') || userMessage.startsWith('.6vs6') || userMessage.startsWith('.6v6') || userMessage.startsWith('.int2') || userMessage.startsWith('.int4') || userMessage.startsWith('.int6'):
+            case userMessage.startsWith('.2vs2') || userMessage.startsWith('.2v2') || userMessage.startsWith('.4vs4') || userMessage.startsWith('.4v4') || userMessage.startsWith('.6vs6') || userMessage.startsWith('.6v6') || userMessage.startsWith('.8vs8') || userMessage.startsWith('.8v8') || userMessage.startsWith('.int2') || userMessage.startsWith('.int4') || userMessage.startsWith('.int6'):
                 await versusCommand(sock, chatId, senderId, message);
                 break;
                 case userMessage.startsWith('.up'):
