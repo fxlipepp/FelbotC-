@@ -418,7 +418,12 @@ if (userData?.banned) {
         let ownerStatusChecked = false;
         const getOwnerStatus = async () => {
             if (!ownerStatusChecked) {
-                senderIsOwnerOrSudo = await isOwnerOrSudo(senderId, sock, chatId);
+                senderIsOwnerOrSudo = await isOwnerOrSudo(
+                    senderId,
+                    sock,
+                    chatId,
+                    message?.key?.participantAlt || message?.participantAlt || message?.key?.remoteJidAlt
+                );
                 ownerStatusChecked = true;
             }
             return senderIsOwnerOrSudo;
