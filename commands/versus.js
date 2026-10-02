@@ -102,6 +102,23 @@ function formatSlotList(users, slots, emoji = '🥷') {
     }).join('\n')
 }
 
+function parseVersusButtonId(buttonId) {
+    if (typeof buttonId !== 'string') return null
+
+    const parts = buttonId.split('::')
+    if (parts.length !== 3) return null
+    if (parts[0] !== 'versus') return null
+
+    const matchId = parts[1]?.trim()
+    const action = parts[2]?.trim()
+
+    if (!matchId || !['titular', 'suplente', 'remove'].includes(action)) {
+        return null
+    }
+
+    return { matchId, action }
+}
+
 function parseVersusMeta(rawText) {
     const trimmed = (rawText || '').trim()
     if (!trimmed) {
