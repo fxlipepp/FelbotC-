@@ -45,6 +45,8 @@ function normalizeCommand(cmd) {
         '.4v4': '4vs4',
         '.6vs6': '6vs6',
         '.6v6': '6vs6',
+        '.8vs8': '8vs8',
+        '.8v8': '8vs8',
         '.int2': 'int2',
         '.int4': 'int4',
         '.int6': 'int6'
@@ -57,10 +59,13 @@ function getMatchInfo(type) {
     const size = parseInt(type.replace('int', ''), 10)
 
     return {
-        title: type === '6vs6' ? '6 VS 6 BY' : `${size} VS ${size} CLK`,
+        title:
+            type === '6vs6' ? '6 VS 6 BY' :
+            type === '8vs8' ? '8 VS 8 BY' :
+            `${size} VS ${size} CLK`,
         size,
         maxTitular: size,
-        maxSuplentes: Math.max(1, Math.floor(size / 2))
+        maxSuplentes: type === '8vs8' ? 4 : Math.max(1, Math.floor(size / 2))
     }
 }
 
@@ -255,7 +260,7 @@ async function versusCommand(sock, chatId, senderId, message) {
 
         if (!normalized) {
             return await sock.sendMessage(chatId, {
-                text: '⚠️ Usa: .2v2, .4v4, .6v6, .int2, .int4 o .int6'
+                text: '⚠️ Usa: .2v2, .4v4, .6v6, .8v8, .int2, .int4 o .int6'
             }, { quoted: message })
         }
 
