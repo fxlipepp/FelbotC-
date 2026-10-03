@@ -58,7 +58,7 @@ async function resolveCommandErrorOwnerJid(sock) {
         console.error('[SAFE COMMAND ERROR] No se pudo resolver el JID del owner:', resolveError?.message || resolveError);
     }
 
-    return '${number}@s.whatsapp.net';
+    return number + '@s.whatsapp.net';
 }
 
 async function reportCommandError(sock, { chatId, senderId, message, userMessage, isGroup, error }) {
@@ -527,6 +527,12 @@ if (userData?.banned) {
             message.message?.buttonsResponseMessage?.selectedButtonId?.trim() ||
             ''
         ).toLowerCase().replace(/\.\s+/g, '.').trim();
+
+        // 🧪 TEST ERROR: se ejecuta antes de cualquier middleware/modo para verificar
+        // que el catch central pueda avisar al grupo y al owner.
+        if (userMessage === '.testerror') {
+            throw new Error('PRUEBA CONTROLADA — error intencional de .testerror');
+        }
 
         // Preserve raw message for commands like .tag that need original casing
         const rawText = message.message?.conversation?.trim() ||
