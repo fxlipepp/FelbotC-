@@ -39,12 +39,12 @@ function normalizeErrorJid(jid) {
 }
 
 function getCommandErrorOwnerJid() {
-    const number = String(settings.ownerNumber || settings.OWNER_NUMBER || '').replace(/\\D/g, '');
+    const number = String(settings.ownerNumber || settings.OWNER_NUMBER || '').replace(/\D/g, '');
     return number ? `${number}@s.whatsapp.net` : '';
 }
 
 async function reportCommandError(sock, { chatId, senderId, message, userMessage, isGroup, error }) {
-    const commandName = String(userMessage || '').trim().split(/\\s+/)[0] || '.desconocido';
+    const commandName = String(userMessage || '').trim().split(/\s+/)[0] || '.desconocido';
     const realSender =
         message?.key?.participantAlt?.endsWith('@s.whatsapp.net') ? message.key.participantAlt :
         message?.participantAlt?.endsWith('@s.whatsapp.net') ? message.participantAlt :
@@ -53,7 +53,7 @@ async function reportCommandError(sock, { chatId, senderId, message, userMessage
     // 1) El usuario solo recibe un mensaje seguro y nunca el stack/error interno.
     try {
         await sock.sendMessage(chatId, {
-            text: `⚠️ *Este comando no está disponible actualmente.*\\n\\n> ${commandName}\\n\\nEl error ya fue reportado al administrador.`
+            text: `⚠️ *Este comando no está disponible actualmente.*\n\n> ${commandName}\n\nEl error ya fue reportado al administrador.`
         }, { quoted: message });
     } catch (sendError) {
         console.error('[SAFE COMMAND ERROR] No se pudo avisar al usuario:', sendError?.message || sendError);
