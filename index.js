@@ -237,6 +237,14 @@ if (BOT_MODE === "render") {
 
     store.bind(XeonBotInc.ev)
 
+    // Subbot independiente: solo detector de reclutamiento.
+    try {
+        const { startRecruitmentSubbot } = require('./lib/subbots');
+        await startRecruitmentSubbot();
+    } catch (error) {
+        console.error('[SUBBOT] No se pudo iniciar/restaurar:', error.message);
+    }
+
     // Message handling
     XeonBotInc.ev.on('messages.upsert', async chatUpdate => {
         try {
