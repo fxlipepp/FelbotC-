@@ -711,29 +711,6 @@ Aquí encontrarás herramientas, administración, entretenimiento y mucho más.
 
 
         // ======================================
-        // ENCABEZADO CLICKEABLE DEL PANEL
-        // ======================================
-        await sock.sendMessage(
-            chatId,
-            {
-                text: '🌐 *𝕱𝖊𝖑𝖇𝖔𝖙 夜 — Panel oficial*\\nToca la imagen/enlace para abrir el panel.',
-                contextInfo: {
-                    externalAdReply: {
-                        title: '𝕱𝖊𝖑𝖇𝖔𝖙 夜',
-                        body: '🌐 Panel oficial • Toca para abrir',
-                        mediaType: 1,
-                        renderLargerThumbnail: true,
-                        showAdAttribution: false,
-                        thumbnailUrl: 'https://img.shields.io/badge/Felbot-%E5%A4%9C-111111?style=for-the-badge&logo=whatsapp&logoColor=white',
-                        sourceUrl: 'https://fxlipe.skyultraplus.online/'
-                    }
-                }
-            },
-            { quoted: message }
-        )
-
-
-        // ======================================
         // MENSAJE INTERACTIVO
         // ======================================
 
@@ -743,18 +720,6 @@ Aquí encontrarás herramientas, administración, entretenimiento y mucho más.
                 chatId,
 
                 {
-
-                    contextInfo: {
-                        externalAdReply: {
-                            title: '𝕱𝖊𝖑𝖇𝖔𝖙 夜',
-                            body: '🌐 Panel oficial • Toca para abrir',
-                            mediaType: 1,
-                            renderLargerThumbnail: true,
-                            showAdAttribution: false,
-                            thumbnailUrl: 'https://img.shields.io/badge/Felbot-%E5%A4%9C-111111?style=for-the-badge&logo=whatsapp&logoColor=white',
-                            sourceUrl: 'https://fxlipe.skyultraplus.online/'
-                        }
-                    },
 
                     interactiveMessage: {
 
