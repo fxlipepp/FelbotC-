@@ -25,6 +25,38 @@ function buildIntroHeader(uptimeSeconds, version = '3.0.7') {
 ╰────────────────────────╯`
 }
 
+function buildMainMenuText(uptimeSeconds, version = '3.0.7') {
+    const header = buildIntroHeader(uptimeSeconds, version)
+
+    return `${header}
+
+╭──────────────────────────╮
+│        𝑴𝑬𝑵𝑼 𝑷𝑹𝑰𝑵𝑪𝑰𝑷𝑨𝑳
+╰──────────────────────────╯
+
+01 • 👑 OWNER
+02 • 🌐 GENERAL
+03 • 🛠️ UTILIDADES
+04 • 🛡️ ADMIN
+05 • 🔥 FREE FIRE
+06 • 🎨 STICKERS
+07 • 🔤 TEXTMAKER
+08 • 🖼️ ANIME
+09 • 🎮 JUEGOS
+10 • 🎯 DIVERSIÓN
+11 • 📥 DESCARGAS
+12 • 🔞 NSFW
+
+╭──────────────────────────╮
+│   📖 VER MENÚ COMPLETO
+│   Todos los comandos
+╰──────────────────────────╯
+
+          夜 𝕱𝖊𝖑𝖇𝖔𝖙 夜
+             Fxlipe
+──────────────────────────`
+}
+
 function buildMenuText(uptimeSeconds, version = '3.0.7') {
     const header = buildIntroHeader(uptimeSeconds, version)
 
@@ -172,18 +204,7 @@ async function handleMenuButton(sock, chatId, buttonId, message) {
 }
 
 async function helpCommand(sock, chatId, message) {
-    const introCaption = `${buildIntroHeader(
-        process.uptime(),
-        '3.0.7'
-    )}
-
-Bienvenido a 𝕱𝖊𝖑𝖇𝖔𝖙 夜.
-
-Un bot creado para combinar
-administración, entretenimiento,
-multimedia y herramientas para tu grupo.
-
-Selecciona una opción para continuar.`
+    const introCaption = buildMainMenuText(process.uptime(), '3.0.7')
 
     try {
         const gifsPath = path.join(
@@ -212,7 +233,7 @@ Selecciona una opción para continuar.`
         )
 
         const buttons = [
-            ['VER MENU COMPLETO', 'view_full_menu'],
+            ['📖 VER MENÚ COMPLETO', 'view_full_menu'],
             ['CONTACTAR A FXLIPE 夜', 'owner'],
             ['REPORTAR ERROR', 'report_error'],
             ['PEDIR COMANDO', 'request_command'],
@@ -293,11 +314,13 @@ Selecciona una opción para continuar.`
     }
 }
 
+helpCommand.buildMainMenuText = buildMainMenuText
 helpCommand.buildMenuText = buildMenuText
 helpCommand.getMenuButtonAction = getMenuButtonAction
 helpCommand.handleMenuButton = handleMenuButton
 
 module.exports = helpCommand
+module.exports.buildMainMenuText = buildMainMenuText
 module.exports.buildMenuText = buildMenuText
 module.exports.getMenuButtonAction = getMenuButtonAction
 module.exports.handleMenuButton = handleMenuButton
