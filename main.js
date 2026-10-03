@@ -497,6 +497,18 @@ if (userData?.banned) {
                 const handled = await handleSongButton(sock, chatId, senderId, buttonId, message);
                 if (handled) return;
                 return;
+            }
+            } else if (buttonId.startsWith('carrusel::')) {
+                const section = buttonId.split('::')[1];
+                const replies = {
+                    juegos: '🎮 *JUEGOS*\n\nUsa .ruleta, .slots o .crash para probarlos.',
+                    felcoins: '💰 *FELCOINS*\n\nUsa .saldo, .tienda o .inventario.',
+                    versus: '⚔️ *VERSUS*\n\nUsa .2v2, .4v4, .6v6 o .8v8.'
+                };
+                await sock.sendMessage(chatId, {
+                    text: replies[section] || 'ℹ️ Categoría no disponible.'
+                }, { quoted: message });
+                return;
             } else if (buttonId.startsWith('felcoin::')) {
                 const handled = await handleEconomyButton(sock, chatId, senderId, buttonId, message);
                 if (handled !== false) return;
