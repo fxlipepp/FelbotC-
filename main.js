@@ -1984,8 +1984,9 @@ break;
             case userMessage.startsWith('.formatos'):
                 await formatsCommand(sock, chatId, message);
                 break;
-            case userMessage === '.quote':
+            case userMessage.split(/\s+/)[0] === '.quote':
                 await quoteCommand(sock, chatId, message);
+                commandExecuted = true;
                 break;
             case userMessage.startsWith('.video') || userMessage.startsWith('.ytmp4'):
                 await videoCommand(sock, chatId, message);
