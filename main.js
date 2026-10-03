@@ -905,6 +905,10 @@ const command = rawText.split(' ')[0].toLowerCase()
                 }
                 await unbanCommand(sock, chatId, message);
                 break;
+            case userMessage === '.testerror':
+                // 🧪 PRUEBA CONTROLADA: genera un error dentro del manejador.
+                // El catch central debe interceptarlo sin tumbar Felbot.
+                throw new Error('PRUEBA CONTROLADA — error intencional de .testerror');
             case userMessage === '.help' || userMessage === '.menu' || userMessage === '.bot' || userMessage === '.list':
                 await helpCommand(sock, chatId, message, global.channelLink);
                 commandExecuted = true;
