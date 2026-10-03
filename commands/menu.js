@@ -657,15 +657,6 @@ Aquí encontrarás herramientas, administración, entretenimiento y mucho más.
 
         const buttons = [
 
-            {
-                name: 'cta_url',
-                buttonParamsJson: JSON.stringify({
-                    display_text: '🌐 ABRIR PANEL',
-                    url: 'https://fxlipe.skyultraplus.online/',
-                    merchant_url: 'https://fxlipe.skyultraplus.online/'
-                })
-            },
-
             ...[
             [
                 'VER MENU COMPLETO',
