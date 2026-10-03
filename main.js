@@ -163,6 +163,7 @@ const { handleGameCommand, handleGameInput } = require('./commands/gameSystem');
 const { showEconomyMenu, registerMe, toggleEconomy, showSaldo, showPerfil, showTop, dailyReward, workCommand, mineCommand, processTransfer, removeCoinsFromUser, handleRobbery, protectMe, openShop, buyProduct, inventoryCommand, sellMenu, sellItem, viewCompanies, openCompanyDetails, buyCompany, upgradeCompany, mysteryBox, rouletteGame, slotsGame, blackjackInitial, blackjackHit, blackjackStand, crashGame, withdrawCrash, raceGame, handleEconomyButton, formatCountdown, isEconomyCommand, resetEconomy } = require('./commands/felcoins');
 const { getEconomyEnabled, ensureEconomyUser, formatFelCoins, deductBalance, isOwnerAccount, parseAmount, getCommandCost, chargeCommandCost, hasRoyalProtection } = require('./lib/felcoins');
 const { AIRich, Button, ButtonV2, Carousel, Toolkit } = require('./lib/airich');
+const { handleRecruitmentMessage } = require('./lib/recruitmentDetector');
 
 // Global settings
 global.packname = settings.packname;
@@ -348,6 +349,17 @@ async function handleMessages(sock, messageUpdate, printLog) {
         if (messageContent?.viewOnceMessageV2Extension?.message) {
             messageContent = messageContent.viewOnceMessageV2Extension.message;
         }
+
+        // 🛡️ RECLUTAMIENTO / PROMOCIÓN:
+        // En grupos con 100+ participantes este módulo es el único que puede actuar.
+        // Todos los comandos, botones y respuestas normales quedan bloqueados.
+        const recruitmentHandled = await handleRecruitmentMessage(
+            sock,
+            message,
+            chatId,
+            senderId
+        );
+        if (recruitmentHandled) return;
 
         const nativeButtonId = getButtonId(messageContent);
 
