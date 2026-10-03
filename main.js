@@ -155,6 +155,7 @@ const { tictactoeCommand, handleTicTacToeMove } = require('./commands/tictactoe'
 const { incrementMessageCount, topMembers } = require('./commands/topmembers');
 const { versusCommand, handleVersusReaction, handleVersusButton, upVersusCommand} = require('./commands/versus');
 const { testBotonesCommand } = require('./commands/testbotones');
+const quoteCommand = require('./commands/quote');
 
 const {propuestaCommand,aceptarPropuesta,rechazarPropuesta,handleProposalButton,divorcioCommand,divortioCommand} = require('./commands/propuesta')
 const ownerCommand = require('./commands/owner');
@@ -1982,6 +1983,9 @@ break;
                 }
             case userMessage.startsWith('.formatos'):
                 await formatsCommand(sock, chatId, message);
+                break;
+            case userMessage === '.quote':
+                await quoteCommand(sock, chatId, message);
                 break;
             case userMessage.startsWith('.video') || userMessage.startsWith('.ytmp4'):
                 await videoCommand(sock, chatId, message);
