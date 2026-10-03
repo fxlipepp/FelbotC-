@@ -497,7 +497,6 @@ if (userData?.banned) {
                 const handled = await handleSongButton(sock, chatId, senderId, buttonId, message);
                 if (handled) return;
                 return;
-            }
             } else if (buttonId.startsWith('carrusel::')) {
                 const section = buttonId.split('::')[1];
                 const replies = {
