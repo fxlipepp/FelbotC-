@@ -29,6 +29,72 @@ setInterval(() => {
 }, 3 * 60 * 60 * 1000);
 
 const settings = require('./settings');
+
+const COMMAND_ERROR_COOLDOWN_MS = 15_000;
+const commandErrorCooldown = new Map();
+
+function normalizeErrorJid(jid) {
+    if (!jid) return '';
+    return String(jid).replace(/:[^@]+(?=@)/, '');
+}
+
+function getCommandErrorOwnerJid() {
+    const number = String(settings.ownerNumber || settings.OWNER_NUMBER || '').replace(/\\D/g, '');
+    return number ? `${number}@s.whatsapp.net` : '';
+}
+
+async function reportCommandError(sock, { chatId, senderId, message, userMessage, isGroup, error }) {
+    const commandName = String(userMessage || '').trim().split(/\\s+/)[0] || '.desconocido';
+    const realSender =
+        message?.key?.participantAlt?.endsWith('@s.whatsapp.net') ? message.key.participantAlt :
+        message?.participantAlt?.endsWith('@s.whatsapp.net') ? message.participantAlt :
+        normalizeErrorJid(senderId);
+
+    // 1) El usuario solo recibe un mensaje seguro y nunca el stack/error interno.
+    try {
+        await sock.sendMessage(chatId, {
+            text: `⚠️ *Este comando no está disponible actualmente.*\\n\\n> ${commandName}\\n\\nEl error ya fue reportado al administrador.`
+        }, { quoted: message });
+    } catch (sendError) {
+        console.error('[SAFE COMMAND ERROR] No se pudo avisar al usuario:', sendError?.message || sendError);
+    }
+
+    // 2) El owner recibe el error técnico en privado, con cooldown para evitar spam.
+    const ownerJid = getCommandErrorOwnerJid();
+    if (!ownerJid) return;
+
+    const cooldownKey = `${ownerJid}:${commandName}`;
+    const now = Date.now();
+    const previous = commandErrorCooldown.get(cooldownKey) || 0;
+    if (now - previous < COMMAND_ERROR_COOLDOWN_MS) return;
+    commandErrorCooldown.set(cooldownKey, now);
+
+    const rawError = error?.stack || error?.message || String(error || 'Error desconocido');
+    const safeError = String(rawError).slice(0, 7000);
+    const senderPhone = realSender?.endsWith('@s.whatsapp.net')
+        ? realSender.replace('@s.whatsapp.net', '')
+        : String(realSender || 'desconocido');
+
+    const ownerText =
+`🚨 *ERROR DE COMANDO — FELBOT*
+
+📌 Comando: ${commandName}
+👤 Usuario: +${senderPhone}
+💬 Chat: ${isGroup ? 'Grupo' : 'Privado'}
+🆔 Chat ID: ${chatId || 'desconocido'}
+
+━━━━━━━━━━━━━━━━━━
+${safeError}
+━━━━━━━━━━━━━━━━━━
+
+El bot bloqueó el error para que este comando no derribe el procesamiento de mensajes.`;
+
+    try {
+        await sock.sendMessage(ownerJid, { text: ownerText });
+    } catch (ownerError) {
+        console.error('[SAFE COMMAND ERROR] No se pudo enviar el reporte al owner:', ownerError?.message || ownerError);
+    }
+}
 require('./config.js');
 const { isBanned } = require('./lib/isBanned');
 const yts = require('yt-search');
@@ -2276,13 +2342,21 @@ break
             addCommandReaction(sock, message).catch(() => {});
         }
     } catch (error) {
-        console.error('❌ Error in message handler:', error.message);
-        // Only try to send error message if we have a valid chatId
-        if (chatId) {
-            await sock.sendMessage(chatId, {
-                text: '❌ Failed to process command!',
-                ...channelInfo
+        console.error('❌ Error in message handler:', error);
+
+        // Un fallo de un comando no debe tumbar el procesamiento del bot.
+        // El usuario recibe un mensaje limpio y el owner recibe el error técnico por privado.
+        try {
+            await reportCommandError(sock, {
+                chatId,
+                senderId,
+                message,
+                userMessage,
+                isGroup,
+                error
             });
+        } catch (reportError) {
+            console.error('❌ Error al reportar fallo de comando:', reportError);
         }
     }
 }
