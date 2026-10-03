@@ -38,9 +38,27 @@ function normalizeErrorJid(jid) {
     return String(jid).replace(/:[^@]+(?=@)/, '');
 }
 
-function getCommandErrorOwnerJid() {
-    const number = String(settings.ownerNumber || settings.OWNER_NUMBER || '').replace(/\D/g, '');
-    return number ? `${number}@s.whatsapp.net` : '';
+function getCommandErrorNumber() {
+    return String(settings.ownerNumber || settings.OWNER_NUMBER || '').replace(/\D/g, '');
+}
+
+async function resolveCommandErrorOwnerJid(sock) {
+    const number = getCommandErrorNumber();
+    if (!number) return '';
+
+    try {
+        if (typeof sock.onWhatsApp === 'function') {
+            const result = await sock.onWhatsApp(number);
+            const match = Array.isArray(result)
+                ? result.find(item => item?.exists && item?.jid)
+                : null;
+            if (match?.jid) return match.jid;
+        }
+    } catch (resolveError) {
+        console.error('[SAFE COMMAND ERROR] No se pudo resolver el JID del owner:', resolveError?.message || resolveError);
+    }
+
+    return '${number}@s.whatsapp.net';
 }
 
 async function reportCommandError(sock, { chatId, senderId, message, userMessage, isGroup, error }) {
@@ -50,20 +68,24 @@ async function reportCommandError(sock, { chatId, senderId, message, userMessage
         message?.participantAlt?.endsWith('@s.whatsapp.net') ? message.participantAlt :
         normalizeErrorJid(senderId);
 
-    // 1) El usuario solo recibe un mensaje seguro y nunca el stack/error interno.
+    const userText = '⚠️ *Este comando no está disponible actualmente.*\n\n> ' + commandName + '\n\nEl error ya fue reportado al administrador.';
+
     try {
-        await sock.sendMessage(chatId, {
-            text: `⚠️ *Este comando no está disponible actualmente.*\n\n> ${commandName}\n\nEl error ya fue reportado al administrador.`
-        }, { quoted: message });
+        if (chatId) {
+            await sock.sendMessage(chatId, { text: userText });
+            console.log('[SAFE COMMAND ERROR] Aviso enviado al chat:', chatId);
+        }
     } catch (sendError) {
         console.error('[SAFE COMMAND ERROR] No se pudo avisar al usuario:', sendError?.message || sendError);
     }
 
-    // 2) El owner recibe el error técnico en privado, con cooldown para evitar spam.
-    const ownerJid = getCommandErrorOwnerJid();
-    if (!ownerJid) return;
+    const ownerJid = await resolveCommandErrorOwnerJid(sock);
+    if (!ownerJid) {
+        console.error('[SAFE COMMAND ERROR] No hay ownerNumber configurado.');
+        return;
+    }
 
-    const cooldownKey = `${ownerJid}:${commandName}`;
+    const cooldownKey = ownerJid + ':' + commandName;
     const now = Date.now();
     const previous = commandErrorCooldown.get(cooldownKey) || 0;
     if (now - previous < COMMAND_ERROR_COOLDOWN_MS) return;
@@ -76,21 +98,17 @@ async function reportCommandError(sock, { chatId, senderId, message, userMessage
         : String(realSender || 'desconocido');
 
     const ownerText =
-`🚨 *ERROR DE COMANDO — FELBOT*
-
-📌 Comando: ${commandName}
-👤 Usuario: +${senderPhone}
-💬 Chat: ${isGroup ? 'Grupo' : 'Privado'}
-🆔 Chat ID: ${chatId || 'desconocido'}
-
-━━━━━━━━━━━━━━━━━━
-${safeError}
-━━━━━━━━━━━━━━━━━━
-
-El bot bloqueó el error para que este comando no derribe el procesamiento de mensajes.`;
+'🚨 *ERROR DE COMANDO — FELBOT*\n\n' +
+'📌 Comando: ' + commandName + '\n' +
+'👤 Usuario: +' + senderPhone + '\n' +
+'💬 Chat: ' + (isGroup ? 'Grupo' : 'Privado') + '\n' +
+'🆔 Chat ID: ' + (chatId || 'desconocido') + '\n\n' +
+'━━━━━━━━━━━━━━━━━━\n' + safeError + '\n━━━━━━━━━━━━━━━━━━\n\n' +
+'El bot bloqueó el error para que este comando no derribe el procesamiento de mensajes.';
 
     try {
         await sock.sendMessage(ownerJid, { text: ownerText });
+        console.log('[SAFE COMMAND ERROR] Reporte enviado al owner:', ownerJid);
     } catch (ownerError) {
         console.error('[SAFE COMMAND ERROR] No se pudo enviar el reporte al owner:', ownerError?.message || ownerError);
     }
