@@ -155,6 +155,7 @@ const { tictactoeCommand, handleTicTacToeMove } = require('./commands/tictactoe'
 const { incrementMessageCount, topMembers } = require('./commands/topmembers');
 const { versusCommand, handleVersusReaction, handleVersusButton, upVersusCommand} = require('./commands/versus');
 const { testBotonesCommand } = require('./commands/testbotones');
+const carruselCommand = require('./commands/carrusel');
 const quoteCommand = require('./commands/quote');
 
 const {propuestaCommand,aceptarPropuesta,rechazarPropuesta,handleProposalButton,divorcioCommand,divortioCommand} = require('./commands/propuesta')
@@ -1186,6 +1187,10 @@ break;
                 break;
             case userMessage === '.testbotones':
                 await testBotonesCommand(sock, chatId, message);
+                commandExecuted = true;
+                break;
+            case userMessage === '.carrusel':
+                await carruselCommand(sock, chatId, message);
                 commandExecuted = true;
                 break;
             case userMessage.startsWith('.2vs2') || userMessage.startsWith('.2v2') || userMessage.startsWith('.4vs4') || userMessage.startsWith('.4v4') || userMessage.startsWith('.6vs6') || userMessage.startsWith('.6v6') || userMessage.startsWith('.8vs8') || userMessage.startsWith('.8v8') || userMessage.startsWith('.int2') || userMessage.startsWith('.int4') || userMessage.startsWith('.int6'):
