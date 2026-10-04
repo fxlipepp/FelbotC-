@@ -918,12 +918,18 @@ async function mysteryBox(sock, chatId, senderId, message) {
 async function rouletteGame(sock, chatId, senderId, message, amount) {
   const active = await ensureEconomyActive(sock, chatId, message);
   if (!active) return;
+
   const user = await ensureRegisteredWithReply(sock, chatId, senderId, message, message?.pushName || 'Usuario');
   if (!user) return;
 
-  const value = Math.max(1, Number(amount) || 0);
-  if (!isOwnerAccount(senderId) && Number(user.saldo || 0) < value) {
-    await sock.sendMessage(chatId, { text: `❌ *FELCOINS INSUFICIENTES*\n\nNecesitas: ${formatFelCoins(value)}` }, { quoted: message });
+  // La ruleta tiene una apuesta fija de 10.000 FC.
+  const value = 10000;
+  const isOwner = isOwnerAccount(senderId);
+
+  if (!isOwner && Number(user.saldo || 0) < value) {
+    await sock.sendMessage(chatId, {
+      text: `❌ *FELCOINS INSUFICIENTES*\\n\\nLa ruleta cuesta *10.000 FC* por partida.\\nNecesitas: ${formatFelCoins(value)}`
+    }, { quoted: message });
     return;
   }
 
@@ -931,34 +937,51 @@ async function rouletteGame(sock, chatId, senderId, message, amount) {
   user.stats = user.stats || {};
   user.stats.juegos = Number(user.stats.juegos || 0) + 1;
 
-  if (!isOwnerAccount(senderId)) user.saldo = Number(user.saldo || 0) - value;
+  // 50% de probabilidad: perder TODO el saldo.
+  if (roll < 0.50) {
+    const saldoAnterior = Number(user.saldo || 0);
 
-  if (roll < 0.02) {
-    const jackpotPrize = 1000000;
-    user.saldo = Number(user.saldo || 0) + jackpotPrize;
-    user.stats.victorias = Number(user.stats.victorias || 0) + 1;
-    await user.save();
-    await sock.sendMessage(chatId, {
-      text: `🎡 *RULETA*\n\n🎯 Apuesta: ${formatFelCoins(value)}\n\n💎 3 DIAMANTES\n\n🎉 GANASTE EL PREMIO MAYOR\n\n💰 +${formatFelCoins(jackpotPrize)}\n\n💵 Saldo: ${formatFelCoins(Number(user.saldo || 0))}`
-    }, { quoted: message });
-    return;
-  }
+    if (!isOwner) {
+      user.saldo = 0;
+      user.stats.gastos = Number(user.stats.gastos || 0) + saldoAnterior;
+    }
 
-  if (roll < 0.8) {
     user.stats.derrotas = Number(user.stats.derrotas || 0) + 1;
     await user.save();
+
     await sock.sendMessage(chatId, {
-      text: `🎡 *RULETA*\n\n🎯 Apuesta: ${formatFelCoins(value)}\n\n⚫ PERDISTE\n\n💸 -${formatFelCoins(value)}\n\n💵 Saldo: ${formatFelCoins(Number(user.saldo || 0))}`
+      text: `🎡 *RULETA*\\n\\n🎯 Precio: *10.000 FC*\\n\\n💀 *PREMIO MAYOR*\\n\\n💸 Perdiste *TODO TU SALDO*\\n📉 Saldo perdido: -${formatFelCoins(saldoAnterior)}\\n\\n💵 Saldo actual: *${formatFelCoins(Number(user.saldo || 0))}*`
     }, { quoted: message });
     return;
   }
 
-  const prize = value * 2;
-  user.saldo = Number(user.saldo || 0) + prize;
+  // 30% de probabilidad: perder solamente la entrada.
+  if (roll < 0.80) {
+    if (!isOwner) {
+      user.saldo = Number(user.saldo || 0) - value;
+      user.stats.gastos = Number(user.stats.gastos || 0) + value;
+    }
+
+    user.stats.derrotas = Number(user.stats.derrotas || 0) + 1;
+    await user.save();
+
+    await sock.sendMessage(chatId, {
+      text: `🎡 *RULETA*\\n\\n🎯 Precio: *10.000 FC*\\n\\n⚫ *PERDISTE*\\n\\n💸 -${formatFelCoins(value)}\\n💵 Saldo: *${formatFelCoins(Number(user.saldo || 0))}*`
+    }, { quoted: message });
+    return;
+  }
+
+  // 20% de probabilidad: ganar x2.
+  if (!isOwner) {
+    user.saldo = Number(user.saldo || 0) - value;
+    user.saldo += value * 2;
+  }
+
   user.stats.victorias = Number(user.stats.victorias || 0) + 1;
   await user.save();
+
   await sock.sendMessage(chatId, {
-    text: `🎡 *RULETA*\n\n🎯 Apuesta: ${formatFelCoins(value)}\n\n🔴 x2\n\n💰 Ganaste: +${formatFelCoins(prize)}\n\n💵 Saldo: ${formatFelCoins(Number(user.saldo || 0))}`
+    text: `🎡 *RULETA*\\n\\n🎯 Precio: *10.000 FC*\\n\\n🔴 *x2*\\n\\n💰 Ganaste: +${formatFelCoins(value * 2)}\\n💵 Saldo: *${formatFelCoins(Number(user.saldo || 0))}*`
   }, { quoted: message });
 }
 
