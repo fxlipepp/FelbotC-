@@ -1846,10 +1846,10 @@ break
             case userMessage.startsWith('.neon'):
                 await textmakerCommand(sock, chatId, message, userMessage, 'neon');
                 break;
-                case /^\\.open(?:\\s|$)/.test(userMessage):
-case /^\\.close(?:\\s|$)/.test(userMessage):
-case /^\\.abrir(?:\\s|$)/.test(userMessage):
-case /^\\.cerrar(?:\\s|$)/.test(userMessage):
+                case /^\.open(?:\s|$)/.test(userMessage):
+case /^\.close(?:\s|$)/.test(userMessage):
+case /^\.abrir(?:\s|$)/.test(userMessage):
+case /^\.cerrar(?:\s|$)/.test(userMessage):
 {
     if (!isGroup) {
         await sock.sendMessage(chatId, {
