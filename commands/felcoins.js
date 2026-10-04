@@ -558,6 +558,15 @@ async function handleRobbery(sock, chatId, senderId, message, targetId) {
   const config = await ensureEconomyConfig();
   const victimBalance = Number(targetUser.saldo || 0);
 
+  const existingPending = await getPendingRobForVictim(target);
+  if (existingPending) {
+    await sock.sendMessage(chatId, {
+      text: `⏳ *ROBO YA PENDIENTE*\\n\\n${targetInfo.label} ya tiene un intento de robo activo. Espera a que termine o usa .protegerse.`,
+      contextInfo: targetInfo.jid ? { mentionedJid: [targetInfo.jid] } : undefined
+    }, { quoted: message });
+    return;
+  }
+
   if (victimBalance < Number(config.limits?.robMin || 100)) {
     await sock.sendMessage(chatId, {
       text: '❌ Ese usuario no tiene suficientes FelCoins para robarle.'
