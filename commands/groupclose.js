@@ -1,7 +1,7 @@
 function parseDelay(value) {
     if (!value) return null
 
-    const match = String(value).trim().toLowerCase().match(/^(\\d+)(s|m|h|d)$/)
+    const match = String(value).trim().toLowerCase().match(/^(\d+)(s|m|h|d)$/)
     if (!match) return false
 
     const amount = Number(match[1])
