@@ -75,12 +75,12 @@ const configSchema = new mongoose.Schema({
   companies: {
     type: Object,
     default: {
-      ropa: { price: 5000, income: 100, maxLevel: 5 },
-      pizzeria: { price: 15000, income: 250, maxLevel: 5 },
-      gamer: { price: 35000, income: 500, maxLevel: 5 },
-      tecnologia: { price: 75000, income: 900, maxLevel: 5 },
-      banco: { price: 150000, income: 1300, maxLevel: 5 },
-      felbot: { price: 500000, income: 2000, maxLevel: 5 }
+      ropa: { price: 100000, income: 100000, maxLevel: 5 },
+      pizzeria: { price: 250000, income: 200000, maxLevel: 5 },
+      gamer: { price: 400000, income: 300000, maxLevel: 5 },
+      tecnologia: { price: 600000, income: 500000, maxLevel: 5 },
+      banco: { price: 800000, income: 750000, maxLevel: 5 },
+      felbot: { price: 1000000, income: 1000000, maxLevel: 5 }
     }
   },
   createdAt: { type: Date, default: Date.now }
