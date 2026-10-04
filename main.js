@@ -1872,13 +1872,16 @@ case userMessage === '.cerrar':
         return
     }
 
-    const action = userMessage.slice(1)
+    const parts = userMessage.split(/\\s+/)
+    const action = parts[0].slice(1)
+    const delayArg = parts[1]?.trim()
 
     await groupCloseCommand(
         sock,
         chatId,
         message,
-        action
+        action,
+        delayArg
     )
 }
 break;
