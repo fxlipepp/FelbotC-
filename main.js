@@ -1872,7 +1872,7 @@ case userMessage === '.cerrar':
         return
     }
 
-    const parts = userMessage.split(/\\s+/)
+    const parts = userMessage.split(/\s+/)
     const action = parts[0].slice(1)
     const delayArg = parts[1]?.trim()
 
