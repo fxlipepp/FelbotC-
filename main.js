@@ -249,7 +249,6 @@ const { handleGameCommand, handleGameInput } = require('./commands/gameSystem');
 const { showEconomyMenu, registerMe, toggleEconomy, showSaldo, showPerfil, showTop, dailyReward, workCommand, mineCommand, processTransfer, removeCoinsFromUser, handleRobbery, protectMe, openShop, buyProduct, inventoryCommand, sellMenu, sellItem, viewCompanies, openCompanyDetails, buyCompany, upgradeCompany, mysteryBox, rouletteGame, slotsGame, blackjackInitial, blackjackHit, blackjackStand, crashGame, withdrawCrash, raceGame, handleEconomyButton, formatCountdown, isEconomyCommand, resetEconomy } = require('./commands/felcoins');
 const { getEconomyEnabled, ensureEconomyUser, formatFelCoins, deductBalance, isOwnerAccount, parseAmount, getCommandCost, chargeCommandCost, hasRoyalProtection } = require('./lib/felcoins');
 const { AIRich, Button, ButtonV2, Carousel, Toolkit } = require('./lib/airich');
-const { handleSubbotCommand } = require('./lib/subbots');
 
 // Global settings
 global.packname = settings.packname;
@@ -844,14 +843,6 @@ const command = rawText.split(' ')[0].toLowerCase()
         let commandExecuted = false;
 
         switch (true) {
-            case userMessage.startsWith('.subbot'):
-                if (!(await isOwnerOrSudoCheck())) {
-                    await sock.sendMessage(chatId, { text: '❌ Solo el owner puede administrar los subbots.' }, { quoted: message });
-                    break;
-                }
-                await handleSubbotCommand(sock, chatId, message, userMessage);
-                commandExecuted = true;
-                break;
             case userMessage === '.simage': {
                 const quotedMessage = message.message?.extendedTextMessage?.contextInfo?.quotedMessage;
                 if (quotedMessage?.stickerMessage) {
