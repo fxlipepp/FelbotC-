@@ -1,1 +1,7 @@
-cookies.txtcookies.txt
+.env
+.env.*
+!.env.example
+cookies.txt
+node_modules/
+session/
+temp/
