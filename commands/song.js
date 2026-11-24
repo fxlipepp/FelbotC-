@@ -4,7 +4,7 @@ const fs = require('fs')
 const path = require('path')
 const os = require('os')
 
-const API_BASE = (process.env.API_BASE || 'https://api.orbitxspace.com').replace(/\\/+$/, '')
+const API_BASE = (process.env.API_BASE || 'https://api.orbitxspace.com').replace(/\/+$/, '')
 const API_KEY = process.env.API_KEY || 'Russellxz'
 const API_RESOLVE = `${API_BASE}/youtube/resolve`
 const API_TIMEOUT = 300000
