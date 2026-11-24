@@ -1,13 +1,12 @@
-const axios = require('axios')
+const { execFile } = require('child_process')
+const { promisify } = require('util')
+const youtubedl = require('youtube-dl-exec')
 const yts = require('yt-search')
 const fs = require('fs')
 const path = require('path')
 const os = require('os')
 
-const API_BASE = (process.env.API_BASE || 'https://api.orbitxspace.com').replace(/\/+$/, '')
-const API_KEY = process.env.API_KEY || 'Russellxz'
-const API_RESOLVE = `${API_BASE}/youtube/resolve`
-const API_TIMEOUT = 300000
+const execFileAsync = promisify(execFile)
 
 // ======================================================
 // CACHE
@@ -293,98 +292,131 @@ async function searchYouTube(query) {
 }
 
 // ======================================================
-// DESCARGA ULTRA RÁPIDA
+// DESCARGA ULTRA RÁPID// ======================================================
+// DESCARGA DIRECTA CON YT-DLP (M4A SIN CONVERSIÓN)
 // ======================================================
 
-function absolutizarApiUrl(value) {
-   if (!value || typeof value !== 'string') return ''
-   return value.startsWith('/') ? API_BASE + value : value
-}
+function getYtDlpPath() {
+   const possiblePaths = []
 
-function esUrlDeLaApi(value) {
    try {
-      return new URL(value).host === new URL(API_BASE).host
-   } catch {
-      return false
+      const resolved = require.resolve('youtube-dl-exec')
+      const packageDir = path.dirname(resolved)
+
+      possiblePaths.push(
+         path.join(packageDir, 'bin', 'yt-dlp'),
+         path.join(packageDir, '..', 'bin', 'yt-dlp'),
+         path.join(packageDir, '..', '..', 'bin', 'yt-dlp')
+      )
+   } catch {}
+
+   possiblePaths.push(
+      path.join(process.cwd(), 'node_modules', 'youtube-dl-exec', 'bin', 'yt-dlp'),
+      path.join(process.cwd(), 'node_modules', 'youtube-dl-exec', 'bin', 'yt-dlp.exe')
+   )
+
+   if (youtubedl.path) possiblePaths.push(youtubedl.path)
+
+   for (const candidate of possiblePaths) {
+      try {
+         if (candidate && fs.existsSync(candidate)) return candidate
+      } catch {}
    }
+
+   return null
 }
 
 async function downloadAudio(videoUrl) {
-   console.log('🚀 RESOLVIENDO AUDIO CON ORBITXSPACE')
-   const response = await axios.post(
-      API_RESOLVE,
-      { url: videoUrl, type: 'audio', format: 'mp3' },
-      {
-         timeout: API_TIMEOUT,
-         headers: {
-            'Content-Type': 'application/json',
-            apikey: API_KEY,
-            Accept: 'application/json, */*'
-         },
-         validateStatus: () => true
+   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'felbot-play-'))
+   const outputTemplate = path.join(tempDir, 'audio.%(ext)s')
+   const ytDlpPath = getYtDlpPath()
+   const cookiesEnabled = validateCookiesFile()
+
+   try {
+      if (!ytDlpPath) {
+         throw new Error('No se encontró yt-dlp dentro de youtube-dl-exec')
       }
-   )
 
-   const data = response.data
-   if (!data || typeof data !== 'object') throw new Error('La API devolvió una respuesta no válida')
-   const ok = data.status === true || data.status === 'true' || data.ok === true || data.success === true
-   if (!ok) throw new Error(data.message || data.error || `API HTTP_${response.status}`)
+      const args = [
+         '--no-warnings',
+         '--no-progress',
+         '--no-playlist',
+         '--no-part',
+         '--retries', '2',
+         '--fragment-retries', '2',
+         '--concurrent-fragments', '4',
+         '--js-runtimes', `node:${process.execPath}`,
+         '--format', 'bestaudio[ext=m4a]/bestaudio',
+         '--output', outputTemplate
+      ]
 
-   const result = data.result || data.data || data
-   const media = result.media
-   const candidates = typeof media === 'string'
-      ? [absolutizarApiUrl(media)]
-      : [
-           absolutizarApiUrl(media?.direct),
-           absolutizarApiUrl(media?.dl_download),
-           absolutizarApiUrl(media?.dl_inline),
-           absolutizarApiUrl(media?.url || media?.download),
-           absolutizarApiUrl(result.url || result.download)
-        ]
+      if (cookiesEnabled) args.push('--cookies', cookiesPath)
+      args.push(videoUrl)
 
-   const urls = [...new Set(candidates.filter(Boolean))]
-   if (!urls.length) throw new Error('OrbitXSpace no devolvió enlaces de descarga')
+      console.log(`🚀 YT-DLP DIRECTO | COOKIES: ${cookiesEnabled ? 'ON' : 'OFF'}`)
 
-   let lastError
-   for (const mediaUrl of urls) {
+      const { stdout, stderr } = await execFileAsync(ytDlpPath, args, {
+         timeout: 120000,
+         maxBuffer: 20 * 1024 * 1024,
+         windowsHide: true
+      })
+
+      if (stdout?.trim()) console.log('[YT-DLP]', stdout.trim())
+      if (stderr?.trim()) console.log('[YT-DLP]', stderr.trim())
+
+      const downloadedFiles = fs.readdirSync(tempDir).filter(file =>
+         file.startsWith('audio.') &&
+         !file.endsWith('.part') &&
+         !file.endsWith('.ytdl') &&
+         !file.endsWith('.json')
+      )
+
+      if (!downloadedFiles.length) {
+         throw new Error('YT-DLP terminó sin generar un archivo de audio')
+      }
+
+      const selectedFile =
+         downloadedFiles.find(file => file.toLowerCase().endsWith('.m4a')) ||
+         downloadedFiles[0]
+
+      const outputFile = path.join(tempDir, selectedFile)
+      const stats = fs.statSync(outputFile)
+
+      if (!stats.isFile() || stats.size < 10000) {
+         throw new Error('YT-DLP generó un archivo vacío o incompleto')
+      }
+
+      const extension = path.extname(selectedFile).slice(1).toLowerCase()
+      const mimeTypes = {
+         m4a: 'audio/mp4',
+         mp3: 'audio/mpeg',
+         webm: 'audio/webm',
+         opus: 'audio/ogg',
+         ogg: 'audio/ogg'
+      }
+
+      const buffer = fs.readFileSync(outputFile)
+
+      console.log(`✅ AUDIO DESCARGADO: ${(stats.size / 1024 / 1024).toFixed(2)} MB | .${extension}`)
+
+      return {
+         buffer,
+         extension: extension || 'm4a',
+         mimetype: mimeTypes[extension] || 'application/octet-stream'
+      }
+   } catch (error) {
+      console.error('[YT-DLP] DOWNLOAD ERROR:', error?.stderr || error?.message || error)
+      throw error
+   } finally {
       try {
-         const headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124.0 Safari/537.36',
-            Accept: '*/*'
-         }
-         if (esUrlDeLaApi(mediaUrl)) headers.apikey = API_KEY
-
-         const fileResponse = await axios.get(mediaUrl, {
-            responseType: 'arraybuffer',
-            timeout: API_TIMEOUT,
-            headers,
-            maxRedirects: 5,
-            validateStatus: () => true
-         })
-         if (fileResponse.status >= 400) throw new Error(`Descarga HTTP_${fileResponse.status}`)
-
-         const contentType = String(fileResponse.headers?.['content-type'] || '')
-         if (/text\/html|application\/json/i.test(contentType)) {
-            throw new Error(`El enlace devolvió ${contentType.split(';')[0]}, no un audio`)
-         }
-
-         const buffer = Buffer.from(fileResponse.data)
-         if (buffer.length < 10000) throw new Error('El archivo recibido está vacío o incompleto')
-
-         console.log(`✅ AUDIO RECIBIDO: ${(buffer.length / 1024 / 1024).toFixed(2)} MB`)
-         return buffer
-      } catch (error) {
-         lastError = error
-         console.error('[OrbitXSpace] enlace falló:', error.message)
+         fs.rmSync(tempDir, { recursive: true, force: true })
+      } catch (cleanupError) {
+         console.error('[YT-DLP] No se pudo limpiar el temporal:', cleanupError.message)
       }
    }
-
-   throw lastError || new Error('No se pudo descargar el audio desde OrbitXSpace')
 }
 
-// ======================================================
-// COMMAND
-// ======================================================
+=============================================
 
 async function songCommand(
    sock,
@@ -559,10 +591,8 @@ async function songCommand(
             }
          )
 
-      const audioBuffer =
-         await downloadAudio(
-            video.url
-         )
+      const audioResult = await downloadAudio(video.url)
+      const audioBuffer = audioResult.buffer
 
       if (
          !audioBuffer ||
@@ -622,11 +652,12 @@ async function songCommand(
                audioBuffer,
 
             mimetype:
-               'audio/mpeg',
+               audioResult.mimetype,
 
             fileName:
                safeTitle +
-               '.mp3',
+               '.' +
+               audioResult.extension,
 
             ptt:
                false
@@ -685,7 +716,7 @@ async function songCommand(
 ├──────────────────────⬣
 │ 🎧 ${safeTitle}
 │ ⚡ MODO RÁPIDO
-│ 📦 M4A DIRECTO
+│ 📦 ${audioResult.extension.toUpperCase()} DIRECTO
 │ ⏱️ ${totalTime}s
 ╰──────────────────────⬣
 `)
