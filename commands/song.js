@@ -73,136 +73,41 @@ function createBar(percent) {
 // COOKIES
 // ======================================================
 
-const cookiesPath =
-   '/home/container/cookies.txt'
+function findCookiesPath() {
+   const candidates = [
+      process.env.YTDLP_COOKIES,
+      path.join(process.cwd(), 'cookies.txt'),
+      '/home/container/cookies.txt'
+   ].filter(Boolean).map(file => path.resolve(file))
 
-const YOUTUBE_USER_AGENT =
-   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36'
+   for (const file of [...new Set(candidates)]) {
+      try {
+         if (!fs.existsSync(file)) continue
+         const stats = fs.statSync(file)
+         if (!stats.isFile() || stats.size < 100) continue
 
-function getCookiesStatus() {
-
-   try {
-
-      if (!fs.existsSync(cookiesPath)) {
-         return false
-      }
-
-      const stats =
-         fs.statSync(
-            cookiesPath
-         )
-
-      return (
-         stats.isFile() &&
-         stats.size > 100
-      )
-
-   } catch {
-
-      return false
-   }
-}
-
-function validateCookiesFile() {
-
-   try {
-
-      if (!getCookiesStatus()) {
-         return false
-      }
-
-      const content =
-         fs.readFileSync(
-            cookiesPath,
-            'utf8'
-         )
-
-      const firstLine =
-         content
+         const firstLine = fs.readFileSync(file, 'utf8')
             .split(/\r?\n/)
-            .find(
-               line =>
-                  line.trim().length > 0
-            )
+            .find(line => line.trim().length > 0)
 
-      return (
-         firstLine === '# HTTP Cookie File' ||
-         firstLine === '# Netscape HTTP Cookie File'
-      )
-
-   } catch {
-
-      return false
+         if (
+            firstLine === '# HTTP Cookie File' ||
+            firstLine === '# Netscape HTTP Cookie File'
+         ) return file
+      } catch {}
    }
+
+   return null
 }
 
-const cookiesAvailable =
-   validateCookiesFile()
+const cookiesPath = findCookiesPath()
+const cookiesAvailable = Boolean(cookiesPath)
 
 console.log(
    cookiesAvailable
       ? '🍪 YOUTUBE COOKIES: ON'
       : '⚠️ YOUTUBE COOKIES: OFF'
 )
-
-// ======================================================
-// OPCIONES BASE
-// ======================================================
-
-const BASE_OPTIONS = {
-
-   noWarnings:
-      true,
-
-   noPlaylist:
-      true,
-
-   retries:
-      1,
-
-   noCheckCertificates:
-      true,
-
-   jsRuntimes:
-      'node:/usr/local/bin/node',
-
-   userAgent:
-      YOUTUBE_USER_AGENT
-}
-
-// ======================================================
-// OPCIONES YT-DLP
-// ======================================================
-
-function youtubeOptions({
-   cookies = false,
-   format = null
-} = {}) {
-
-   const options = {
-      ...BASE_OPTIONS
-   }
-
-   // Dejar que yt-dlp seleccione automáticamente los clientes de YouTube.
-   // Forzar web_embedded/default aquí provocaba respuestas sin formatos disponibles.
-
-   if (
-      cookies &&
-      getCookiesStatus()
-   ) {
-
-      options.cookies =
-         cookiesPath
-   }
-
-   if (format) {
-
-      options.format =
-         format
-   }
-
-   return options
-}
 
 // ======================================================
 // DURACIÓN
@@ -330,7 +235,7 @@ async function downloadAudio(videoUrl) {
    const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'felbot-play-'))
    const outputTemplate = path.join(tempDir, 'audio.%(ext)s')
    const ytDlpPath = getYtDlpPath()
-   const cookiesEnabled = validateCookiesFile()
+   const cookiesEnabled = Boolean(cookiesPath)
 
    try {
       if (!ytDlpPath) {
