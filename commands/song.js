@@ -2,6 +2,9 @@ const youtubedl = require('youtube-dl-exec')
 const fs = require('fs')
 const path = require('path')
 const os = require('os')
+const { execFile } = require('child_process')
+const { promisify } = require('util')
+const execFileAsync = promisify(execFile)
 
 // ======================================================
 // CACHE
@@ -399,6 +402,9 @@ async function searchYouTube(query) {
          error
       )
 
+      if (error?.code) console.log('YT-DLP EXIT CODE:', error.code)
+      if (error?.killed) console.log('YT-DLP TIMEOUT: el proceso superó 90 segundos')
+
       throw error
    }
 }
@@ -443,63 +449,68 @@ async function downloadAudio(url) {
       )
 
    const cookiesEnabled =
-      getCookiesStatus()
+      validateCookiesFile()
+
+   const ytDlpPath =
+      path.resolve(
+         process.cwd(),
+         'node_modules',
+         'youtube-dl-exec',
+         'bin',
+         'yt-dlp'
+      )
 
    console.log(`
 ╭──────────────────────⬣
 │ 🚀 DESCARGA RÁPIDA
 ├──────────────────────⬣
-│ 🎵 YT-DLP
+│ 🎵 YT-DLP DIRECTO
 │ ⚡ MODO M4A
 │ 🍪 COOKIES: ${cookiesEnabled ? 'ON' : 'OFF'}
-│ 🎯 CLIENT: default,web_embedded
+│ 🎯 CLIENT: AUTOMÁTICO
 │ 🚫 SIN CONVERSIÓN
 ╰──────────────────────⬣
 `)
 
    try {
 
-      const options =
-         youtubeOptions({
-            cookies:
-               cookiesEnabled,
+      if (!fs.existsSync(ytDlpPath)) {
+         throw new Error(
+            'No se encontró yt-dlp en: ' + ytDlpPath
+         )
+      }
 
-            format:
-               'bestaudio[ext=m4a]/bestaudio'
-         })
+      const args = [
+         '--no-warnings',
+         '--no-progress',
+         '--no-playlist',
+         '--no-part',
+         '--retries', '1',
+         '--concurrent-fragments', '4',
+         '--js-runtimes', 'node:/usr/local/bin/node',
+         '--format', 'bestaudio[ext=m4a]/bestaudio',
+         '--output', outputTemplate
+      ]
 
-      options.output =
-         outputTemplate
+      if (cookiesEnabled) {
+         args.push('--cookies', cookiesPath)
+      }
 
-      options.quiet =
-         true
+      args.push(url)
 
-      options.noProgress =
-         true
+      const { stdout, stderr } =
+         await execFileAsync(
+            ytDlpPath,
+            args,
+            {
+               timeout: 90000,
+               maxBuffer: 10 * 1024 * 1024,
+               windowsHide: true
+            }
+         )
 
-      options.noWarnings =
-         true
-
-      options.noPlaylist =
-         true
-
-      options.noPart =
-         true
-
-      options.concurrentFragments =
-         4
-
-      options.retries =
-         1
-
-      await youtubedl(
-         url,
-         options,
-         {
-            timeout:
-               90000
-         }
-      )
+      if (stdout) console.log(stdout.trim())
+      if (stderr) console.log(stderr.trim())
 
       const files =
          fs.readdirSync(
