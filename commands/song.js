@@ -178,8 +178,10 @@ function youtubeOptions({
       ...BASE_OPTIONS
    }
 
+   // YouTube empezó a fallar con tv_downgraded cuando se usan cookies.
+   // web_embedded mantiene la descarga compatible con sesiones autenticadas.
    options.extractorArgs =
-      'youtube:player_client=default'
+      'youtube:player_client=default,web_embedded'
 
    if (
       cookies &&
@@ -452,7 +454,7 @@ async function downloadAudio(url) {
 │ 🎵 YT-DLP
 │ ⚡ MODO M4A
 │ 🍪 COOKIES: ${cookiesEnabled ? 'ON' : 'OFF'}
-│ 🎯 CLIENT: default
+│ 🎯 CLIENT: default,web_embedded
 │ 🚫 SIN CONVERSIÓN
 ╰──────────────────────⬣
 `)
