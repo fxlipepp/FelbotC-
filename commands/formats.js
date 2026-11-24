@@ -190,7 +190,7 @@ async function formatosCommand(sock, chatId, message, input = '') {
             '--user-agent',
             USER_AGENT,
             '--extractor-args',
-            'youtube:player_client=default'
+            'youtube:player_client=default,web_embedded'
         ]
 
         if (hasCookies) {
