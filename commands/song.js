@@ -159,7 +159,7 @@ const BASE_OPTIONS = {
       true,
 
    jsRuntimes:
-      'node',
+      'node:/usr/local/bin/node',
 
    userAgent:
       YOUTUBE_USER_AGENT
@@ -178,10 +178,8 @@ function youtubeOptions({
       ...BASE_OPTIONS
    }
 
-   // YouTube empezó a fallar con tv_downgraded cuando se usan cookies.
-   // web_embedded mantiene la descarga compatible con sesiones autenticadas.
-   options.extractorArgs =
-      'youtube:player_client=default,web_embedded'
+   // Dejar que yt-dlp seleccione automáticamente los clientes de YouTube.
+   // Forzar web_embedded/default aquí provocaba respuestas sin formatos disponibles.
 
    if (
       cookies &&
@@ -483,6 +481,9 @@ async function downloadAudio(url) {
          true
 
       options.noPlaylist =
+         true
+
+      options.noPart =
          true
 
       options.concurrentFragments =
