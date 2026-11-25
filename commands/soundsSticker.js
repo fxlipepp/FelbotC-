@@ -174,20 +174,32 @@ async function createWaveform(audioFile) {
 }
 
 async function createOpusAudio(videoFile, outputOgg, duration) {
-    await execFileAsync('ffmpeg', [
-        '-y',
-        '-i', videoFile,
-        '-t', duration.toFixed(3),
-        '-map', '0:a:0',
-        '-vn',
-        '-c:a', 'libopus',
-        '-b:a', '32k',
-        '-ar', '48000',
-        '-ac', '1',
-        '-application', 'voip',
-        '-map_metadata', '-1',
-        outputOgg
-    ], { timeout: 90000, maxBuffer: 4 * 1024 * 1024 });
+    // Re-encode through clean 48 kHz PCM before Opus. This avoids carrying
+    // source MP4 timestamps into the Ogg stream (some WhatsApp clients reject it).
+    const wavFile = outputOgg + '.wav';
+    try {
+        await execFileAsync('ffmpeg', [
+            '-v', 'error', '-y',
+            '-i', videoFile,
+            '-vn', '-map', '0:a:0',
+            '-af', `aresample=48000:first_pts=0,apad=whole_dur=${duration.toFixed(3)}`,
+            '-ac', '1',
+            '-c:a', 'pcm_s16le',
+            '-t', duration.toFixed(3),
+            wavFile
+        ], { timeout: 90000, maxBuffer: 4 * 1024 * 1024 });
+
+        await execFileAsync('ffmpeg', [
+            '-v', 'error', '-y',
+            '-i', wavFile,
+            '-c:a', 'libopus',
+            '-b:a', '32k',
+            '-map_metadata', '-1',
+            outputOgg
+        ], { timeout: 90000, maxBuffer: 4 * 1024 * 1024 });
+    } finally {
+        try { fs.unlinkSync(wavFile); } catch {}
+    }
 }
 
 async function soundStickerCommand(sock, chatId, message) {
@@ -275,6 +287,8 @@ async function soundStickerCommand(sock, chatId, message) {
 
         const sticker = uploadedSticker.stickerMessage;
         sticker.isAnimated = true;
+        sticker.width = 512;
+        sticker.height = 512;
         attachAudio(sticker.fileSha256, audioBytes);
 
         try {
@@ -327,6 +341,20 @@ async function soundStickerCommand(sock, chatId, message) {
             if (!embeddedAudio) {
                 throw new Error('Baileys no incluyó el audio dentro del StickerMessage; se canceló el envío para evitar otro sticker mudo.');
             }
+
+            // Decode the exact embedded payload and validate its media references.
+            const decodedAudio = proto.Message.AudioMessage.decode(embeddedAudio);
+            if (!decodedAudio.url || !decodedAudio.directPath || !decodedAudio.mediaKey ||
+                !decodedAudio.fileSha256 || !decodedAudio.fileEncSha256) {
+                throw new Error('El audio quedó incrustado, pero sus datos de descarga están incompletos.');
+            }
+            console.log('[.ss] Sound Sticker validado:', {
+                audioBytes: embeddedAudio.length,
+                seconds: decodedAudio.seconds,
+                mimetype: decodedAudio.mimetype,
+                waveformBytes: decodedAudio.waveform?.length || 0,
+                stickerBytes: fs.statSync(stickerOutput).size
+            });
 
             await sock.relayMessage(chatId, outgoing.message, { messageId: outgoing.key.id });
         } finally {
