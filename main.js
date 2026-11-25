@@ -389,12 +389,13 @@ async function handleMessages(sock, messageUpdate, printLog) {
     let chatId
     let senderId
     let isGroup
+    let message
 
     try {
         const { messages, type } = messageUpdate;
         if (type !== 'notify') return;
 
-        const message = messages[0];
+        message = messages[0];
         if (!message?.message) return;
 
         chatId = message.key?.remoteJid;
