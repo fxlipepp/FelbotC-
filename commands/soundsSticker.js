@@ -21,6 +21,8 @@ const execFileAsync = promisify(execFile);
 const MAX_DURATION = 60;      // segundos máximos de audio / video
 const SESSION_SECONDS = 60;   // tiempo para mandar el audio
 const MAX_STICKER_BYTES = 900 * 1024;
+const ssLog = (...args) => console.log("[.ss]", ...args);
+const bytesLabel = (n) => `${(Number(n || 0) / 1024).toFixed(1)} KB`;
 
 // === Carpeta temporal ===
 const tempFolder = path.join(process.cwd(), "temp", "sound-sticker");
@@ -115,10 +117,13 @@ const isAudioish = (i) => i && (i.kind === "audio" || i.kind === "video");
 async function downloadMedia(conn, info) {
   let downloadContentFromMessage = conn?.wa?.downloadContentFromMessage || global.wa?.downloadContentFromMessage;
   if (!downloadContentFromMessage) downloadContentFromMessage = (await getBaileys()).downloadContentFromMessage;
+  ssLog("Descargando media:", { kind: info.kind, mime: info.mime, dlType: info.dlType, seconds: info.seconds });
   const stream = await downloadContentFromMessage(info.node, info.dlType);
   const chunks = [];
   for await (const chunk of stream) chunks.push(chunk);
-  return Buffer.concat(chunks);
+  const buffer = Buffer.concat(chunks);
+  ssLog("Media descargada:", { kind: info.kind, bytes: buffer.length, size: bytesLabel(buffer.length) });
+  return buffer;
 }
 
 function audioExt(info) {
@@ -256,7 +261,7 @@ async function toOggOpus(buffer, ext, maxSeconds = MAX_DURATION) {
         "-y", "-i", tmpIn,
         "-vn", "-map", "0:a:0",
         "-t", String(maxSeconds),
-        "-af", "aresample=48000:async=1:first_pts=0",
+        "-af", "aresample=48000:async=1:first_pts=0,volumedetect",
         "-c:a", "libopus", "-b:a", "48k", "-vbr", "on",
         "-compression_level", "10", "-ac", "1", "-ar", "48000",
         "-application", "audio", "-avoid_negative_ts", "make_zero",
@@ -266,8 +271,18 @@ async function toOggOpus(buffer, ext, maxSeconds = MAX_DURATION) {
       throw new Error("NO_AUDIO");
     }
     const ogg = fs.readFileSync(tmpOut);
+    const realSeconds = parseFfmpegDuration(stderr);
+    const volume = String(stderr || "").match(/mean_volume:\s*(-?\S+)\s*dB[\s\S]*?max_volume:\s*(-?\S+)\s*dB/i);
+    ssLog("Resultado FFmpeg OGG:", {
+      inputBytes: buffer.length, outputBytes: ogg.length, outputSize: bytesLabel(ogg.length),
+      seconds: realSeconds, meanVolumeDb: volume?.[1] || "no detectado", maxVolumeDb: volume?.[2] || "no detectado",
+      audioStream: /Audio:/i.test(stderr) ? "detectado" : "no confirmado"
+    });
     if (!ogg || ogg.length < 200) throw new Error("NO_AUDIO");
-    return { ogg, realSeconds: parseFfmpegDuration(stderr) };
+    if (ogg.length < 1500 || (volume && Number(volume[2]) <= -90)) {
+      throw new Error("AUDIO_SILENT_OR_EMPTY");
+    }
+    return { ogg, realSeconds };
   } finally {
     fs.rmSync(tmpIn, { force: true });
     fs.rmSync(tmpOut, { force: true });
@@ -280,6 +295,7 @@ async function toOggOpus(buffer, ext, maxSeconds = MAX_DURATION) {
 async function buildAudioMessage(conn, buffer, ext, fallbackSeconds = 0, maxSeconds = MAX_DURATION) {
   const { prepareWAMessageMedia } = await getBaileys();
   const limit = Math.max(1, Math.min(MAX_DURATION, Math.round(maxSeconds) || MAX_DURATION));
+  ssLog("Preparando audio:", { ext, inputBytes: buffer.length, limitSeconds: limit, fallbackSeconds });
   const { ogg, realSeconds } = await toOggOpus(buffer, ext, limit);
 
   const { audioMessage } = await prepareWAMessageMedia(
@@ -292,6 +308,7 @@ async function buildAudioMessage(conn, buffer, ext, fallbackSeconds = 0, maxSeco
   audioMessage.seconds = Math.max(1, Math.min(limit, Math.round(sec)));
   audioMessage.ptt = false;
   audioMessage.mimetype = "audio/ogg; codecs=opus";
+  ssLog("Audio subido a WhatsApp:", { seconds: audioMessage.seconds, ptt: audioMessage.ptt, mimetype: audioMessage.mimetype, fileLength: audioMessage.fileLength });
   return audioMessage;
 }
 
@@ -322,7 +339,7 @@ function patchProto(p) {
     return w;
   };
 
-  M.__sukiAudioStickerPatched = true;
+  M.__felbotAudioStickerPatched = true;
 }
 
 async function ensurePatched() {
@@ -368,6 +385,7 @@ async function sendAudioSticker(conn, chatId, stickerBuffer, isAnimated, audioMe
   await ensurePatched();
   const { prepareWAMessageMedia, generateMessageIDV2, generateMessageID } = await getBaileys();
 
+  ssLog("Preparando envío:", { stickerBytes: stickerBuffer.length, animated: isAnimated, audioSeconds: audioMessage.seconds, audioFileLength: audioMessage.fileLength });
   const prepared = await prepareWAMessageMedia(
     { sticker: stickerBuffer },
     { upload: conn.waUploadToServer }
@@ -399,6 +417,7 @@ async function sendAudioSticker(conn, chatId, stickerBuffer, isAnimated, audioMe
     : typeof generateMessageID === "function" ? generateMessageID() : undefined;
 
   await conn.relayMessage(chatId, payload, messageId ? { messageId } : {});
+  ssLog("Sticker con audio enviado mediante relayMessage:", { chatId, messageId, animated: isAnimated });
 }
 
 // === Sesiones ===
@@ -468,12 +487,14 @@ async function consumeSession(conn, msg, session, audioInfo) {
     await react(conn, msg, "✅");
   } catch (err) {
     session.processing = false;
-    console.error("[ssa] Error uniendo audio:", err);
+    console.error("[.ss] Error uniendo audio:", err?.stack || err);
     await react(conn, msg, "❌");
     await say(conn, msg,
       err?.message === "NO_AUDIO"
         ? "❌ *Ese archivo no tiene audio.* Manda otro audio o nota de voz."
-        : "❌ *Hubo un error al ponerle el audio al sticker.*"
+        : err?.message === "AUDIO_SILENT_OR_EMPTY"
+          ? "❌ *El audio llegó vacío o en silencio.* Prueba con otro archivo."
+          : "❌ *Hubo un error al ponerle el audio al sticker.*"
     );
   }
 }
@@ -567,6 +588,7 @@ async function handler(msg, { conn, text, command, usedPrefix }) {
   try {
     await react(conn, msg, "🛠️");
 
+    ssLog("Comando recibido:", { chatId, own: own?.kind, quoted: quot?.kind, visual: visual.kind, mime: visual.mime, reportedSeconds: visual.seconds });
     const visualBuf = await downloadMedia(conn, visual);
     if (!visualBuf.length) throw new Error("No se pudo descargar la imagen/video.");
 
@@ -575,8 +597,10 @@ async function handler(msg, { conn, text, command, usedPrefix }) {
     const visualSeconds = visual.kind === "video"
       ? Math.max(1, Math.min(MAX_DURATION, Math.round(await videoSeconds(visualBuf, visual.seconds || MAX_DURATION))))
       : MAX_DURATION;
+    ssLog("Duración visual calculada:", { visualSeconds, originalSeconds: visual.seconds, kind: visual.kind });
     const stickerBuffer = await buildSticker(visualBuf, visual.kind, metadata, visualSeconds);
     const isAnimated = visual.kind === "video" || isWebpAnimated(stickerBuffer);
+    ssLog("Sticker convertido:", { bytes: stickerBuffer.length, animated: isAnimated, firstFrameLength: isAnimated ? firstFrameLength(stickerBuffer) : null });
 
     // Imagen/video propio + respondiendo a un audio → directo
     if (visual === own && quot?.kind === "audio") {
@@ -596,6 +620,7 @@ async function handler(msg, { conn, text, command, usedPrefix }) {
         return react(conn, msg, "✅");
       } catch (e) {
         if (e?.message !== "NO_AUDIO") throw e;
+        ssLog("El video no produjo una pista de audio válida; se abrirá sesión para recibir audio.");
         // El video no tiene sonido → pedir un audio
         await react(conn, msg, "🎧");
         return startSession(conn, msg, stickerBuffer, true, pref, command, visualSeconds);
@@ -606,8 +631,11 @@ async function handler(msg, { conn, text, command, usedPrefix }) {
     await react(conn, msg, "🎧");
     return startSession(conn, msg, stickerBuffer, isAnimated, pref, command);
   } catch (err) {
-    console.error("[ssa] Error:", err);
-    await say(conn, msg, "❌ *Hubo un error al crear el sticker con audio.*");
+    console.error("[.ss] Error:", err?.stack || err);
+    const detail = err?.message === "AUDIO_SILENT_OR_EMPTY"
+      ? "El audio extraído está vacío o llega en silencio. Prueba con otro video."
+      : "Hubo un error al crear el sticker con audio.";
+    await say(conn, msg, `❌ *${detail}*`);
     await react(conn, msg, "❌");
   }
 }
