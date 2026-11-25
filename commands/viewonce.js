@@ -1,85 +1,91 @@
 const { downloadContentFromMessage } = require('@whiskeysockets/baileys');
-const settings = require('../settings');
 
-function getOwnerJid() {
-    const rawNumber = (settings.OWNER_NUMBER || settings.ownerNumber || '').toString().trim();
-    const cleanNumber = rawNumber.replace(/\D/g, '');
+function unwrapQuotedContent(content) {
+    let current = content;
 
-    if (!cleanNumber) return null;
-    return `${cleanNumber}@s.whatsapp.net`;
-}
-
-function isGroupChat(chatId = '') {
-    return typeof chatId === 'string' && chatId.endsWith('@g.us');
-}
-
-function getViewOnceTarget(chatId = '') {
-    if (isGroupChat(chatId)) return chatId;
-    return getOwnerJid() || chatId || null;
-}
-
-async function recoverViewOnceMedia(msg) {
-    const quoted = msg?.message?.extendedTextMessage?.contextInfo?.quotedMessage;
-    const direct = msg?.message?.viewOnceMessageV2?.message || msg?.message?.viewOnceMessage?.message || {};
-
-    const image = quoted?.imageMessage?.viewOnce ? quoted.imageMessage : direct.imageMessage?.viewOnce ? direct.imageMessage : null;
-    const video = quoted?.videoMessage?.viewOnce ? quoted.videoMessage : direct.videoMessage?.viewOnce ? direct.videoMessage : null;
-
-    if (image) {
-        const stream = await downloadContentFromMessage(image, 'image');
-        let buffer = Buffer.from([]);
-
-        for await (const chunk of stream) {
-            buffer = Buffer.concat([buffer, chunk]);
+    // Baileys puede envolver mensajes normales en ephemeral/documentWithCaption.
+    // No desenvolvemos viewOnce: .vv no debe procesar contenido de una sola visualización.
+    while (current) {
+        if (current.ephemeralMessage?.message) {
+            current = current.ephemeralMessage.message;
+            continue;
         }
-
-        return {
-            type: 'image',
-            buffer,
-            fileName: 'media.jpg',
-            caption: image.caption || ''
-        };
+        if (current.documentWithCaptionMessage?.message) {
+            current = current.documentWithCaptionMessage.message;
+            continue;
+        }
+        break;
     }
 
-    if (video) {
-        const stream = await downloadContentFromMessage(video, 'video');
-        let buffer = Buffer.from([]);
+    return current || {};
+}
 
-        for await (const chunk of stream) {
-            buffer = Buffer.concat([buffer, chunk]);
-        }
-
-        return {
-            type: 'video',
-            buffer,
-            fileName: 'media.mp4',
-            caption: video.caption || ''
-        };
+async function downloadMedia(media, mediaType) {
+    if (!media || media.viewOnce || (!media.url && !media.directPath)) {
+        throw new Error('El mensaje citado no contiene una foto o video normal descargable.');
     }
 
-    return null;
+    const stream = await downloadContentFromMessage(media, mediaType);
+    const chunks = [];
+
+    for await (const chunk of stream) {
+        chunks.push(chunk);
+    }
+
+    const buffer = Buffer.concat(chunks);
+    if (!buffer.length) {
+        throw new Error('La descarga terminó sin contenido multimedia.');
+    }
+
+    return buffer;
 }
 
 async function viewonceCommand(sock, chatId, message) {
-    const media = await recoverViewOnceMedia(message);
-    if (!media) {
-        console.error('viewonceCommand: no se pudo recuperar la media o no es un mensaje de vista única.');
+    const contextInfo = message?.message?.extendedTextMessage?.contextInfo;
+    const quotedRaw = contextInfo?.quotedMessage;
+
+    if (!quotedRaw) {
+        await sock.sendMessage(chatId, {
+            text: '⚠️ Responde a una foto o video normal con *.vv* para reenviarlo.'
+        }, { quoted: message });
         return;
     }
 
-    const targetJid = getViewOnceTarget(chatId);
-    if (!targetJid) {
-        console.error('viewonceCommand: no hay destino válido para reenviar la media.');
+    const quoted = unwrapQuotedContent(quotedRaw);
+    const image = quoted.imageMessage;
+    const video = quoted.videoMessage;
+
+    // Rechazar explícitamente mensajes de una sola visualización.
+    if (image?.viewOnce || video?.viewOnce) {
+        await sock.sendMessage(chatId, {
+            text: '⚠️ *.vv* solo admite fotos y videos normales, no mensajes de una sola visualización.'
+        }, { quoted: message });
         return;
     }
 
-    await sock.sendMessage(targetJid, {
-        [media.type]: media.buffer,
-        fileName: media.fileName,
-        caption: `👁️ *Vista recuperada*\n\n${media.caption}`
-    });
+    const media = image || video;
+    const mediaType = image ? 'image' : video ? 'video' : null;
+
+    if (!media || !mediaType) {
+        await sock.sendMessage(chatId, {
+            text: '❌ No encontré una foto o video válido en el mensaje citado. Responde directamente al archivo con *.vv*.'
+        }, { quoted: message });
+        return;
+    }
+
+    try {
+        const buffer = await downloadMedia(media, mediaType);
+        const payload = mediaType === 'image'
+            ? { image: buffer, caption: media.caption || '' }
+            : { video: buffer, caption: media.caption || '', mimetype: 'video/mp4' };
+
+        await sock.sendMessage(chatId, payload, { quoted: message });
+    } catch (error) {
+        console.error('[.vv] No se pudo procesar el archivo citado:', error);
+        await sock.sendMessage(chatId, {
+            text: '❌ No pude descargar ese archivo. Puede que el mensaje ya no tenga el contenido multimedia disponible.'
+        }, { quoted: message });
+    }
 }
 
 module.exports = viewonceCommand;
-module.exports.getViewOnceTarget = getViewOnceTarget;
-module.exports.getOwnerJid = getOwnerJid;
