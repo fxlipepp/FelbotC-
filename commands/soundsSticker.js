@@ -4,16 +4,16 @@ const fs = require('fs');
 const path = require('path');
 const axios = require('axios');
 const sharp = require('sharp');
+const crypto = require('crypto');
 const { promisify } = require('util');
 const { execFile } = require('child_process');
 const {
     downloadMediaMessage,
     prepareWAMessageMedia,
-    generateWAMessageFromContent,
     proto
 } = require('@whiskeysockets/baileys');
 const { getVideoCandidates, isValidTikTokUrl } = require('./tiktok');
-const { attachAudio, detachAudio, installStickerAudioPatch } = require('../lib/stickerAudioPatch');
+const { installStickerAudioPatch } = require('../lib/stickerAudioPatch');
 
 const execFileAsync = promisify(execFile);
 const MAX_AUDIO_SECONDS = 10;
@@ -294,98 +294,131 @@ async function soundStickerCommand(sock, chatId, message) {
 
         const audio = uploadedAudio.audioMessage;
         const waveform = await createWaveform(audioOutput);
-        const audioBytes = proto.Message.AudioMessage.encode(
-            proto.Message.AudioMessage.create({
+        const audioMessage = proto.Message.AudioMessage.create({
                 url: audio.url,
                 mimetype: 'audio/ogg; codecs=opus',
                 fileSha256: audio.fileSha256,
                 fileLength: audio.fileLength,
                 seconds: Math.max(1, Math.round(duration)),
-                ptt: true,
+                ptt: false,
                 mediaKey: audio.mediaKey,
                 fileEncSha256: audio.fileEncSha256,
                 directPath: audio.directPath,
                 mediaKeyTimestamp: audio.mediaKeyTimestamp || Math.floor(Date.now() / 1000),
                 waveform
-            })
-        ).finish();
+            });
 
         const sticker = uploadedSticker.stickerMessage;
         sticker.isAnimated = true;
         sticker.width = 512;
         sticker.height = 512;
-        attachAudio(sticker.fileSha256, audioBytes);
+        sticker.audioMessage = {
+            ...audioMessage,
+            mimetype: 'audio/ogg; codecs=opus',
+            ptt: false
+        };
 
-        try {
-            const outgoing = generateWAMessageFromContent(
-                chatId,
-                { stickerMessage: sticker },
-                { quoted: message, userJid: sock.user?.id }
-            );
-
-            // Confirm the nested StickerMessage field 26 (AudioMessage) survived encoding.
-            const encoded = Buffer.from(proto.Message.encode(outgoing.message).finish());
-            const readVarint = (buffer, state) => {
-                let value = 0n;
-                let shift = 0n;
-                while (state.offset < buffer.length) {
-                    const byte = buffer[state.offset++];
-                    value |= BigInt(byte & 0x7f) << shift;
-                    if (!(byte & 0x80)) return Number(value);
-                    shift += 7n;
-                }
-                throw new Error('Protobuf incompleto al validar el Sound Sticker.');
-            };
-            const findBytesField = (buffer, wanted) => {
-                const state = { offset: 0 };
-                while (state.offset < buffer.length) {
-                    const tag = readVarint(buffer, state);
-                    const field = tag >> 3;
-                    const wire = tag & 7;
-                    if (wire === 2) {
-                        const length = readVarint(buffer, state);
-                        const end = state.offset + length;
-                        if (end > buffer.length) throw new Error('Longitud protobuf inválida.');
-                        const payload = buffer.subarray(state.offset, end);
-                        if (field === wanted) return payload;
-                        state.offset = end;
-                    } else if (wire === 0) {
-                        readVarint(buffer, state);
-                    } else if (wire === 1) {
-                        state.offset += 8;
-                    } else if (wire === 5) {
-                        state.offset += 4;
-                    } else {
-                        throw new Error('Tipo protobuf no compatible al validar audio.');
-                    }
-                }
-                return null;
-            };
-            const stickerPayload = findBytesField(encoded, 26);
-            const embeddedAudio = stickerPayload && findBytesField(stickerPayload, 26);
-            if (!embeddedAudio) {
-                throw new Error('Baileys no incluyó el audio dentro del StickerMessage; se canceló el envío para evitar otro sticker mudo.');
+        // WhatsApp/Suki usa el sobre AudioStickerMessage (campo 134),
+        // que contiene Message.stickerMessage y su StickerMessage.audioMessage (campo 26).
+        // El formato anterior solo enviaba StickerMessage directamente y por eso
+        // WhatsApp mostraba la animación como un sticker normal, sin altavoz.
+        const firstFrameLength = (buffer) => {
+            if (!Buffer.isBuffer(buffer) || buffer.length < 12 || buffer.toString('ascii', 0, 4) !== 'RIFF') return null;
+            let offset = 12;
+            while (offset + 8 <= buffer.length) {
+                const chunk = buffer.toString('ascii', offset, offset + 4);
+                const size = buffer.readUInt32LE(offset + 4);
+                offset += 8 + size + (size % 2);
+                if (chunk === 'ANMF') return offset;
             }
+            return null;
+        };
+        const firstFrame = firstFrameLength(fs.readFileSync(stickerOutput));
+        if (firstFrame) sticker.firstFrameLength = firstFrame;
 
-            // Decode the exact embedded payload and validate its media references.
-            const decodedAudio = proto.Message.AudioMessage.decode(embeddedAudio);
-            if (!decodedAudio.url || !decodedAudio.directPath || !decodedAudio.mediaKey ||
-                !decodedAudio.fileSha256 || !decodedAudio.fileEncSha256) {
-                throw new Error('El audio quedó incrustado, pero sus datos de descarga están incompletos.');
+        const payload = {
+            audioStickerMessage: {
+                message: { stickerMessage: sticker }
+            },
+            messageContextInfo: {
+                messageSecret: crypto.randomBytes(32)
             }
-            console.log('[.ss] Sound Sticker validado:', {
-                audioBytes: embeddedAudio.length,
-                seconds: decodedAudio.seconds,
-                mimetype: decodedAudio.mimetype,
-                waveformBytes: decodedAudio.waveform?.length || 0,
-                stickerBytes: fs.statSync(stickerOutput).size
-            });
+        };
 
-            await sock.relayMessage(chatId, outgoing.message, { messageId: outgoing.key.id });
-        } finally {
-            detachAudio(sticker.fileSha256);
+        const encoded = Buffer.from(proto.Message.encode(payload).finish());
+        const readVarint = (buffer, state) => {
+            let value = 0n;
+            let shift = 0n;
+            while (state.offset < buffer.length) {
+                const byte = buffer[state.offset++];
+                value |= BigInt(byte & 0x7f) << shift;
+                if (!(byte & 0x80)) return Number(value);
+                shift += 7n;
+            }
+            throw new Error('Protobuf incompleto al validar el Sound Sticker.');
+        };
+        const findBytesField = (buffer, wanted) => {
+            const state = { offset: 0 };
+            while (state.offset < buffer.length) {
+                const tag = readVarint(buffer, state);
+                const field = tag >> 3;
+                const wire = tag & 7;
+                if (wire === 2) {
+                    const length = readVarint(buffer, state);
+                    const end = state.offset + length;
+                    if (end > buffer.length) throw new Error('Longitud protobuf inválida.');
+                    const data = buffer.subarray(state.offset, end);
+                    if (field === wanted) return data;
+                    state.offset = end;
+                } else if (wire === 0) {
+                    readVarint(buffer, state);
+                } else if (wire === 1) {
+                    state.offset += 8;
+                } else if (wire === 5) {
+                    state.offset += 4;
+                } else {
+                    throw new Error('Tipo protobuf no compatible al validar audio.');
+                }
+            }
+            return null;
+        };
+
+        // Campo 134 = audioStickerMessage; dentro viene Message (campo 1),
+        // luego StickerMessage (26) y finalmente AudioMessage (26).
+        const audioStickerPayload = findBytesField(encoded, 134);
+        const wrappedMessage = audioStickerPayload && findBytesField(audioStickerPayload, 1);
+        const stickerPayload = wrappedMessage && findBytesField(wrappedMessage, 26);
+        const embeddedAudio = stickerPayload && findBytesField(stickerPayload, 26);
+        if (!embeddedAudio) {
+            throw new Error('El sobre AudioStickerMessage no conservó el audio incrustado; se canceló el envío.');
         }
 
+        const decodedAudio = proto.Message.AudioMessage.decode(embeddedAudio);
+        if (!decodedAudio.url || !decodedAudio.directPath || !decodedAudio.mediaKey ||
+            !decodedAudio.fileSha256 || !decodedAudio.fileEncSha256) {
+            throw new Error('El audio quedó incrustado, pero sus datos de descarga están incompletos.');
+        }
+
+        console.log('[.ss] AudioStickerMessage validado:', {
+            wrapperField: 134,
+            stickerAudioField: 26,
+            audioBytes: embeddedAudio.length,
+            seconds: decodedAudio.seconds,
+            mimetype: decodedAudio.mimetype,
+            ptt: decodedAudio.ptt,
+            waveformBytes: decodedAudio.waveform?.length || 0,
+            stickerBytes: fs.statSync(stickerOutput).size,
+            firstFrameLength: sticker.firstFrameLength || 0
+        });
+
+        const { generateMessageIDV2, generateMessageID } = require('@whiskeysockets/baileys');
+        const messageId = typeof generateMessageIDV2 === 'function'
+            ? generateMessageIDV2(sock.user?.id)
+            : typeof generateMessageID === 'function'
+                ? generateMessageID()
+                : crypto.randomBytes(10).toString('hex').toUpperCase();
+
+        await sock.relayMessage(chatId, payload, { messageId });
         return true;
     } catch (error) {
         console.error('[.ss] Error creando Sound Sticker:', error);
