@@ -1,1009 +1,408 @@
-const youtubedl = require('youtube-dl-exec')
+const axios = require('axios')
+const yts = require('yt-search')
 const fs = require('fs')
 const path = require('path')
 const os = require('os')
+const { pipeline } = require('stream')
+const { promisify } = require('util')
+const ffmpeg = require('fluent-ffmpeg')
 
-// ======================================================
-// CACHE
-// ======================================================
+const streamPipe = promisify(pipeline)
+const API_BASE = (process.env.API_BASE || 'https://api.orbitxspace.com').replace(/\/+$/, '')
+const API_KEY = process.env.API_KEY || 'Russellxz'
+const API_RESOLVE = API_BASE + '/youtube/resolve'
+const RESOLVE_TIMEOUT = 300000
+const DOWNLOAD_TIMEOUT = 300000
+const DEFAULT_VIDEO_QUALITY = '360'
+const DEFAULT_AUDIO_FORMAT = 'mp3'
+const MAX_MB = 200
+const VALID_QUALITIES = new Set(['144', '240', '360', '720'])
+const pending = new Map()
+const TMP_DIR = path.join(os.tmpdir(), 'felbot-play')
 
-const searchCache = new Map()
-
-function limitMapSize(map, max = 100) {
-   while (map.size > max) {
-      const firstKey = map.keys().next().value
-
-      if (!firstKey) break
-
-      map.delete(firstKey)
+function ensureTmp() {
+   fs.mkdirSync(TMP_DIR, { recursive: true })
+   return TMP_DIR
+}
+function safeName(name = 'Felbot') {
+   return String(name).slice(0, 90).replace(/[^\w.\- ]+/g, '_').replace(/\s+/g, ' ').trim() || 'Felbot'
+}
+function fileSizeMB(file) { return fs.statSync(file).size / (1024 * 1024) }
+function extractQuality(text = '') {
+   const match = String(text).toLowerCase().match(/\b(144|240|360|720)\s*p?\b/)
+   return match ? match[1] : ''
+}
+function splitQueryAndQuality(raw = '') {
+   const parts = String(raw).trim().split(/\s+/).filter(Boolean)
+   const match = (parts[parts.length - 1] || '').toLowerCase().match(/^(144|240|360|720)p?$/)
+   if (match) { parts.pop(); return { query: parts.join(' ').trim(), quality: match[1] } }
+   return { query: parts.join(' ').trim(), quality: '' }
+}
+function isIphone(message) { return /^3A.{18}$/.test(String(message?.key?.id || '')) }
+function isApiUrl(url) {
+   try { return new URL(url).host === new URL(API_BASE).host } catch { return false }
+}
+function absoluteUrl(url) {
+   if (!url || typeof url !== 'string') return ''
+   return url.startsWith('/') ? API_BASE + url : url
+}
+function mediaCandidates(result) {
+   const media = result?.media
+   if (typeof media === 'string') return [absoluteUrl(media)].filter(Boolean)
+   return [...new Set([
+      absoluteUrl(media?.direct), absoluteUrl(media?.dl_download), absoluteUrl(media?.dl_inline),
+      absoluteUrl(media?.url || media?.download), absoluteUrl(result?.url || result?.download)
+   ].filter(Boolean))]
+}
+async function callYoutubeResolve(videoUrl, options = {}) {
+   const isAudio = options.type === 'audio'
+   const body = isAudio
+      ? { url: videoUrl, type: 'audio', format: options.format || DEFAULT_AUDIO_FORMAT }
+      : { url: videoUrl, type: 'video', quality: options.quality || DEFAULT_VIDEO_QUALITY }
+   const response = await axios.post(API_RESOLVE, body, {
+      timeout: RESOLVE_TIMEOUT,
+      headers: { 'Content-Type': 'application/json', apikey: API_KEY, Accept: 'application/json, */*' },
+      validateStatus: () => true
+   })
+   const data = response.data
+   if (!data || typeof data !== 'object') throw new Error('La API no devolvió una respuesta JSON')
+   const ok = data.status === true || data.status === 'true' || data.ok === true || data.success === true
+   if (!ok) throw new Error(data.message || data.error || ('HTTP_' + response.status))
+   const result = data.result || data.data || data
+   const candidates = mediaCandidates(result)
+   if (!candidates.length) throw new Error('La API no devolvió enlaces de descarga')
+   return { title: result.title || 'YouTube', thumbnail: result.thumbnail || result.cover || '', candidates }
+}
+async function downloadToFile(url, file) {
+   const headers = {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124.0 Safari/537.36',
+      Accept: '*/*'
+   }
+   if (isApiUrl(url)) headers.apikey = API_KEY
+   const response = await axios.get(url, {
+      responseType: 'stream', timeout: DOWNLOAD_TIMEOUT, headers, maxRedirects: 5, validateStatus: () => true
+   })
+   if (response.status >= 400) throw new Error('HTTP_' + response.status)
+   const contentType = String(response.headers?.['content-type'] || '')
+   if (/text\/html|application\/json/i.test(contentType)) {
+      response.data.destroy()
+      throw new Error('El enlace devolvió ' + contentType.split(';')[0] + ', no un archivo')
+   }
+   const expected = Number(response.headers?.['content-length'] || 0)
+   await streamPipe(response.data, fs.createWriteStream(file))
+   const actual = fs.statSync(file).size
+   if (!actual) throw new Error('El archivo descargado está vacío')
+   if (expected && actual !== expected) throw new Error('Descarga incompleta: ' + actual + ' de ' + expected + ' bytes')
+   return file
+}
+async function downloadCandidates(urls, file, validator) {
+   const backup = file + '.alt'
+   let lastError
+   for (const url of urls) {
+      try {
+         await downloadToFile(url, file)
+         if (!validator || validator(file)) return { formatOk: true }
+         lastError = new Error('Formato de archivo no compatible')
+         try { fs.unlinkSync(backup) } catch {}
+         fs.renameSync(file, backup)
+      } catch (error) {
+         lastError = error
+         try { fs.unlinkSync(file) } catch {}
+      }
+   }
+   if (fs.existsSync(backup)) { fs.renameSync(backup, file); return { formatOk: false } }
+   throw lastError || new Error('No hay enlaces de descarga disponibles')
+}
+function readHeader(file, size = 12) {
+   const fd = fs.openSync(file, 'r')
+   const buffer = Buffer.alloc(size)
+   try { fs.readSync(fd, buffer, 0, size, 0) } finally { fs.closeSync(fd) }
+   return buffer
+}
+function isMp4(file) {
+   try { return readHeader(file).slice(4, 8).toString('latin1') === 'ftyp' } catch { return false }
+}
+function audioFormat(file) {
+   try {
+      const b = readHeader(file)
+      if (b.slice(0, 3).toString('latin1') === 'ID3') return 'mp3'
+      if (b[0] === 0xff && (b[1] & 0xe0) === 0xe0) return 'mp3'
+      if (b.slice(4, 8).toString('latin1') === 'ftyp') return 'm4a'
+      if (b.slice(0, 4).toString('latin1') === 'OggS') return 'ogg'
+      if (b[0] === 0x1a && b[1] === 0x45 && b[2] === 0xdf && b[3] === 0xa3) return 'webm'
+      return ''
+   } catch { return '' }
+}
+function cleanup(...files) {
+   for (const file of files) { if (file) { try { if (fs.existsSync(file)) fs.unlinkSync(file) } catch {} } }
+}
+function getMessageText(message) {
+   return String(message?.message?.conversation || message?.message?.extendedTextMessage?.text || '').trim()
+}
+function getQuotedId(message) {
+   return message?.message?.extendedTextMessage?.contextInfo?.stanzaId ||
+      message?.message?.buttonsResponseMessage?.contextInfo?.stanzaId ||
+      message?.message?.listResponseMessage?.contextInfo?.stanzaId ||
+      message?.message?.templateButtonReplyMessage?.contextInfo?.stanzaId ||
+      message?.message?.interactiveResponseMessage?.contextInfo?.stanzaId || ''
+}
+function getSelectedId(message) {
+   const interactive = message?.message?.interactiveResponseMessage?.nativeFlowResponseMessage
+   if (message?.message?.listResponseMessage?.singleSelectReply?.selectedRowId) return message.message.listResponseMessage.singleSelectReply.selectedRowId
+   if (message?.message?.buttonsResponseMessage?.selectedButtonId) return message.message.buttonsResponseMessage.selectedButtonId
+   if (message?.message?.templateButtonReplyMessage?.selectedId) return message.message.templateButtonReplyMessage.selectedId
+   if (interactive?.paramsJson) { try { return JSON.parse(interactive.paramsJson).id || '' } catch {} }
+   return interactive?.body?.text || ''
+}
+async function react(sock, message, emoji) {
+   try { await sock.sendMessage(message.key.remoteJid, { react: { text: emoji, key: message.key } }) } catch {}
+}
+async function sendText(sock, chatId, text, quoted) {
+   return sock.sendMessage(chatId, { text }, quoted ? { quoted } : {})
+}
+async function searchVideo(query) {
+   console.log('[play] Buscando en YouTube:', query)
+   const result = await yts(query)
+   const video = result.videos?.[0]
+   if (!video) throw new Error('No encontré resultados para esa búsqueda')
+   return {
+      url: video.url, title: video.title || 'YouTube', thumbnail: video.thumbnail || '',
+      duration: video.timestamp || '—', views: Number(video.views || 0),
+      author: video.author?.name || video.author || 'Desconocido', published: video.ago || ''
    }
 }
-
-function cleanMemory() {
+async function getVideoFromUrl(url) {
+   const match = String(url).match(/(?:v=|youtu\.be\/|shorts\/)([0-9A-Za-z_-]{11})/)
+   if (!match) return { url, title: 'YouTube', thumbnail: '', duration: '—', views: 0, author: 'YouTube', published: '' }
    try {
-
-      if (searchCache.size > 70) {
-         searchCache.clear()
+      const result = await yts({ videoId: match[1] })
+      if (result) return {
+         url, title: result.title || 'YouTube', thumbnail: result.thumbnail || '',
+         duration: result.timestamp || '—', views: Number(result.views || 0),
+         author: result.author?.name || 'YouTube', published: result.ago || ''
       }
-
-      if (
-         global.gc &&
-         typeof global.gc === 'function'
-      ) {
-         global.gc()
-      }
-
    } catch {}
+   return { url, title: 'YouTube', thumbnail: '', duration: '—', views: 0, author: 'YouTube', published: '' }
 }
-
-setInterval(
-   cleanMemory,
-   1000 * 60 * 20
-)
-
-// ======================================================
-// BARRA
-// ======================================================
-
-function createBar(percent) {
-
-   const total = 10
-
-   const filled =
-      Math.max(
-         0,
-         Math.min(
-            total,
-            Math.round(percent / 10)
-         )
-      )
-
-   return (
-      '▰'.repeat(filled) +
-      '▱'.repeat(total - filled)
-   )
-}
-
-// ======================================================
-// COOKIES
-// ======================================================
-
-const cookiesPath =
-   '/home/container/cookies.txt'
-
-const YOUTUBE_USER_AGENT =
-   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36'
-
-function getCookiesStatus() {
-
+async function downloadAudio(sock, job, asDocument, quoted) {
+   const { chatId, videoUrl, title } = job
+   let resolved
+   try { resolved = await callYoutubeResolve(videoUrl, { type: 'audio', format: DEFAULT_AUDIO_FORMAT }) }
+   catch (error) { return sendText(sock, chatId, '❌ Error de la API (audio): ' + error.message, quoted) }
+   const base = safeName(title)
+   const stamp = Date.now() + '-' + Math.random().toString(36).slice(2, 8)
+   const input = path.join(ensureTmp(), stamp + '_audio.bin')
+   const output = path.join(ensureTmp(), stamp + '_' + base + '.mp3')
+   let finalFile = output
    try {
-
-      if (!fs.existsSync(cookiesPath)) {
-         return false
-      }
-
-      const stats =
-         fs.statSync(
-            cookiesPath
-         )
-
-      return (
-         stats.isFile() &&
-         stats.size > 100
-      )
-
-   } catch {
-
-      return false
-   }
-}
-
-function validateCookiesFile() {
-
-   try {
-
-      if (!getCookiesStatus()) {
-         return false
-      }
-
-      const content =
-         fs.readFileSync(
-            cookiesPath,
-            'utf8'
-         )
-
-      const firstLine =
-         content
-            .split(/\r?\n/)
-            .find(
-               line =>
-                  line.trim().length > 0
-            )
-
-      return (
-         firstLine === '# HTTP Cookie File' ||
-         firstLine === '# Netscape HTTP Cookie File'
-      )
-
-   } catch {
-
-      return false
-   }
-}
-
-const cookiesAvailable =
-   validateCookiesFile()
-
-console.log(
-   cookiesAvailable
-      ? '🍪 YOUTUBE COOKIES: ON'
-      : '⚠️ YOUTUBE COOKIES: OFF'
-)
-
-// ======================================================
-// OPCIONES BASE
-// ======================================================
-
-const BASE_OPTIONS = {
-
-   noWarnings:
-      true,
-
-   noPlaylist:
-      true,
-
-   retries:
-      1,
-
-   noCheckCertificates:
-      true,
-
-   jsRuntimes:
-      'node',
-
-   userAgent:
-      YOUTUBE_USER_AGENT
-}
-
-// ======================================================
-// OPCIONES YT-DLP
-// ======================================================
-
-function youtubeOptions({
-   cookies = false,
-   format = null
-} = {}) {
-
-   const options = {
-      ...BASE_OPTIONS
-   }
-
-   options.extractorArgs =
-      'youtube:player_client=default'
-
-   if (
-      cookies &&
-      getCookiesStatus()
-   ) {
-
-      options.cookies =
-         cookiesPath
-   }
-
-   if (format) {
-
-      options.format =
-         format
-   }
-
-   return options
-}
-
-// ======================================================
-// DURACIÓN
-// ======================================================
-
-function formatDuration(seconds) {
-
-   if (
-      seconds === undefined ||
-      seconds === null ||
-      Number.isNaN(Number(seconds))
-   ) {
-      return 'Unknown'
-   }
-
-   const total =
-      Math.floor(
-         Number(seconds)
-      )
-
-   const minutes =
-      Math.floor(
-         total / 60
-      )
-
-   const remaining =
-      total % 60
-
-   return (
-      String(minutes) +
-      ':' +
-      String(remaining).padStart(
-         2,
-         '0'
-      )
-   )
-}
-
-// ======================================================
-// REACCIONES
-// ======================================================
-
-async function reactToSong(
-   sock,
-   message,
-   emoji
-) {
-
-   try {
-
-      if (!message?.key) {
-         return
-      }
-
-      await sock.sendMessage(
-         message.key.remoteJid,
-         {
-            react: {
-               text: emoji,
-               key: message.key
-            }
-         }
-      )
-
-   } catch {}
-}
-
-// ======================================================
-// BUSCAR YOUTUBE
-// ======================================================
-
-async function searchYouTube(query) {
-
-   console.log(`
-╭──────────────────────⬣
-│ 🔎 BUSCANDO YOUTUBE
-├──────────────────────⬣
-│ 🎵 ${query}
-│ ⚡ SEARCH RÁPIDO
-╰──────────────────────⬣
-`)
-
-   try {
-
-      const results =
-         await youtubedl(
-            'ytsearch1:' + query,
-            {
-               ...youtubeOptions({
-                  cookies: false
-               }),
-
-               flatPlaylist:
-                  true,
-
-               dumpSingleJson:
-                  true,
-
-               skipDownload:
-                  true,
-
-               playlistEnd:
-                  1
-            }
-         )
-
-      if (
-         !results ||
-         !Array.isArray(
-            results.entries
-         ) ||
-         !results.entries.length
-      ) {
-
-         throw new Error(
-            'No se encontraron resultados'
-         )
-      }
-
-      const selected =
-         results.entries[0]
-
-      if (
-         !selected ||
-         !selected.id
-      ) {
-
-         throw new Error(
-            'Resultado de YouTube inválido'
-         )
-      }
-
-      const videoUrl =
-         selected.webpage_url ||
-         (
-            'https://www.youtube.com/watch?v=' +
-            selected.id
-         )
-
-      console.log(
-         '✅ VIDEO:',
-         selected.title
-      )
-
-      console.log(
-         '🎯 URL:',
-         videoUrl
-      )
-
-      return {
-
-         url:
-            videoUrl,
-
-         title:
-            selected.title ||
-            'YouTube Audio',
-
-         thumbnail:
-            selected.thumbnail ||
-            (
-               selected.thumbnails &&
-               selected.thumbnails.length
-                  ? selected.thumbnails[
-                       selected.thumbnails.length - 1
-                    ].url
-                  : 'https://i.imgur.com/AfFp7pu.png'
-            ),
-
-         timestamp:
-            selected.duration_string ||
-            (
-               selected.duration
-                  ? formatDuration(
-                       selected.duration
-                    )
-                  : 'Unknown'
-            ),
-
-         author: {
-
-            name:
-               selected.uploader ||
-               selected.channel ||
-               'Unknown'
-         },
-
-         views:
-            selected.view_count ||
-            0
-      }
-
-   } catch (error) {
-
-      console.log(
-         '❌ SEARCH ERROR:',
-         error?.stderr ||
-         error?.message ||
-         error
-      )
-
-      throw error
-   }
-}
-
-// ======================================================
-// DESCARGA ULTRA RÁPIDA
-// ======================================================
-
-async function downloadAudio(url) {
-
-   const tempDir =
-      path.join(
-         os.tmpdir(),
-         'felbot-play'
-      )
-
-   if (
-      !fs.existsSync(
-         tempDir
-      )
-   ) {
-
-      fs.mkdirSync(
-         tempDir,
-         {
-            recursive: true
-         }
-      )
-   }
-
-   const fileId =
-      Date.now() +
-      '-' +
-      Math.random()
-         .toString(36)
-         .slice(2, 8)
-
-   const outputTemplate =
-      path.join(
-         tempDir,
-         fileId + '.%(ext)s'
-      )
-
-   const cookiesEnabled =
-      getCookiesStatus()
-
-   console.log(`
-╭──────────────────────⬣
-│ 🚀 DESCARGA RÁPIDA
-├──────────────────────⬣
-│ 🎵 YT-DLP
-│ ⚡ MODO M4A
-│ 🍪 COOKIES: ${cookiesEnabled ? 'ON' : 'OFF'}
-│ 🎯 CLIENT: default
-│ 🚫 SIN CONVERSIÓN
-╰──────────────────────⬣
-`)
-
-   try {
-
-      const options =
-         youtubeOptions({
-            cookies:
-               cookiesEnabled,
-
-            format:
-               'bestaudio[ext=m4a]/bestaudio'
-         })
-
-      options.output =
-         outputTemplate
-
-      options.quiet =
-         true
-
-      options.noProgress =
-         true
-
-      options.noWarnings =
-         true
-
-      options.noPlaylist =
-         true
-
-      options.concurrentFragments =
-         4
-
-      options.retries =
-         1
-
-      await youtubedl(
-         url,
-         options,
-         {
-            timeout:
-               90000
-         }
-      )
-
-      const files =
-         fs.readdirSync(
-            tempDir
-         ).filter(
-            file =>
-               file.startsWith(fileId) &&
-               !file.endsWith('.part') &&
-               !file.endsWith('.ytdl')
-         )
-
-      if (!files.length) {
-
-         throw new Error(
-            'No se descargó ningún archivo'
-         )
-      }
-
-      const downloadedFile =
-         files.find(
-            file =>
-               file
-                  .toLowerCase()
-                  .endsWith('.m4a')
-         ) ||
-         files[0]
-
-      const outputFile =
-         path.join(
-            tempDir,
-            downloadedFile
-         )
-
-      if (
-         !fs.existsSync(
-            outputFile
-         )
-      ) {
-
-         throw new Error(
-            'Archivo descargado inexistente'
-         )
-      }
-
-      const stats =
-         fs.statSync(
-            outputFile
-         )
-
-      if (!stats.size) {
-
-         throw new Error(
-            'Archivo descargado vacío'
-         )
-      }
-
-      const buffer =
-         fs.readFileSync(
-            outputFile
-         )
-
-      console.log(`
-╭──────────────────────⬣
-│ ✅ DESCARGA COMPLETADA
-├──────────────────────⬣
-│ 🍪 COOKIES: ${getCookiesStatus() ? 'ON' : 'OFF'}
-│ 📦 ${(stats.size / 1024 / 1024).toFixed(2)} MB
-│ ⚡ SIN FFMPEG
-╰──────────────────────⬣
-`)
-
-      for (
-         const file of files
-      ) {
-
+      await downloadCandidates(resolved.candidates, input)
+      if (audioFormat(input) === 'mp3') fs.renameSync(input, output)
+      else {
          try {
-
-            fs.unlinkSync(
-               path.join(
-                  tempDir,
-                  file
-               )
-            )
-
-         } catch {}
-      }
-
-      return buffer
-
-   } catch (error) {
-
-      console.log(
-         '❌ DOWNLOAD ERROR:',
-         error?.stderr ||
-         error?.message ||
-         error
-      )
-
-      try {
-
-         const files =
-            fs.readdirSync(
-               tempDir
-            ).filter(
-               file =>
-                  file.startsWith(fileId)
-            )
-
-         for (
-            const file of files
-         ) {
-
-            try {
-
-               fs.unlinkSync(
-                  path.join(
-                     tempDir,
-                     file
-                  )
-               )
-
-            } catch {}
+            await new Promise((resolve, reject) => {
+               ffmpeg(input).audioCodec('libmp3lame').audioBitrate('128k').format('mp3')
+                  .on('end', resolve).on('error', reject).save(output)
+            })
+            cleanup(input)
+         } catch (error) {
+            console.error('[play] FFmpeg audio:', error.message)
+            finalFile = input
+            asDocument = true
          }
-
-      } catch {}
-
-      throw error
-   }
+      }
+      if (fileSizeMB(finalFile) > MAX_MB) throw new Error('El audio supera el límite de ' + MAX_MB + ' MB')
+      const format = audioFormat(finalFile)
+      await sock.sendMessage(chatId, {
+         [asDocument ? 'document' : 'audio']: { url: finalFile },
+         mimetype: format === 'mp3' ? 'audio/mpeg' : 'application/octet-stream',
+         ptt: false,
+         fileName: base + (format === 'mp3' ? '.mp3' : '.' + (format || 'bin'))
+      }, { quoted })
+   } catch (error) {
+      await sendText(sock, chatId, '❌ Error descargando audio: ' + error.message, quoted)
+   } finally { cleanup(input, output) }
 }
-
-// ======================================================
-// COMMAND
-// ======================================================
-
-async function songCommand(
-   sock,
-   chatId,
-   message
-) {
-
-   const startTime =
-      Date.now()
-
-   let loading = null
-
+async function downloadVideo(sock, job, asDocument, quoted) {
+   const { chatId, videoUrl, title } = job
+   const quality = VALID_QUALITIES.has(job.videoQuality) ? job.videoQuality : DEFAULT_VIDEO_QUALITY
+   let resolved
+   try { resolved = await callYoutubeResolve(videoUrl, { type: 'video', quality }) }
+   catch (error) { return sendText(sock, chatId, '❌ Error de la API (video): ' + error.message, quoted) }
+   const base = safeName(title)
+   const stamp = Date.now() + '-' + Math.random().toString(36).slice(2, 8)
+   const file = path.join(ensureTmp(), stamp + '_' + base + '_' + quality + 'p.mp4')
    try {
-
-      console.log(`
-╭──────────────────────⬣
-│ 🎶 NUEVA DESCARGA
-╰──────────────────────⬣
-`)
-
-      const text =
-         message?.message?.conversation ||
-         message?.message?.extendedTextMessage?.text ||
-         ''
-
-      const query =
-         text
-            .split(' ')
-            .slice(1)
-            .join(' ')
-            .trim()
-
-      if (!query) {
-
-         return await sock.sendMessage(
-            chatId,
-            {
-               text:
-                  '🎵 Escribe una canción 😭\n\n' +
-                  'Ejemplo:\n' +
-                  '.play Canserbero - Es épico'
-            },
-            {
-               quoted:
-                  message
-            }
-         )
+      const state = await downloadCandidates(resolved.candidates, file, isMp4)
+      if (!state.formatOk) {
+         asDocument = true
+         await sendText(sock, chatId, '⚠️ La API no entregó un MP4 reproducible; te lo envío como documento.', quoted)
       }
-
-      await reactToSong(
-         sock,
-         message,
-         '🔎'
-      )
-
-      let video
-
-      if (
-         query.includes('youtube.com') ||
-         query.includes('youtu.be')
-      ) {
-
-         console.log(
-            '🔗 URL DIRECTA'
-         )
-
-         video = {
-
-            url:
-               query,
-
-            title:
-               'YouTube Audio',
-
-            thumbnail:
-               'https://i.imgur.com/AfFp7pu.png',
-
-            timestamp:
-               'Unknown',
-
-            author: {
-               name:
-                  'YouTube'
-            },
-
-            views:
-               0
-         }
-
-      } else {
-
-         const cacheKey =
-            query
-               .toLowerCase()
-               .trim()
-
-         if (
-            searchCache.has(
-               cacheKey
-            )
-         ) {
-
-            console.log(
-               '⚡ SEARCH CACHE'
-            )
-
-            video =
-               searchCache.get(
-                  cacheKey
-               )
-
-         } else {
-
-            video =
-               await searchYouTube(
-                  query
-               )
-
-            searchCache.set(
-               cacheKey,
-               video
-            )
-
-            limitMapSize(
-               searchCache
-            )
-
-            setTimeout(
-               () => {
-
-                  searchCache.delete(
-                     cacheKey
-                  )
-
-               },
-               1000 * 60 * 5
-            )
-         }
-      }
-
-      await reactToSong(
-         sock,
-         message,
-         '🎵'
-      )
-
-      loading =
-         await sock.sendMessage(
-            chatId,
-            {
-               image: {
-                  url:
-                     video.thumbnail
-               },
-
-               caption:
-`🎶 *DESCARGANDO AUDIO*
-
-> ❀ Título: ${video.title}
-> ❀ Autor: ${video.author?.name || 'Unknown'}
-> ❀ Duración: ${video.timestamp || 'Unknown'}
-> ❀ Vistas: ${Number(
-   video.views || 0
-).toLocaleString()}
-
-> ⚡ Descargando audio...
-> ${createBar(25)} 25%`
-            },
-            {
-               quoted:
-                  message
-            }
-         )
-
-      const audioBuffer =
-         await downloadAudio(
-            video.url
-         )
-
-      if (
-         !audioBuffer ||
-         audioBuffer.length < 50000
-      ) {
-
-         throw new Error(
-            'Audio inválido'
-         )
-      }
-
-      const safeTitle =
-         (
-            video.title ||
-            'song'
-         )
-            .replace(
-               /[^\w\s-]/g,
-               ''
-            )
-            .trim()
-            .slice(
-               0,
-               100
-            ) ||
-         'song'
-
-      try {
-
-         await sock.sendMessage(
-            chatId,
-            {
-               edit:
-                  loading.key,
-
-               image: {
-                  url:
-                     video.thumbnail
-               },
-
-               caption:
-`⚡ *AUDIO LISTO*
-
-> ❀ Título: ${safeTitle}
-
-> 🚀 Enviando audio...
-> ${createBar(90)} 90%`
-            }
-         )
-
-      } catch {}
-
-      await sock.sendMessage(
-         chatId,
-         {
-            audio:
-               audioBuffer,
-
-            mimetype:
-               'audio/mp4',
-
-            fileName:
-               safeTitle +
-               '.m4a',
-
-            ptt:
-               false
-         },
-         {
-            quoted:
-               message
-         }
-      )
-
-      await reactToSong(
-         sock,
-         message,
-         '✅'
-      )
-
-      const totalTime =
-         (
-            (
-               Date.now() -
-               startTime
-            ) /
-            1000
-         ).toFixed(1)
-
-      try {
-
-         await sock.sendMessage(
-            chatId,
-            {
-               edit:
-                  loading.key,
-
-               image: {
-                  url:
-                     video.thumbnail
-               },
-
-               caption:
-`✅ *AUDIO ENVIADO*
-
-> ❀ Título: ${safeTitle}
-> ❀ Autor: ${video.author?.name || 'Unknown'}
-> ❀ Duración: ${video.timestamp || 'Unknown'}
-
-> ⚡ Completado en ${totalTime}s
-> ${createBar(100)} 100%`
-            }
-         )
-
-      } catch {}
-
-      console.log(`
-╭──────────────────────⬣
-│ ✅ PLAY COMPLETADO
-├──────────────────────⬣
-│ 🎧 ${safeTitle}
-│ ⚡ MODO RÁPIDO
-│ 📦 M4A DIRECTO
-│ ⏱️ ${totalTime}s
-╰──────────────────────⬣
-`)
-
-      cleanMemory()
-
-      return true
-
+      if (fileSizeMB(file) > MAX_MB) throw new Error('El video supera el límite de ' + MAX_MB + ' MB')
+      await sock.sendMessage(chatId, {
+         [asDocument ? 'document' : 'video']: { url: file },
+         mimetype: isMp4(file) ? 'video/mp4' : 'application/octet-stream',
+         fileName: base + '_' + quality + 'p' + (isMp4(file) ? '.mp4' : '.bin')
+      }, { quoted })
    } catch (error) {
-
-      console.error(
-         '❌ SONG ERROR:',
-         error?.stderr ||
-         error?.message ||
-         error
-      )
-
-      await reactToSong(
-         sock,
-         message,
-         '❌'
-      )
-
-      try {
-
-         if (loading) {
-
-            await sock.sendMessage(
-               chatId,
-               {
-                  edit:
-                     loading.key,
-
-                  image: {
-                     url:
-                        'https://i.imgur.com/AfFp7pu.png'
-                  },
-
-                  caption:
-`❌ *ERROR EN LA DESCARGA*
-
-> No se pudo obtener el audio.
-
-> 🔄 Inténtalo nuevamente.`
-               }
-            )
-
-         } else {
-
-            await sock.sendMessage(
-               chatId,
-               {
-                  text:
-                     '❌ Error descargando el audio 😭'
-               },
-               {
-                  quoted:
-                     message
-               }
-            )
-         }
-
-      } catch {}
-
-      cleanMemory()
-
-      return false
+      await sendText(sock, chatId, '❌ Error descargando video: ' + error.message, quoted)
+   } finally { cleanup(file, file + '.alt') }
+}
+async function processChoice(sock, job, choice, quoted) {
+   const chatId = job.chatId
+   if (choice === 'audio' || choice === 'audiodoc') {
+      await react(sock, quoted, choice === 'audio' ? '🎵' : '📄')
+      await sendText(sock, chatId, choice === 'audio' ? '🎶 Descargando audio MP3...' : '🎶 Descargando audio como documento...', quoted)
+      return downloadAudio(sock, job, choice === 'audiodoc', quoted)
+   }
+   const match = choice.match(/^(video|videodoc)(?:_(144|240|360|720))?$/i)
+   if (match) {
+      const doc = match[1].toLowerCase() === 'videodoc'
+      const quality = match[2] || job.videoQuality || DEFAULT_VIDEO_QUALITY
+      await react(sock, quoted, doc ? '📁' : '🎬')
+      await sendText(sock, chatId, '🎥 Descargando video (' + quality + 'p)...', quoted)
+      return downloadVideo(sock, { ...job, videoQuality: quality }, doc, quoted)
    }
 }
+async function handleIncoming(sock, event) {
+   for (const message of event.messages || []) {
+      if (!message?.message || message.key?.fromMe) continue
+      const chatId = message.key?.remoteJid
+      if (!chatId) continue
+      if (message.message.reactionMessage) {
+         const targetId = message.message.reactionMessage.key?.id
+         const job = pending.get(targetId)
+         if (!job || job.sock !== sock || job.chatId !== chatId) continue
+         const map = { '👍': 'audio', '❤️': 'video', '📄': 'audiodoc', '📁': 'videodoc' }
+         const choice = map[message.message.reactionMessage.text]
+         if (choice) await processChoice(sock, job, choice, job.previewMessage)
+         continue
+      }
+      const selectedId = getSelectedId(message)
+      if (selectedId) {
+         const quotedId = getQuotedId(message)
+         let job = quotedId ? pending.get(quotedId) : null
+         if (!job) job = [...pending.values()].filter(item => item.sock === sock && item.chatId === chatId)
+            .sort((a, b) => b.createdAt - a.createdAt)[0]
+         if (!job || job.sock !== sock || job.chatId !== chatId) continue
+         const id = String(selectedId)
+         if (id.endsWith('play_audio')) await processChoice(sock, job, 'audio', message)
+         else if (id.endsWith('play_audiodoc')) await processChoice(sock, job, 'audiodoc', message)
+         else {
+            const videoDoc = id.match(/play_videodoc_(144|240|360|720)$/)
+            const video = id.match(/play_video_(144|240|360|720)$/)
+            if (videoDoc) await processChoice(sock, job, 'videodoc_' + videoDoc[1], message)
+            else if (video) await processChoice(sock, job, 'video_' + video[1], message)
+         }
+         continue
+      }
+      const quotedId = getQuotedId(message)
+      const job = pending.get(quotedId)
+      if (!job || job.sock !== sock || job.chatId !== chatId) continue
+      const text = getMessageText(message).toLowerCase()
+      const first = text.split(/\s+/)[0] || ''
+      const quality = extractQuality(text)
+      if (['1', 'audio'].includes(first)) await processChoice(sock, job, 'audio', message)
+      else if (['4', 'audiodoc'].includes(first)) await processChoice(sock, job, 'audiodoc', message)
+      else if (['2', 'video'].includes(first)) await processChoice(sock, { ...job, videoQuality: quality || job.videoQuality }, 'video_' + (quality || job.videoQuality), message)
+      else if (['3', 'videodoc'].includes(first)) await processChoice(sock, { ...job, videoQuality: quality || job.videoQuality }, 'videodoc_' + (quality || job.videoQuality), message)
+   }
+}
+async function songCommand(sock, chatId, message) {
+   const text = getMessageText(message)
+   const raw = text.replace(/^\s*\.\S+\s*/, '').trim()
+   const parsed = splitQueryAndQuality(raw)
+   if (!parsed.query) {
+      return sendText(sock, chatId, '🎵 *FELBOT PLAY*\n\nUsa: *.play nombre de la canción [calidad]*\nEjemplo: *.play Canserbero Es épico 720*', message)
+   }
+   await react(sock, message, '⏳')
+   try {
+      const video = /^https?:\/\/(www\.)?(youtube\.com|youtu\.be)\//i.test(parsed.query)
+         ? await getVideoFromUrl(parsed.query)
+         : await searchVideo(parsed.query)
+      const quality = VALID_QUALITIES.has(parsed.quality) ? parsed.quality : DEFAULT_VIDEO_QUALITY
+      const caption = [
+         '𝕱𝖊𝖑𝖇𝖔𝖙 夜  •  *RESULTADO ENCONTRADO*',
+         '',
+         '> 🎵 *Título:* ' + video.title,
+         '> 👤 *Canal:* ' + video.author,
+         '> ⏱️ *Duración:* ' + video.duration,
+         '> 👀 *Vistas:* ' + Number(video.views || 0).toLocaleString(),
+         '> 🔗 *Enlace:* ' + video.url,
+         '',
+         '📥 *Selecciona qué deseas descargar:*',
+         '• Audio MP3',
+         '• Video de 144p a 720p',
+         '• Enviar como documento',
+         '',
+         'Si no te aparecen los botones, responde citando este mensaje:',
+         '*1* Audio · *2* Video · *3* Video documento · *4* Audio documento',
+         '',
+         'Puedes indicar calidad: _video 720_ o _videodoc 240_.'
+      ].join('\n')
+      const menu = [{
+         text: '📥 Menú de descarga',
+         sections: [
+            { title: '🎵 AUDIO', rows: [
+               { title: '🎵 Audio MP3', description: 'Audio reproducible', id: '.play_audio' },
+               { title: '📄 Audio como documento', description: 'Archivo MP3', id: '.play_audiodoc' }
+            ]},
+            { title: '🎬 VIDEO', rows: [
+               { title: '🎬 Video 144p', description: 'El más liviano', id: '.play_video_144' },
+               { title: '🎬 Video 240p', description: 'Liviano', id: '.play_video_240' },
+               { title: '🎬 Video 360p', description: 'Calidad estándar', id: '.play_video_360' },
+               { title: '🎬 Video 720p', description: 'HD', id: '.play_video_720' }
+            ]},
+            { title: '📁 VIDEO COMO DOCUMENTO', rows: [
+               { title: '📁 Documento 144p', description: 'MP4 descargable', id: '.play_videodoc_144' },
+               { title: '📁 Documento 240p', description: 'MP4 descargable', id: '.play_videodoc_240' },
+               { title: '📁 Documento 360p', description: 'MP4 descargable', id: '.play_videodoc_360' },
+               { title: '📁 Documento 720p', description: 'MP4 descargable', id: '.play_videodoc_720' }
+            ]}
+         ]
+      }]
+      let preview
+      if (!isIphone(message)) {
+         try {
+            preview = await sock.sendMessage(chatId, {
+               image: video.thumbnail ? { url: video.thumbnail } : undefined,
+               caption, footer: '❦ 𝕱𝖊𝖑𝖇𝖔𝖙 夜 — Selecciona una opción ❦',
+               buttons: menu, headerType: 4
+            }, { quoted: message })
+         } catch (error) {
+            console.log('[play] Menú interactivo no disponible; usando alternativa:', error.message)
+         }
+      }
+      if (!preview) {
+         const fallback = caption + (isIphone(message)
+            ? '\n\nReacciona: 👍 audio · ❤️ video · 📄 audio documento · 📁 video documento'
+            : '')
+         preview = await sock.sendMessage(chatId, video.thumbnail
+            ? { image: { url: video.thumbnail }, caption: fallback }
+            : { text: fallback }, { quoted: message })
+      }
+      const job = {
+         sock, chatId, videoUrl: video.url, title: video.title, thumbnail: video.thumbnail,
+         duration: video.duration, views: video.views, author: video.author,
+         videoQuality: quality, previewMessage: preview, createdAt: Date.now()
+      }
+      pending.set(preview.key.id, job)
+      job.timer = setTimeout(() => pending.delete(preview.key.id), 10 * 60 * 1000)
+      await react(sock, message, '✅')
+      if (!sock._felbotPlayListener) {
+         sock._felbotPlayListener = true
+         sock.ev.on('messages.upsert', event => {
+            handleIncoming(sock, event).catch(error => console.error('[play] Listener:', error))
+         })
+      }
+      return true
+   } catch (error) {
+      console.error('[play] Error:', error?.response?.data || error.message || error)
+      await react(sock, message, '❌')
+      return sendText(sock, chatId, '❌ No pude encontrar esa canción o preparar el menú.\n\n' + error.message, message)
+   }
+}
+async function handleSongButton() { return false }
 
-// ======================================================
-// EXPORT
-// ======================================================
-
-module.exports =
-   songCommand
+module.exports = songCommand
+module.exports.songCommand = songCommand
+module.exports.handleSongButton = handleSongButton
