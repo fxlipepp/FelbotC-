@@ -6,6 +6,7 @@ const os = require('os')
 const { pipeline } = require('stream')
 const { promisify } = require('util')
 const ffmpeg = require('fluent-ffmpeg')
+const { generateWAMessageFromContent } = require('@whiskeysockets/baileys')
 
 const streamPipe = promisify(pipeline)
 const API_BASE = (process.env.API_BASE || 'https://api.orbitxspace.com').replace(/\/+$/, '')
@@ -326,28 +327,56 @@ async function songCommand(sock, chatId, message) {
          '📥 *¿Qué deseas descargar?*',
          '🎵 Audio MP3  •  🎬 Video ' + quality + 'p'
       ].join('\n')
-      const menu = [
-         { buttonId: '.play_audio', buttonText: { displayText: '🎵 Audio MP3' }, type: 1 },
-         { buttonId: '.play_video', buttonText: { displayText: '🎬 Video ' + quality + 'p' }, type: 1 }
-      ]
-      let preview
-      if (!isIphone(message)) {
-         try {
-            preview = await sock.sendMessage(chatId, {
-               image: video.thumbnail ? { url: video.thumbnail } : undefined,
-               caption, footer: '❦ 𝕱𝖊𝖑𝖇𝖔𝖙 夜 — Selecciona una opción ❦',
-               buttons: menu, headerType: 4
-            }, { quoted: message })
-         } catch (error) {
-            console.log('[play] Menú interactivo no disponible; usando alternativa:', error.message)
+      const buttons = [
+         {
+            name: 'quick_reply',
+            buttonParamsJson: JSON.stringify({
+               display_text: '🎵 AUDIO MP3',
+               id: 'play_audio'
+            })
+         },
+         {
+            name: 'quick_reply',
+            buttonParamsJson: JSON.stringify({
+               display_text: '🎬 VIDEO ' + quality + 'P',
+               id: 'play_video'
+            })
          }
-      }
-      if (!preview) {
-         const fallback = caption + '\n\nResponde citando este mensaje: 1 para audio o 2 para video.'
-         preview = await sock.sendMessage(chatId, video.thumbnail
-            ? { image: { url: video.thumbnail }, caption: fallback }
-            : { text: fallback }, { quoted: message })
-      }
+      ]
+
+      const menuMessage = generateWAMessageFromContent(
+         chatId,
+         {
+            interactiveMessage: {
+               header: {
+                  title: '𝕱𝖊𝖑𝖇𝖔𝖙 夜',
+                  subtitle: 'Descarga multimedia'
+               },
+               body: {
+                  text: caption
+               },
+               footer: {
+                  text: '❦ 𝕱𝖊𝖑𝖇𝖔𝖙 夜 — Selecciona una opción ❦'
+               },
+               nativeFlowMessage: {
+                  buttons
+               }
+            }
+         },
+         {
+            quoted: message
+         }
+      )
+
+      await sock.relayMessage(
+         chatId,
+         menuMessage.message,
+         {
+            messageId: menuMessage.key.id
+         }
+      )
+
+      const preview = menuMessage
       const job = {
          sock, chatId, videoUrl: video.url, title: video.title, thumbnail: video.thumbnail,
          duration: video.duration, views: video.views, author: video.author,
