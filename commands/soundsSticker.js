@@ -24,7 +24,10 @@ const MAX_STICKER_BYTES = 900 * 1024;
 
 // === Carpeta temporal ===
 const tempFolder = path.join(process.cwd(), "temp", "sound-sticker");
-if (!fs.existsSync(tempFolder)) fs.mkdirSync(tempFolder, { recursive: true });
+function ensureTempFolder() {
+  fs.mkdirSync(tempFolder, { recursive: true });
+}
+ensureTempFolder();
 
 // Sesiones activas: "chat:remitente" → { stickerBuffer, isAnimated, conn, ... }
 const sessions = new Map();
@@ -175,6 +178,7 @@ function isWebpAnimated(buf) {
 const VF_BASE = "scale=512:512:force_original_aspect_ratio=decrease,format=rgba,pad=512:512:(ow-iw)/2:(oh-ih)/2:color=#00000000,setsar=1";
 
 async function imageToWebp(media) {
+  ensureTempFolder();
   const tmpIn = path.join(tempFolder, randomFileName("jpg"));
   const tmpOut = path.join(tempFolder, randomFileName("webp"));
   try {
@@ -194,6 +198,7 @@ async function imageToWebp(media) {
 }
 
 async function videoToWebp(media, seconds = MAX_DURATION) {
+  ensureTempFolder();
   const tmpIn = path.join(tempFolder, randomFileName("mp4"));
   const tmpOut = path.join(tempFolder, randomFileName("webp"));
   try {
@@ -240,6 +245,7 @@ function parseFfmpegDuration(stderr) {
 }
 
 async function toOggOpus(buffer, ext, maxSeconds = MAX_DURATION) {
+  ensureTempFolder();
   const tmpIn = path.join(tempFolder, randomFileName(ext));
   const tmpOut = path.join(tempFolder, randomFileName("ogg"));
   try {
@@ -340,6 +346,7 @@ function firstFrameLength(buf) {
 
 // Duración real de un video (para que el audio dure lo mismo que el sticker).
 async function videoSeconds(buffer, fallback = 0) {
+  ensureTempFolder();
   const tmpIn = path.join(tempFolder, randomFileName("mp4"));
   try {
     fs.writeFileSync(tmpIn, buffer);
