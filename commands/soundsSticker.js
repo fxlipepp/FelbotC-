@@ -153,7 +153,7 @@ async function createWaveform(audioFile) {
     const { stdout } = await execFileAsync('ffmpeg', [
         '-v', 'error', '-i', audioFile, '-vn',
         '-f', 's16le', '-ac', '1', '-ar', '8000', 'pipe:1'
-    ], { timeout: 30000, maxBuffer: 4 * 1024 * 1024 });
+    ], { timeout: 30000, maxBuffer: 4 * 1024 * 1024, encoding: 'buffer' });
 
     const pcm = Buffer.from(stdout);
     const samples = Math.floor(pcm.length / 2);
