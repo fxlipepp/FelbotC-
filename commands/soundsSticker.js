@@ -13,7 +13,7 @@ const {
     generateWAMessageFromContent,
     proto
 } = require('@whiskeysockets/baileys');
-const { getVideo, isValidTikTokUrl } = require('./tiktok');
+const { getVideoCandidates, isValidTikTokUrl } = require('./tiktok');
 const { attachAudio, detachAudio, installStickerAudioPatch } = require('../lib/stickerAudioPatch');
 
 const execFileAsync = promisify(execFile);
@@ -62,20 +62,43 @@ function getQuotedSticker(message) {
     };
 }
 
-async function downloadTikTok(url) {
-    const result = await getVideo(url);
-    if (!result?.video) throw new Error('No pude obtener el video de TikTok.');
+async function downloadTikTok(url, outputFile) {
+    const candidates = await getVideoCandidates(url);
+    if (!candidates.length) throw new Error('Los servidores no encontraron un enlace de descarga válido.');
 
-    const response = await axios.get(result.video, {
-        responseType: 'arraybuffer',
-        timeout: 45000,
-        maxContentLength: 80 * 1024 * 1024,
-        headers: {
-            'User-Agent': 'Mozilla/5.0',
-            'Referer': 'https://www.tiktok.com/'
+    let lastError;
+    for (const candidate of candidates) {
+        try {
+            const response = await axios.get(candidate.video, {
+                responseType: 'arraybuffer',
+                timeout: 45000,
+                maxContentLength: 80 * 1024 * 1024,
+                maxBodyLength: 80 * 1024 * 1024,
+                headers: {
+                    'User-Agent': 'Mozilla/5.0',
+                    'Referer': 'https://www.tiktok.com/'
+                },
+                validateStatus: status => status >= 200 && status < 300
+            });
+
+            const buffer = Buffer.from(response.data);
+            if (buffer.length < 4096) throw new Error('El servidor devolvió un archivo incompleto.');
+            fs.writeFileSync(outputFile, buffer);
+
+            // No confiar solo en el enlace de la API: comprobar que sea un MP4
+            // legible y que realmente tenga una pista de audio antes de continuar.
+            const duration = await probeDuration(outputFile);
+            return duration;
+        } catch (error) {
+            lastError = error;
+            try { fs.unlinkSync(outputFile); } catch {}
         }
-    });
-    return Buffer.from(response.data);
+    }
+
+    throw new Error(
+        'Los enlaces de TikTok devolvieron archivos dañados o sin audio.' +
+        (lastError?.message ? ' Último error: ' + lastError.message : '')
+    );
 }
 
 async function probeDuration(file) {
@@ -188,11 +211,7 @@ async function soundStickerCommand(sock, chatId, message) {
             .png()
             .toFile(stickerFrame);
 
-        const videoBuffer = await downloadTikTok(url);
-        if (!videoBuffer?.length) throw new Error('TikTok devolvió un archivo vacío.');
-        fs.writeFileSync(tiktokVideo, videoBuffer);
-
-        const duration = await probeDuration(tiktokVideo);
+        const duration = await downloadTikTok(url, tiktokVideo);
         await Promise.all([
             createAnimatedSticker(stickerFrame, tiktokVideo, stickerOutput, duration),
             createOpusAudio(tiktokVideo, audioOutput, duration)
