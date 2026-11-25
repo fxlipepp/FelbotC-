@@ -162,11 +162,12 @@ async function getVideoCandidates(url) {
         }
     }
 
-    if (!candidates.length) {
-        const lastTry = await fallback(url);
-        if (typeof lastTry?.video === 'string' && /^https?:\/\//i.test(lastTry.video)) {
-            candidates.push(lastTry);
-        }
+    // Agregar Ruhend como último recurso incluso si otros extractores
+    // devolvieron URLs: una URL puede existir y aun así entregar HTML o MP4 roto.
+    const lastTry = await fallback(url);
+    if (typeof lastTry?.video === 'string' && /^https?:\/\//i.test(lastTry.video) && !seen.has(lastTry.video)) {
+        seen.add(lastTry.video);
+        candidates.push(lastTry);
     }
 
     return candidates;
