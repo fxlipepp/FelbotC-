@@ -2,7 +2,6 @@
 
 const fs = require('fs');
 const path = require('path');
-const os = require('os');
 const axios = require('axios');
 const sharp = require('sharp');
 const { promisify } = require('util');
@@ -117,7 +116,7 @@ async function probeDuration(file) {
     return Math.min(MAX_AUDIO_SECONDS, duration);
 }
 
-async function createAnimatedSticker(inputPng, videoFile, outputWebp, duration) {
+async function createAnimatedSticker(inputGif, videoFile, outputWebp, duration) {
     const attempts = [
         { fps: 12, quality: 55 },
         { fps: 10, quality: 40 },
@@ -129,7 +128,7 @@ async function createAnimatedSticker(inputPng, videoFile, outputWebp, duration) 
         await execFileAsync('ffmpeg', [
             '-v', 'error',
             '-y',
-            '-loop', '1', '-i', inputPng,
+            '-stream_loop', '-1', '-i', inputGif,
             '-t', duration.toFixed(3),
             '-vf', `fps=${setting.fps},scale=512:512:force_original_aspect_ratio=decrease,format=rgba,pad=512:512:(ow-iw)/2:(oh-ih)/2:color=0x00000000`,
             '-an',
@@ -148,6 +147,30 @@ async function createAnimatedSticker(inputPng, videoFile, outputWebp, duration) 
     }
 
     throw new Error('El sticker supera el límite de 500 KB incluso después de comprimirlo.');
+}
+
+async function createWaveform(audioFile) {
+    const { stdout } = await execFileAsync('ffmpeg', [
+        '-v', 'error', '-i', audioFile, '-vn',
+        '-f', 's16le', '-ac', '1', '-ar', '8000', 'pipe:1'
+    ], { timeout: 30000, maxBuffer: 4 * 1024 * 1024 });
+
+    const pcm = Buffer.from(stdout);
+    const samples = Math.floor(pcm.length / 2);
+    const bars = 64;
+    const levels = new Array(bars).fill(0);
+    if (!samples) throw new Error('No pude generar la forma de onda del audio.');
+
+    const perBar = Math.max(1, Math.floor(samples / bars));
+    for (let bar = 0; bar < bars; bar++) {
+        const from = bar * perBar;
+        const to = Math.min(samples, from + perBar);
+        let sum = 0;
+        for (let i = from; i < to; i++) sum += Math.abs(pcm.readInt16LE(i * 2));
+        levels[bar] = to > from ? sum / (to - from) : 0;
+    }
+    const peak = Math.max(...levels) || 1;
+    return Uint8Array.from(levels.map(value => Math.round((value / peak) * 100)));
 }
 
 async function createOpusAudio(videoFile, outputOgg, duration) {
@@ -189,7 +212,7 @@ async function soundStickerCommand(sock, chatId, message) {
     fs.mkdirSync(tempRoot, { recursive: true });
     const workDir = fs.mkdtempSync(path.join(tempRoot, 'sound-sticker-'));
     const stickerInput = path.join(workDir, 'quoted.webp');
-    const stickerFrame = path.join(workDir, 'quoted.png');
+    const stickerGif = path.join(workDir, 'quoted.gif');
     const tiktokVideo = path.join(workDir, 'tiktok.mp4');
     const stickerOutput = path.join(workDir, 'sound.webp');
     const audioOutput = path.join(workDir, 'sound.ogg');
@@ -204,16 +227,16 @@ async function soundStickerCommand(sock, chatId, message) {
         if (!stickerBuffer?.length) throw new Error('No pude descargar el sticker citado.');
         fs.writeFileSync(stickerInput, stickerBuffer);
 
-        // Sharp decodes animated WebP correctly; FFmpeg's WebP demuxer may reject ANIM/ANMF chunks.
-        await sharp(stickerBuffer, { animated: false, page: 0 })
-            .rotate()
-            .resize(512, 512, { fit: 'inside', withoutEnlargement: true })
-            .png()
-            .toFile(stickerFrame);
+        // Preserve every frame: extracting page 0 turns an animated sticker into a still image.
+        // Sharp decodes animated WebP and writes GIF, which FFmpeg can reliably read.
+        await sharp(stickerBuffer, { animated: true })
+            .resize(512, 512, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })
+            .gif()
+            .toFile(stickerGif);
 
         const duration = await downloadTikTok(url, tiktokVideo);
         await Promise.all([
-            createAnimatedSticker(stickerFrame, tiktokVideo, stickerOutput, duration),
+            createAnimatedSticker(stickerGif, tiktokVideo, stickerOutput, duration),
             createOpusAudio(tiktokVideo, audioOutput, duration)
         ]);
 
@@ -233,6 +256,7 @@ async function soundStickerCommand(sock, chatId, message) {
         ]);
 
         const audio = uploadedAudio.audioMessage;
+        const waveform = await createWaveform(audioOutput);
         const audioBytes = proto.Message.AudioMessage.encode(
             proto.Message.AudioMessage.create({
                 url: audio.url,
@@ -244,7 +268,8 @@ async function soundStickerCommand(sock, chatId, message) {
                 mediaKey: audio.mediaKey,
                 fileEncSha256: audio.fileEncSha256,
                 directPath: audio.directPath,
-                mediaKeyTimestamp: audio.mediaKeyTimestamp || Math.floor(Date.now() / 1000)
+                mediaKeyTimestamp: audio.mediaKeyTimestamp || Math.floor(Date.now() / 1000),
+                waveform
             })
         ).finish();
 
@@ -258,6 +283,51 @@ async function soundStickerCommand(sock, chatId, message) {
                 { stickerMessage: sticker },
                 { quoted: message, userJid: sock.user?.id }
             );
+
+            // Confirm the nested StickerMessage field 26 (AudioMessage) survived encoding.
+            const encoded = Buffer.from(proto.Message.encode(outgoing.message).finish());
+            const readVarint = (buffer, state) => {
+                let value = 0n;
+                let shift = 0n;
+                while (state.offset < buffer.length) {
+                    const byte = buffer[state.offset++];
+                    value |= BigInt(byte & 0x7f) << shift;
+                    if (!(byte & 0x80)) return Number(value);
+                    shift += 7n;
+                }
+                throw new Error('Protobuf incompleto al validar el Sound Sticker.');
+            };
+            const findBytesField = (buffer, wanted) => {
+                const state = { offset: 0 };
+                while (state.offset < buffer.length) {
+                    const tag = readVarint(buffer, state);
+                    const field = tag >> 3;
+                    const wire = tag & 7;
+                    if (wire === 2) {
+                        const length = readVarint(buffer, state);
+                        const end = state.offset + length;
+                        if (end > buffer.length) throw new Error('Longitud protobuf inválida.');
+                        const payload = buffer.subarray(state.offset, end);
+                        if (field === wanted) return payload;
+                        state.offset = end;
+                    } else if (wire === 0) {
+                        readVarint(buffer, state);
+                    } else if (wire === 1) {
+                        state.offset += 8;
+                    } else if (wire === 5) {
+                        state.offset += 4;
+                    } else {
+                        throw new Error('Tipo protobuf no compatible al validar audio.');
+                    }
+                }
+                return null;
+            };
+            const stickerPayload = findBytesField(encoded, 26);
+            const embeddedAudio = stickerPayload && findBytesField(stickerPayload, 26);
+            if (!embeddedAudio) {
+                throw new Error('Baileys no incluyó el audio dentro del StickerMessage; se canceló el envío para evitar otro sticker mudo.');
+            }
+
             await sock.relayMessage(chatId, outgoing.message, { messageId: outgoing.key.id });
         } finally {
             detachAudio(sticker.fileSha256);
