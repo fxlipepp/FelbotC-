@@ -4,6 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const axios = require('axios');
+const sharp = require('sharp');
 const { promisify } = require('util');
 const { execFile } = require('child_process');
 const {
@@ -93,7 +94,7 @@ async function probeDuration(file) {
     return Math.min(MAX_AUDIO_SECONDS, duration);
 }
 
-async function createAnimatedSticker(inputWebp, videoFile, outputWebp, duration) {
+async function createAnimatedSticker(inputPng, videoFile, outputWebp, duration) {
     const attempts = [
         { fps: 12, quality: 55 },
         { fps: 10, quality: 40 },
@@ -103,8 +104,9 @@ async function createAnimatedSticker(inputWebp, videoFile, outputWebp, duration)
 
     for (const setting of attempts) {
         await execFileAsync('ffmpeg', [
+            '-v', 'error',
             '-y',
-            '-stream_loop', '-1', '-i', inputWebp,
+            '-loop', '1', '-i', inputPng,
             '-t', duration.toFixed(3),
             '-vf', `fps=${setting.fps},scale=512:512:force_original_aspect_ratio=decrease,format=rgba,pad=512:512:(ow-iw)/2:(oh-ih)/2:color=0x00000000`,
             '-an',
@@ -113,10 +115,10 @@ async function createAnimatedSticker(inputWebp, videoFile, outputWebp, duration)
             '-q:v', String(setting.quality),
             '-compression_level', '4',
             '-loop', '0',
-            '-vsync', '0',
+            '-fps_mode', 'passthrough',
             '-pix_fmt', 'yuva420p',
             outputWebp
-        ], { timeout: 90000, maxBuffer: 4 * 1024 * 1024 });
+        ], { timeout: 90000, maxBuffer: 1024 * 1024 });
 
         const size = fs.statSync(outputWebp).size;
         if (size <= MAX_STICKER_BYTES) return;
@@ -164,6 +166,7 @@ async function soundStickerCommand(sock, chatId, message) {
     fs.mkdirSync(tempRoot, { recursive: true });
     const workDir = fs.mkdtempSync(path.join(tempRoot, 'sound-sticker-'));
     const stickerInput = path.join(workDir, 'quoted.webp');
+    const stickerFrame = path.join(workDir, 'quoted.png');
     const tiktokVideo = path.join(workDir, 'tiktok.mp4');
     const stickerOutput = path.join(workDir, 'sound.webp');
     const audioOutput = path.join(workDir, 'sound.ogg');
@@ -178,13 +181,20 @@ async function soundStickerCommand(sock, chatId, message) {
         if (!stickerBuffer?.length) throw new Error('No pude descargar el sticker citado.');
         fs.writeFileSync(stickerInput, stickerBuffer);
 
+        // Sharp decodes animated WebP correctly; FFmpeg's WebP demuxer may reject ANIM/ANMF chunks.
+        await sharp(stickerBuffer, { animated: false, page: 0 })
+            .rotate()
+            .resize(512, 512, { fit: 'inside', withoutEnlargement: true })
+            .png()
+            .toFile(stickerFrame);
+
         const videoBuffer = await downloadTikTok(url);
         if (!videoBuffer?.length) throw new Error('TikTok devolvió un archivo vacío.');
         fs.writeFileSync(tiktokVideo, videoBuffer);
 
         const duration = await probeDuration(tiktokVideo);
         await Promise.all([
-            createAnimatedSticker(stickerInput, tiktokVideo, stickerOutput, duration),
+            createAnimatedSticker(stickerFrame, tiktokVideo, stickerOutput, duration),
             createOpusAudio(tiktokVideo, audioOutput, duration)
         ]);
 
