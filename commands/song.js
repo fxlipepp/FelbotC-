@@ -6,7 +6,7 @@ const os = require('os')
 const { pipeline } = require('stream')
 const { promisify } = require('util')
 const ffmpeg = require('fluent-ffmpeg')
-const { generateWAMessageFromContent } = require('@whiskeysockets/baileys')
+const { generateWAMessageFromContent, prepareWAMessageMedia } = require('@whiskeysockets/baileys')
 
 const streamPipe = promisify(pipeline)
 const API_BASE = (process.env.API_BASE || 'https://api.orbitxspace.com').replace(/\/+$/, '')
@@ -220,7 +220,6 @@ async function downloadAudio(sock, job, quoted) {
          ptt: false,
          fileName: base + (format === 'mp3' ? '.mp3' : '.' + (format || 'bin'))
       }, { quoted })
-      await sendText(sock, chatId, '✅ Audio listo. ⏱️ Tiempo de descarga: ' + ((Date.now() - startedAt) / 1000).toFixed(1) + ' segundos.', quoted)
    } catch (error) {
       await sendText(sock, chatId, '❌ Error descargando audio: ' + error.message, quoted)
    } finally { cleanup(input, output) }
@@ -327,7 +326,15 @@ async function songCommand(sock, chatId, message) {
          '📥 *¿Qué deseas descargar?*',
          '🎵 Audio MP3  •  🎬 Video ' + quality + 'p'
       ].join('\n')
-      // Mismo formato nativo que usa commands/menu.js
+      // Preparar la miniatura como imagen en el encabezado, igual que el menú principal.
+      const preparedImage = video.thumbnail
+         ? await prepareWAMessageMedia(
+            { image: { url: video.thumbnail } },
+            { upload: sock.waUploadToServer }
+         )
+         : null
+
+      // Mismo formato nativo y botones que usa commands/menu.js
       const buttons = [
          {
             name: 'quick_reply',
@@ -351,7 +358,8 @@ async function songCommand(sock, chatId, message) {
             interactiveMessage: {
                header: {
                   title: '𝕱𝖊𝖑𝖇𝖔𝖙 夜',
-                  subtitle: 'Descarga multimedia'
+                  subtitle: 'Descarga multimedia',
+                  ...(preparedImage ? { hasMediaAttachment: true, ...preparedImage } : {})
                },
                body: {
                   text: caption
