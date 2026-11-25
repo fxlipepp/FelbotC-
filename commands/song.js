@@ -184,7 +184,8 @@ async function getVideoFromUrl(url) {
    } catch {}
    return { url, title: 'YouTube', thumbnail: '', duration: '—', views: 0, author: 'YouTube', published: '' }
 }
-async function downloadAudio(sock, job, asDocument, quoted) {
+async function downloadAudio(sock, job, quoted) {
+   const startedAt = Date.now()
    const { chatId, videoUrl, title } = job
    let resolved
    try { resolved = await callYoutubeResolve(videoUrl, { type: 'audio', format: DEFAULT_AUDIO_FORMAT }) }
@@ -213,16 +214,18 @@ async function downloadAudio(sock, job, asDocument, quoted) {
       if (fileSizeMB(finalFile) > MAX_MB) throw new Error('El audio supera el límite de ' + MAX_MB + ' MB')
       const format = audioFormat(finalFile)
       await sock.sendMessage(chatId, {
-         [asDocument ? 'document' : 'audio']: { url: finalFile },
+         audio: { url: finalFile },
          mimetype: format === 'mp3' ? 'audio/mpeg' : 'application/octet-stream',
          ptt: false,
          fileName: base + (format === 'mp3' ? '.mp3' : '.' + (format || 'bin'))
       }, { quoted })
+      await sendText(sock, chatId, '✅ Audio listo. ⏱️ Tiempo de descarga: ' + ((Date.now() - startedAt) / 1000).toFixed(1) + ' segundos.', quoted)
    } catch (error) {
       await sendText(sock, chatId, '❌ Error descargando audio: ' + error.message, quoted)
    } finally { cleanup(input, output) }
 }
-async function downloadVideo(sock, job, asDocument, quoted) {
+async function downloadVideo(sock, job, quoted) {
+   const startedAt = Date.now()
    const { chatId, videoUrl, title } = job
    const quality = VALID_QUALITIES.has(job.videoQuality) ? job.videoQuality : DEFAULT_VIDEO_QUALITY
    let resolved
@@ -233,34 +236,30 @@ async function downloadVideo(sock, job, asDocument, quoted) {
    const file = path.join(ensureTmp(), stamp + '_' + base + '_' + quality + 'p.mp4')
    try {
       const state = await downloadCandidates(resolved.candidates, file, isMp4)
-      if (!state.formatOk) {
-         asDocument = true
-         await sendText(sock, chatId, '⚠️ La API no entregó un MP4 reproducible; te lo envío como documento.', quoted)
-      }
+      if (!state.formatOk) throw new Error('La API no entregó un MP4 reproducible')
       if (fileSizeMB(file) > MAX_MB) throw new Error('El video supera el límite de ' + MAX_MB + ' MB')
       await sock.sendMessage(chatId, {
-         [asDocument ? 'document' : 'video']: { url: file },
-         mimetype: isMp4(file) ? 'video/mp4' : 'application/octet-stream',
-         fileName: base + '_' + quality + 'p' + (isMp4(file) ? '.mp4' : '.bin')
+         video: { url: file },
+         mimetype: 'video/mp4',
+         fileName: base + '_' + quality + 'p.mp4'
       }, { quoted })
+      await sendText(sock, chatId, '✅ Video listo (' + quality + 'p). ⏱️ Tiempo de descarga: ' + ((Date.now() - startedAt) / 1000).toFixed(1) + ' segundos.', quoted)
    } catch (error) {
       await sendText(sock, chatId, '❌ Error descargando video: ' + error.message, quoted)
    } finally { cleanup(file, file + '.alt') }
 }
 async function processChoice(sock, job, choice, quoted) {
    const chatId = job.chatId
-   if (choice === 'audio' || choice === 'audiodoc') {
-      await react(sock, quoted, choice === 'audio' ? '🎵' : '📄')
-      await sendText(sock, chatId, choice === 'audio' ? '🎶 Descargando audio MP3...' : '🎶 Descargando audio como documento...', quoted)
-      return downloadAudio(sock, job, choice === 'audiodoc', quoted)
+   if (choice === 'audio') {
+      await react(sock, quoted, '🎵')
+      await sendText(sock, chatId, '🎶 Descargando audio MP3...', quoted)
+      return downloadAudio(sock, job, quoted)
    }
-   const match = choice.match(/^(video|videodoc)(?:_(144|240|360|720))?$/i)
-   if (match) {
-      const doc = match[1].toLowerCase() === 'videodoc'
-      const quality = match[2] || job.videoQuality || DEFAULT_VIDEO_QUALITY
-      await react(sock, quoted, doc ? '📁' : '🎬')
+   if (choice === 'video') {
+      const quality = job.videoQuality || DEFAULT_VIDEO_QUALITY
+      await react(sock, quoted, '🎬')
       await sendText(sock, chatId, '🎥 Descargando video (' + quality + 'p)...', quoted)
-      return downloadVideo(sock, { ...job, videoQuality: quality }, doc, quoted)
+      return downloadVideo(sock, job, quoted)
    }
 }
 async function handleIncoming(sock, event) {
@@ -272,7 +271,7 @@ async function handleIncoming(sock, event) {
          const targetId = message.message.reactionMessage.key?.id
          const job = pending.get(targetId)
          if (!job || job.sock !== sock || job.chatId !== chatId) continue
-         const map = { '👍': 'audio', '❤️': 'video', '📄': 'audiodoc', '📁': 'videodoc' }
+         const map = { '👍': 'audio', '❤️': 'video' }
          const choice = map[message.message.reactionMessage.text]
          if (choice) await processChoice(sock, job, choice, job.previewMessage)
          continue
@@ -286,13 +285,7 @@ async function handleIncoming(sock, event) {
          if (!job || job.sock !== sock || job.chatId !== chatId) continue
          const id = String(selectedId)
          if (id.endsWith('play_audio')) await processChoice(sock, job, 'audio', message)
-         else if (id.endsWith('play_audiodoc')) await processChoice(sock, job, 'audiodoc', message)
-         else {
-            const videoDoc = id.match(/play_videodoc_(144|240|360|720)$/)
-            const video = id.match(/play_video_(144|240|360|720)$/)
-            if (videoDoc) await processChoice(sock, job, 'videodoc_' + videoDoc[1], message)
-            else if (video) await processChoice(sock, job, 'video_' + video[1], message)
-         }
+         else if (id.endsWith('play_video')) await processChoice(sock, job, 'video', message)
          continue
       }
       const quotedId = getQuotedId(message)
@@ -302,9 +295,7 @@ async function handleIncoming(sock, event) {
       const first = text.split(/\s+/)[0] || ''
       const quality = extractQuality(text)
       if (['1', 'audio'].includes(first)) await processChoice(sock, job, 'audio', message)
-      else if (['4', 'audiodoc'].includes(first)) await processChoice(sock, job, 'audiodoc', message)
-      else if (['2', 'video'].includes(first)) await processChoice(sock, { ...job, videoQuality: quality || job.videoQuality }, 'video_' + (quality || job.videoQuality), message)
-      else if (['3', 'videodoc'].includes(first)) await processChoice(sock, { ...job, videoQuality: quality || job.videoQuality }, 'videodoc_' + (quality || job.videoQuality), message)
+      else if (['2', 'video'].includes(first)) await processChoice(sock, { ...job, videoQuality: quality || job.videoQuality }, 'video', message)
    }
 }
 async function songCommand(sock, chatId, message) {
@@ -314,12 +305,14 @@ async function songCommand(sock, chatId, message) {
    if (!parsed.query) {
       return sendText(sock, chatId, '🎵 *FELBOT PLAY*\n\nUsa: *.play nombre de la canción [calidad]*\nEjemplo: *.play Canserbero Es épico 720*', message)
    }
+   const searchStartedAt = Date.now()
    await react(sock, message, '⏳')
    try {
       const video = /^https?:\/\/(www\.)?(youtube\.com|youtu\.be)\//i.test(parsed.query)
          ? await getVideoFromUrl(parsed.query)
          : await searchVideo(parsed.query)
       const quality = VALID_QUALITIES.has(parsed.quality) ? parsed.quality : DEFAULT_VIDEO_QUALITY
+      const searchSeconds = ((Date.now() - searchStartedAt) / 1000).toFixed(1)
       const caption = [
          '𝕱𝖊𝖑𝖇𝖔𝖙 夜  •  *RESULTADO ENCONTRADO*',
          '',
@@ -328,38 +321,15 @@ async function songCommand(sock, chatId, message) {
          '> ⏱️ *Duración:* ' + video.duration,
          '> 👀 *Vistas:* ' + Number(video.views || 0).toLocaleString(),
          '> 🔗 *Enlace:* ' + video.url,
+         '> ⚡ *Búsqueda:* ' + searchSeconds + ' segundos',
          '',
-         '📥 *Selecciona qué deseas descargar:*',
-         '• Audio MP3',
-         '• Video de 144p a 720p',
-         '• Enviar como documento',
-         '',
-         'Si no te aparecen los botones, responde citando este mensaje:',
-         '*1* Audio · *2* Video · *3* Video documento · *4* Audio documento',
-         '',
-         'Puedes indicar calidad: _video 720_ o _videodoc 240_.'
+         '📥 *¿Qué deseas descargar?*',
+         '🎵 Audio MP3  •  🎬 Video ' + quality + 'p'
       ].join('\n')
-      const menu = [{
-         text: '📥 Menú de descarga',
-         sections: [
-            { title: '🎵 AUDIO', rows: [
-               { title: '🎵 Audio MP3', description: 'Audio reproducible', id: '.play_audio' },
-               { title: '📄 Audio como documento', description: 'Archivo MP3', id: '.play_audiodoc' }
-            ]},
-            { title: '🎬 VIDEO', rows: [
-               { title: '🎬 Video 144p', description: 'El más liviano', id: '.play_video_144' },
-               { title: '🎬 Video 240p', description: 'Liviano', id: '.play_video_240' },
-               { title: '🎬 Video 360p', description: 'Calidad estándar', id: '.play_video_360' },
-               { title: '🎬 Video 720p', description: 'HD', id: '.play_video_720' }
-            ]},
-            { title: '📁 VIDEO COMO DOCUMENTO', rows: [
-               { title: '📁 Documento 144p', description: 'MP4 descargable', id: '.play_videodoc_144' },
-               { title: '📁 Documento 240p', description: 'MP4 descargable', id: '.play_videodoc_240' },
-               { title: '📁 Documento 360p', description: 'MP4 descargable', id: '.play_videodoc_360' },
-               { title: '📁 Documento 720p', description: 'MP4 descargable', id: '.play_videodoc_720' }
-            ]}
-         ]
-      }]
+      const menu = [
+         { buttonId: '.play_audio', buttonText: { displayText: '🎵 Audio MP3' }, type: 1 },
+         { buttonId: '.play_video', buttonText: { displayText: '🎬 Video ' + quality + 'p' }, type: 1 }
+      ]
       let preview
       if (!isIphone(message)) {
          try {
@@ -373,9 +343,7 @@ async function songCommand(sock, chatId, message) {
          }
       }
       if (!preview) {
-         const fallback = caption + (isIphone(message)
-            ? '\n\nReacciona: 👍 audio · ❤️ video · 📄 audio documento · 📁 video documento'
-            : '')
+         const fallback = caption + '\n\nResponde citando este mensaje: 1 para audio o 2 para video.'
          preview = await sock.sendMessage(chatId, video.thumbnail
             ? { image: { url: video.thumbnail }, caption: fallback }
             : { text: fallback }, { quoted: message })
