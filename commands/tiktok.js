@@ -144,6 +144,34 @@ async function fallback(url) {
 // ==============================
 // ⚡ ENGINE
 // ==============================
+async function getVideoCandidates(url) {
+    const results = await Promise.allSettled([
+        siputzx(url),
+        tikwm(url),
+        ssstik(url)
+    ]);
+
+    const candidates = [];
+    const seen = new Set();
+
+    for (const item of results) {
+        const video = item.status === 'fulfilled' ? item.value?.video : null;
+        if (typeof video === 'string' && /^https?:\/\//i.test(video) && !seen.has(video)) {
+            seen.add(video);
+            candidates.push({ video });
+        }
+    }
+
+    if (!candidates.length) {
+        const lastTry = await fallback(url);
+        if (typeof lastTry?.video === 'string' && /^https?:\/\//i.test(lastTry.video)) {
+            candidates.push(lastTry);
+        }
+    }
+
+    return candidates;
+}
+
 async function getVideo(url) {
     const cached = cacheGet(url);
     if (cached?.video) return cached;
@@ -262,5 +290,5 @@ async function tiktokCommand(sock, chatId, message) {
 }
 
 module.exports = tiktokCommand;
-module.exports.getVideo = getVideo;
+module.exports.getVideo = getVideo;\nmodule.exports.getVideoCandidates = getVideoCandidates;
 module.exports.isValidTikTokUrl = isValidTikTokUrl;
