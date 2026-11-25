@@ -327,6 +327,7 @@ async function songCommand(sock, chatId, message) {
          '📥 *¿Qué deseas descargar?*',
          '🎵 Audio MP3  •  🎬 Video ' + quality + 'p'
       ].join('\n')
+      // Mismo formato nativo que usa commands/menu.js
       const buttons = [
          {
             name: 'quick_reply',
@@ -356,7 +357,7 @@ async function songCommand(sock, chatId, message) {
                   text: caption
                },
                footer: {
-                  text: '❦ 𝕱𝖊𝖑𝖇𝖔𝖙 夜 — Selecciona una opción ❦'
+                  text: '𝕱𝖊𝖑𝖇𝖔𝖙 夜 • Selecciona una opción'
                },
                nativeFlowMessage: {
                   buttons
@@ -369,10 +370,34 @@ async function songCommand(sock, chatId, message) {
       )
 
       await sock.relayMessage(
-         chatId,
+         menuMessage.key.remoteJid,
          menuMessage.message,
          {
-            messageId: menuMessage.key.id
+            messageId: menuMessage.key.id,
+            additionalNodes: [
+               {
+                  tag: 'biz',
+                  attrs: {},
+                  content: [
+                     {
+                        tag: 'interactive',
+                        attrs: {
+                           type: 'native_flow',
+                           v: '1'
+                        },
+                        content: [
+                           {
+                              tag: 'native_flow',
+                              attrs: {
+                                 v: '9',
+                                 name: 'mixed'
+                              }
+                           }
+                        ]
+                     }
+                  ]
+               }
+            ]
          }
       )
 
