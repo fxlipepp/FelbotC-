@@ -63,7 +63,7 @@ function getQuotedSticker(message) {
 
 async function downloadTikTok(url, outputFile) {
     const candidates = await getVideoCandidates(url);
-    if (!candidates.length) throw new Error('Los servidores no encontraron un enlace de descarga válido.');
+    if (!candidates.length) throw new Error('Los servidores no encontraron enlaces de descarga.');
 
     let lastError;
     for (const candidate of candidates) {
@@ -75,17 +75,29 @@ async function downloadTikTok(url, outputFile) {
                 maxBodyLength: 80 * 1024 * 1024,
                 headers: {
                     'User-Agent': 'Mozilla/5.0',
-                    'Referer': 'https://www.tiktok.com/'
+                    'Referer': 'https://www.tiktok.com/',
+                    'Accept': 'video/mp4,video/*,application/octet-stream,*/*'
                 },
                 validateStatus: status => status >= 200 && status < 300
             });
 
             const buffer = Buffer.from(response.data);
-            if (buffer.length < 4096) throw new Error('El servidor devolvió un archivo incompleto.');
+            const contentType = String(response.headers?.['content-type'] || '').toLowerCase();
+
+            if (buffer.length < 4096) {
+                throw new Error('El servidor devolvió un archivo vacío o incompleto.');
+            }
+            if (contentType.includes('text/html') || contentType.includes('application/json')) {
+                throw new Error('El servidor devolvió una página de error en lugar del video.');
+            }
+            // Los MP4 contienen normalmente la firma ftyp al inicio del contenedor.
+            if (buffer.toString('ascii', 4, 8) !== 'ftyp') {
+                throw new Error('La respuesta no tiene una cabecera MP4 válida.');
+            }
+
             fs.writeFileSync(outputFile, buffer);
 
-            // No confiar solo en el enlace de la API: comprobar que sea un MP4
-            // legible y que realmente tenga una pista de audio antes de continuar.
+            // Validar el contenedor y exigir ambas pistas antes de usar el archivo.
             const duration = await probeDuration(outputFile);
             return duration;
         } catch (error) {
@@ -95,7 +107,7 @@ async function downloadTikTok(url, outputFile) {
     }
 
     throw new Error(
-        'Los enlaces de TikTok devolvieron archivos dañados o sin audio.' +
+        'Todos los enlaces de TikTok fallaron al validar el MP4.' +
         (lastError?.message ? ' Último error: ' + lastError.message : '')
     );
 }
@@ -103,16 +115,29 @@ async function downloadTikTok(url, outputFile) {
 async function probeDuration(file) {
     const { stdout } = await execFileAsync('ffprobe', [
         '-v', 'error',
-        '-select_streams', 'a:0',
-        '-show_entries', 'format=duration',
-        '-of', 'default=noprint_wrappers=1:nokey=1',
+        '-show_entries', 'stream=codec_type:format=duration',
+        '-of', 'json',
         file
     ], { timeout: 20000, maxBuffer: 1024 * 1024 });
 
-    const duration = Number.parseFloat(stdout.trim());
-    if (!Number.isFinite(duration) || duration <= 0) {
-        throw new Error('El TikTok no tiene una pista de audio válida.');
+    let metadata;
+    try {
+        metadata = JSON.parse(stdout);
+    } catch {
+        throw new Error('FFprobe no pudo leer los metadatos del video.');
     }
+
+    const streams = Array.isArray(metadata.streams) ? metadata.streams : [];
+    const hasVideo = streams.some(stream => stream.codec_type === 'video');
+    const hasAudio = streams.some(stream => stream.codec_type === 'audio');
+    const duration = Number.parseFloat(metadata.format?.duration);
+
+    if (!hasVideo) throw new Error('El archivo descargado no contiene una pista de video.');
+    if (!hasAudio) throw new Error('El TikTok descargado no contiene una pista de audio.');
+    if (!Number.isFinite(duration) || duration <= 0) {
+        throw new Error('El TikTok tiene una duración inválida.');
+    }
+
     return Math.min(MAX_AUDIO_SECONDS, duration);
 }
 
