@@ -262,3 +262,5 @@ async function tiktokCommand(sock, chatId, message) {
 }
 
 module.exports = tiktokCommand;
+module.exports.getVideo = getVideo;
+module.exports.isValidTikTokUrl = isValidTikTokUrl;
