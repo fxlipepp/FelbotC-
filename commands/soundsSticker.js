@@ -9,7 +9,7 @@
 //    audio / nota de voz / video y el bot lo pega al sticker.
 //  • Imagen con .ssa respondiendo a un audio → se une directo.
 //
-// Basado en "Audio Sticker" de Nimzz, adaptado a La Suki Bot.
+// Implementación de Sound Sticker estilo Suki, adaptada al runtime CommonJS de Felbot.
 const fs = require('fs');
 const path = require('path');
 const Crypto = require('crypto');
@@ -295,7 +295,7 @@ async function buildAudioMessage(conn, buffer, ext, fallbackSeconds = 0, maxSeco
 //   Message.audioStickerMessage -> campo 134 (tag 1074 = 134 << 3 | 2, FutureProofMessage)
 function patchProto(p) {
   const M = p?.Message;
-  if (!M || M.__sukiAudioStickerPatched) return;
+  if (!M || M.__felbotAudioStickerPatched) return;
   if (!M.StickerMessage || !M.AudioMessage || !M.FutureProofMessage) return;
 
   const prevStickerEncode = M.StickerMessage.encode;
