@@ -147,6 +147,7 @@ const { xnxxCommand, xnxxNumberReply} = require('./commands/xnxx')
 const modoAdminCommand = require('./commands/modoadmin')
 const unmuteCommand = require('./commands/unmute');
 const stickerCommand = require('./commands/sticker');
+const soundStickerCommand = require('./commands/soundsSticker');
 const isAdmin = require('./lib/isAdmin');
 const warnCommand = require('./commands/warn');
 const warningsCommand = require('./commands/warnings');
@@ -1085,6 +1086,10 @@ const command = rawText.split(' ')[0].toLowerCase()
                     const amount = parseAmount(rawText.split(/\s+/).slice(1).join(' '));
                     await raceGame(sock, chatId, senderId, message, amount);
                 }
+                commandExecuted = true;
+                break;
+            case userMessage === '.ss' || userMessage.startsWith('.ss '):
+                await soundStickerCommand(sock, chatId, message);
                 commandExecuted = true;
                 break;
             case userMessage === '.sticker' || userMessage === '.s':
