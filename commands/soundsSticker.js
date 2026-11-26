@@ -140,7 +140,7 @@ function stickerMetadata(msg) {
 
 async function addExif(webpBuffer, metadata) {
   const json = {
-    "sticker-pack-id": "suki-3.0",
+    "sticker-pack-id": "felbot-ss",
     "sticker-pack-name": metadata.packname,
     "sticker-pack-publisher": metadata.author,
     emojis: metadata.categories || [""],
@@ -295,7 +295,7 @@ async function buildAudioMessage(conn, buffer, ext, fallbackSeconds = 0, maxSeco
 //   Message.audioStickerMessage -> campo 134 (tag 1074 = 134 << 3 | 2, FutureProofMessage)
 function patchProto(p) {
   const M = p?.Message;
-  if (!M || M.__sukiAudioStickerPatched) return;
+  if (!M || M.__felbotAudioStickerPatched) return;
   if (!M.StickerMessage || !M.AudioMessage || !M.FutureProofMessage) return;
 
   const prevStickerEncode = M.StickerMessage.encode;
@@ -472,7 +472,7 @@ async function consumeSession(conn, msg, session, audioInfo) {
     await react(conn, msg, "✅");
   } catch (err) {
     session.processing = false;
-    console.error("[ssa] Error uniendo audio:", err);
+    console.error("[.ss] Error uniendo audio:", err);
     await react(conn, msg, "❌");
     await say(conn, msg,
       err?.message === "NO_AUDIO"
