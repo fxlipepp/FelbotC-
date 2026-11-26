@@ -25,7 +25,7 @@
     "@ffmpeg/ffmpeg": "^0.12.15",
     "@hapi/boom": "^10.0.1",
     "@types/node": "^18.0.6",
-    "@whiskeysockets/baileys": "https://codeload.github.com/russellxz/ultra-baileys/tar.gz/2f1f2a4738e5ee54327900a4404ea5d685f84111",
+    "@whiskeysockets/baileys": "git+https://github.com/russellxz/ultra-baileys.git#2f1f2a4738e5ee54327900a4404ea5d685f84111",
     "awesome-phonenumber": "^5.9.0",
     "axios": "^1.16.1",
     "chalk": "^4.1.2",

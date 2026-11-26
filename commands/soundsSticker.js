@@ -295,8 +295,8 @@ async function buildAudioMessage(conn, buffer, ext, fallbackSeconds = 0, maxSeco
 //   Message.audioStickerMessage -> campo 134 (tag 1074 = 134 << 3 | 2, FutureProofMessage)
 function patchProto(p) {
   const M = p?.Message;
-  if (!M || M.__felbotAudioStickerPatched) return;
-  if (!M.StickerMessage || !M.AudioMessage || !M.FutureProofMessage) return;
+  if (!M || M.__felbotAudioStickerPatched) return false;
+  if (!M.StickerMessage || !M.AudioMessage || !M.FutureProofMessage) return false;
 
   const prevStickerEncode = M.StickerMessage.encode;
   M.StickerMessage.encode = function (message, writer) {
@@ -316,13 +316,14 @@ function patchProto(p) {
     return w;
   };
 
-  M.__sukiAudioStickerPatched = true;
+  M.__felbotAudioStickerPatched = true;
+  return true;
 }
 
 async function ensurePatched() {
   const mod = await getBaileys();
-  patchProto(mod?.proto);
-  if (mod?.default?.proto && mod.default.proto !== mod.proto) patchProto(mod.default.proto);
+  const patched = patchProto(mod?.proto) || patchProto(mod?.default?.proto);
+  if (!patched) throw new Error('La versión instalada de Baileys no expone el protocolo necesario para stickers con audio.');
 }
 
 // Donde termina el primer fotograma (chunk ANMF) de un webp animado.
