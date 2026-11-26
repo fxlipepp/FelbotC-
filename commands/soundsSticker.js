@@ -140,6 +140,29 @@ function stickerMetadata(msg) {
   };
 }
 
+// WhatsApp comprueba el audio del Sound Sticker mediante su hash en el EXIF WA.
+async function addSoundHashExif(webpBuffer, soundSha256) {
+  const img = new webp.Image();
+  await img.load(webpBuffer);
+  let metadata = {};
+  try {
+    if (Buffer.isBuffer(img.exif) && img.exif.length > 22) {
+      metadata = JSON.parse(img.exif.subarray(22).toString("utf8"));
+    }
+  } catch {}
+  metadata["sound-sha256"] = soundSha256;
+  const jsonBuff = Buffer.from(JSON.stringify(metadata), "utf8");
+  const exifAttr = Buffer.from([
+    0x49, 0x49, 0x2A, 0x00, 0x08, 0x00, 0x00, 0x00,
+    0x01, 0x00, 0x41, 0x57, 0x07, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x16, 0x00, 0x00, 0x00
+  ]);
+  const exif = Buffer.concat([exifAttr, jsonBuff]);
+  exif.writeUIntLE(jsonBuff.length, 14, 4);
+  img.exif = exif;
+  return await img.save(null);
+}
+
 async function addExif(webpBuffer, metadata) {
   const json = {
     "sticker-pack-id": "felbot-ss",
@@ -277,6 +300,7 @@ async function buildAudioMessage(conn, buffer, ext, fallbackSeconds = 0, maxSeco
   const { prepareWAMessageMedia } = await getBaileys();
   const limit = Math.max(1, Math.min(MAX_DURATION, Math.round(maxSeconds) || MAX_DURATION));
   const { ogg, realSeconds } = await toOggOpus(buffer, ext, limit);
+  const soundSha256 = Crypto.createHash("sha256").update(ogg).digest("base64");
 
   const { audioMessage } = await prepareWAMessageMedia(
     { audio: ogg, mimetype: "audio/ogg; codecs=opus", ptt: false },
@@ -288,6 +312,7 @@ async function buildAudioMessage(conn, buffer, ext, fallbackSeconds = 0, maxSeco
   audioMessage.seconds = Math.max(1, Math.min(limit, Math.round(sec)));
   audioMessage.ptt = false;
   audioMessage.mimetype = "audio/ogg; codecs=opus";
+  audioMessage.__felbotSoundSha256 = soundSha256;
   return audioMessage;
 }
 
@@ -362,6 +387,10 @@ async function videoSeconds(buffer, fallback = 0) {
 async function sendAudioSticker(conn, chatId, stickerBuffer, isAnimated, audioMessage, quoted = null) {
   await ensurePatched();
   const { prepareWAMessageMedia, generateMessageIDV2, generateMessageID } = await getBaileys();
+
+  const soundSha256 = audioMessage?.__felbotSoundSha256;
+  if (!soundSha256) throw new Error("No se generó el hash del audio del Sound Sticker.");
+  stickerBuffer = await addSoundHashExif(stickerBuffer, soundSha256);
 
   const prepared = await prepareWAMessageMedia(
     { sticker: stickerBuffer },
