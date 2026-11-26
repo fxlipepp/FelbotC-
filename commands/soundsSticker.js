@@ -545,6 +545,42 @@ async function soundStickerCommand(conn, chatId, msg, commandArgs = "") {
     return consumeSession(conn, msg, session, quot);
   }
 
+  // Sticker citado + video adjunto con .ss: conserva el sticker citado y extrae SOLO el audio del video.
+  // Uso: responder al sticker, adjuntar un video y escribir .ss en el caption.
+  if (quot?.kind === "webp" && own?.kind === "video") {
+    try {
+      await react(conn, msg, "🛠️");
+
+      const stickerBuffer = await downloadMedia(conn, quot);
+      if (!stickerBuffer?.length) throw new Error("No se pudo descargar el imagen del sticker citado.");
+
+      const videoBuffer = await downloadMedia(conn, own);
+      if (!videoBuffer?.length) throw new Error("No se pudo descargar el video adjunto.");
+
+      const duration = Math.max(
+        1,
+        Math.min(MAX_DURATION, Math.round(await videoSeconds(videoBuffer, own.seconds || MAX_DURATION)))
+      );
+
+      // El video aporta únicamente el audio; el WebP citado se conserva sin modificar.
+      const audioMessage = await buildAudioMessage(conn, videoBuffer, "mp4", duration, MAX_DURATION);
+      const animated = !!quot.isAnimated || isWebpAnimated(stickerBuffer);
+
+      await sendAudioSticker(conn, chatId, stickerBuffer, animated, audioMessage, msg);
+      clearSession(key);
+      await react(conn, msg, "✅");
+      return;
+    } catch (err) {
+      console.error("[.ss] Error usando video adjunto para el sticker citado:", err);
+      await react(conn, msg, "❌");
+      return say(conn, msg,
+        err?.message === "NO_AUDIO"
+          ? "❌ *Ese video no tiene audio.* Prueba con otro video."
+          : "❌ *No pude combinar el sticker citado con el audio del video.*"
+      );
+    }
+  }
+
   // Sticker citado + enlace de TikTok: conserva el sticker y le incorpora el audio del TikTok.
   const tiktokUrl = text.match(/https?:\/\/[^\s]+/i)?.[0]?.replace(/[),.]+$/, '');
   if (quot?.kind === "webp" && tiktokUrl && isValidTikTokUrl(tiktokUrl)) {
