@@ -292,23 +292,52 @@ async function toOggOpus(buffer, ext, maxSeconds = MAX_DURATION) {
 // El audio del sticker NO es nota de voz: va como audio normal (ptt: false),
 // igual que los stickers con sonido que manda WhatsApp.
 // maxSeconds = lo que dura el sticker (video animado), así el audio se ajusta a él.
+async function buildWaveform(oggBuffer) {
+  ensureTempFolder();
+  const tmp = path.join(tempFolder, randomFileName("ogg"));
+  try {
+    fs.writeFileSync(tmp, oggBuffer);
+    const { stdout } = await execFileAsync("ffmpeg", [
+      "-v", "error", "-i", tmp, "-vn", "-f", "s16le", "-ac", "1", "-ar", "8000", "pipe:1"
+    ], { encoding: "buffer", maxBuffer: 10 * 1024 * 1024 });
+    const pcm = Buffer.isBuffer(stdout) ? stdout : Buffer.from(stdout || "");
+    const samples = Math.floor(pcm.length / 2);
+    const bars = new Array(64).fill(0);
+    if (!samples) return Buffer.from(bars);
+    const perBar = Math.max(1, Math.floor(samples / 64));
+    for (let bar = 0; bar < 64; bar++) {
+      const from = bar * perBar;
+      const to = Math.min(samples, from + perBar);
+      let sum = 0;
+      for (let i = from; i < to; i++) sum += Math.abs(pcm.readInt16LE(i * 2));
+      bars[bar] = to > from ? sum / (to - from) : 0;
+    }
+    const peak = Math.max(...bars) || 1;
+    return Buffer.from(bars.map((v) => Math.round((v / peak) * 100)));
+  } finally {
+    fs.rmSync(tmp, { force: true });
+  }
+}
+
 async function buildAudioMessage(conn, buffer, ext, fallbackSeconds = 0, maxSeconds = MAX_DURATION) {
   const { prepareWAMessageMedia } = await getBaileys();
   const limit = Math.max(1, Math.min(MAX_DURATION, Math.round(maxSeconds) || MAX_DURATION));
   ssLog("Preparando audio:", { ext, inputBytes: buffer.length, limitSeconds: limit, fallbackSeconds });
   const { ogg, realSeconds } = await toOggOpus(buffer, ext, limit);
 
+  const waveform = await buildWaveform(ogg);
   const { audioMessage } = await prepareWAMessageMedia(
-    { audio: ogg, mimetype: "audio/ogg; codecs=opus", ptt: false },
+    { audio: ogg, mimetype: "audio/ogg; codecs=opus", ptt: true },
     { upload: conn.waUploadToServer }
   );
   if (!audioMessage) throw new Error("WhatsApp no aceptó la subida del audio.");
 
   const sec = realSeconds > 0 ? realSeconds : fallbackSeconds > 0 ? fallbackSeconds : 5;
   audioMessage.seconds = Math.max(1, Math.min(limit, Math.round(sec)));
-  audioMessage.ptt = false;
+  audioMessage.ptt = true;
+  audioMessage.waveform = waveform;
   audioMessage.mimetype = "audio/ogg; codecs=opus";
-  ssLog("Audio subido a WhatsApp:", { seconds: audioMessage.seconds, ptt: audioMessage.ptt, mimetype: audioMessage.mimetype, fileLength: audioMessage.fileLength });
+  ssLog("Audio subido a WhatsApp:", { seconds: audioMessage.seconds, ptt: audioMessage.ptt, waveformBytes: waveform.length, mimetype: audioMessage.mimetype, fileLength: audioMessage.fileLength });
   return audioMessage;
 }
 
