@@ -1,13 +1,5 @@
 const express = require('express')
 
-// Puppeteer es opcional: Felbot puede iniciar aunque no esté instalado.
-let puppeteer = null
-try {
-    puppeteer = require('puppeteer')
-} catch {
-    console.log('[BROWSER] Puppeteer no está instalado. Las funciones de navegador quedan desactivadas.')
-}
-
 const app = express()
 
 const PORT = process.env.PORT || 25708
@@ -291,44 +283,7 @@ let browser = null
 let browserPage = null
 
 async function getBrowserPage() {
-    if (!puppeteer) {
-        throw new Error('Puppeteer no está instalado. Las funciones de navegador están desactivadas.')
-    }
-
-    if (!browser) {
-        browser = await puppeteer.launch({
-            headless: true,
-            userDataDir: '/home/container/chrome-profile',
-
-            executablePath:
-                process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
-
-            args: [
-                '--no-sandbox',
-                '--disable-setuid-sandbox',
-                '--disable-dev-shm-usage',
-                '--disable-gpu',
-                '--no-first-run',
-                '--no-default-browser-check',
-                '--window-size=1280,900'
-            ]
-        })
-    }
-
-    if (!browserPage || browserPage.isClosed()) {
-        browserPage = await browser.newPage()
-
-        await browserPage.setViewport({
-            width: 1280,
-            height: 900
-        })
-
-        await browserPage.goto('about:blank', {
-            waitUntil: 'domcontentloaded'
-        })
-    }
-
-    return browserPage
+    throw new Error('El navegador está desactivado temporalmente.')
 }
 
 /* =========================================================
