@@ -1,5 +1,12 @@
 const express = require('express')
-const puppeteer = require('puppeteer')
+
+// Puppeteer es opcional: Felbot puede iniciar aunque no esté instalado.
+let puppeteer = null
+try {
+    puppeteer = require('puppeteer')
+} catch {
+    console.log('[BROWSER] Puppeteer no está instalado. Las funciones de navegador quedan desactivadas.')
+}
 
 const app = express()
 
@@ -284,6 +291,10 @@ let browser = null
 let browserPage = null
 
 async function getBrowserPage() {
+    if (!puppeteer) {
+        throw new Error('Puppeteer no está instalado. Las funciones de navegador están desactivadas.')
+    }
+
     if (!browser) {
         browser = await puppeteer.launch({
             headless: true,
