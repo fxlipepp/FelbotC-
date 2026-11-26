@@ -312,34 +312,36 @@ async function buildAudioMessage(conn, buffer, ext, fallbackSeconds = 0, maxSeco
   return audioMessage;
 }
 
-// === Parche de proto: stickerMessage.audioMessage (26) y audioStickerMessage (134) ===
-// ultra-baileys no conoce estos dos campos; se añaden al codificador:
-//   StickerMessage.audioMessage -> campo 26  (tag 210  = 26 << 3 | 2)
-//   Message.audioStickerMessage -> campo 134 (tag 1074 = 134 << 3 | 2, FutureProofMessage)
+// === Audio embebido en StickerMessage (campo protobuf 26) ===
+// Baileys convierte los objetos al esquema generado y descarta propiedades desconocidas.
+// Por eso registramos el AudioMessage ya codificado por el hash del sticker y lo
+// anexamos directamente al encoder, sin usar el wrapper audioStickerMessage (134).
+const pendingStickerAudio = new Map();
+const STICKER_AUDIO_TAG = 210; // (26 << 3) | 2
+
+function stickerHashKey(fileSha256) {
+  return Buffer.from(fileSha256 || []).toString("base64");
+}
+
 function patchProto(p) {
-  const M = p?.Message;
-  if (!M || M.__felbotAudioStickerPatched) return;
-  if (!M.StickerMessage || !M.AudioMessage || !M.FutureProofMessage) return;
-
-  const prevStickerEncode = M.StickerMessage.encode;
-  M.StickerMessage.encode = function (message, writer) {
-    const w = prevStickerEncode.call(this, message, writer);
-    if (message?.audioMessage != null) {
-      M.AudioMessage.encode(message.audioMessage, w.uint32(210).fork()).ldelim();
+  const Sticker = p?.Message?.StickerMessage;
+  if (!Sticker || Sticker.encode.__felbotSoundStickerPatched) return;
+  const originalEncode = Sticker.encode;
+  const patchedEncode = function (message, writer) {
+    const w = originalEncode.call(this, message, writer);
+    try {
+      if (message?.fileSha256) {
+        const audioBytes = pendingStickerAudio.get(stickerHashKey(message.fileSha256));
+        if (audioBytes) w.uint32(STICKER_AUDIO_TAG).bytes(audioBytes);
+      }
+    } catch (error) {
+      console.error("[.ss] No se pudo insertar el audio en StickerMessage:", error?.stack || error);
+      throw error;
     }
     return w;
   };
-
-  const prevMsgEncode = M.encode;
-  M.encode = function (message, writer) {
-    const w = prevMsgEncode.call(this, message, writer);
-    if (message?.audioStickerMessage != null) {
-      M.FutureProofMessage.encode(message.audioStickerMessage, w.uint32(1074).fork()).ldelim();
-    }
-    return w;
-  };
-
-  M.__felbotAudioStickerPatched = true;
+  patchedEncode.__felbotSoundStickerPatched = true;
+  Sticker.encode = patchedEncode;
 }
 
 async function ensurePatched() {
@@ -383,11 +385,11 @@ async function videoSeconds(buffer, fallback = 0) {
 //     messageContextInfo: { messageSecret } }
 async function sendAudioSticker(conn, chatId, stickerBuffer, isAnimated, audioMessage, quoted = null) {
   await ensurePatched();
-  const { prepareWAMessageMedia, generateMessageIDV2, generateMessageID } = await getBaileys();
+  const mod = await getBaileys();
+  const { prepareWAMessageMedia, generateMessageIDV2, generateMessageID, proto } = mod;
 
-  ssLog("Preparando envío:", { stickerBytes: stickerBuffer.length, animated: isAnimated, audioSeconds: audioMessage.seconds, audioFileLength: audioMessage.fileLength });
   const prepared = await prepareWAMessageMedia(
-    { sticker: stickerBuffer },
+    { sticker: stickerBuffer, isAnimated },
     { upload: conn.waUploadToServer }
   );
   const sticker = prepared?.stickerMessage;
@@ -405,19 +407,41 @@ async function sendAudioSticker(conn, chatId, stickerBuffer, isAnimated, audioMe
     };
   }
 
-  sticker.audioMessage = { ...audioMessage, mimetype: "audio/ogg; codecs=opus", ptt: false };
+  // WhatsApp espera el AudioMessage completo dentro del campo 26 del sticker.
+  // Enviamos un audio normalizado como Opus y lo marcamos como audio adjunto.
+  const audioForProto = proto.Message.AudioMessage.create({
+    ...audioMessage,
+    mimetype: "audio/ogg; codecs=opus",
+    ptt: true
+  });
+  const audioBytes = Buffer.from(proto.Message.AudioMessage.encode(audioForProto).finish());
+  if (!sticker.fileSha256) throw new Error("El sticker subido no devolvió fileSha256.");
 
-  const payload = {
-    audioStickerMessage: { message: { stickerMessage: sticker } },
-    messageContextInfo: { messageSecret: Crypto.randomBytes(32) }
-  };
+  const hash = stickerHashKey(sticker.fileSha256);
+  pendingStickerAudio.set(hash, audioBytes);
 
-  const messageId = typeof generateMessageIDV2 === "function"
-    ? generateMessageIDV2(conn.user?.id)
-    : typeof generateMessageID === "function" ? generateMessageID() : undefined;
+  try {
+    // Validar que el encoder realmente incluya el campo 26 antes de transmitir.
+    const encodedMessage = Buffer.from(proto.Message.encode({ stickerMessage: sticker }).finish());
+    const audioTagPresent = encodedMessage.includes(Buffer.from([0xD2, 0x01]));
+    ssLog("Validación protobuf:", {
+      messageBytes: encodedMessage.length,
+      audioMessageBytes: audioBytes.length,
+      stickerHash: hash.slice(0, 12) + "...",
+      field26TagPresent: audioTagPresent,
+      envelope: "stickerMessage"
+    });
+    if (!audioTagPresent) throw new Error("El audio no quedó insertado en StickerMessage (campo 26).");
 
-  await conn.relayMessage(chatId, payload, messageId ? { messageId } : {});
-  ssLog("Sticker con audio enviado mediante relayMessage:", { chatId, messageId, animated: isAnimated });
+    const messageId = typeof generateMessageIDV2 === "function"
+      ? generateMessageIDV2(conn.user?.id)
+      : typeof generateMessageID === "function" ? generateMessageID() : undefined;
+
+    await conn.relayMessage(chatId, { stickerMessage: sticker }, messageId ? { messageId } : {});
+    ssLog("Sticker con audio enviado como StickerMessage campo 26:", { chatId, messageId, animated: isAnimated });
+  } finally {
+    pendingStickerAudio.delete(hash);
+  }
 }
 
 // === Sesiones ===
