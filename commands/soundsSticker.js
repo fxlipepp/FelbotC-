@@ -352,6 +352,40 @@ function stickerHashKey(fileSha256) {
   return Buffer.from(fileSha256 || []).toString("base64");
 }
 
+function readVarint(buffer, offset) {
+  let value = 0n;
+  let shift = 0n;
+  while (offset < buffer.length && shift < 70n) {
+    const byte = buffer[offset++];
+    value |= BigInt(byte & 0x7f) << shift;
+    if ((byte & 0x80) === 0) return { value: Number(value), offset };
+    shift += 7n;
+  }
+  throw new Error("Protobuf varint inválido.");
+}
+
+function readLengthField(buffer, wantedField) {
+  let offset = 0;
+  while (offset < buffer.length) {
+    const tag = readVarint(buffer, offset);
+    offset = tag.offset;
+    const field = Math.floor(tag.value / 8);
+    const wire = tag.value & 7;
+    if (wire === 0) offset = readVarint(buffer, offset).offset;
+    else if (wire === 1) offset += 8;
+    else if (wire === 2) {
+      const length = readVarint(buffer, offset);
+      offset = length.offset;
+      const end = offset + length.value;
+      if (end > buffer.length) throw new Error("Campo protobuf truncado.");
+      if (field === wantedField) return buffer.subarray(offset, end);
+      offset = end;
+    } else if (wire === 5) offset += 4;
+    else throw new Error("Tipo wire protobuf no compatible: " + wire);
+  }
+  return null;
+}
+
 function patchProto(p) {
   const Sticker = p?.Message?.StickerMessage;
   if (!Sticker || Sticker.encode.__felbotSoundStickerPatched) return;
@@ -451,10 +485,13 @@ async function sendAudioSticker(conn, chatId, stickerBuffer, isAnimated, audioMe
   try {
     // Validar que el encoder realmente incluya el campo 26 antes de transmitir.
     const encodedMessage = Buffer.from(proto.Message.encode({ stickerMessage: sticker }).finish());
-    const audioTagPresent = encodedMessage.includes(Buffer.from([0xD2, 0x01]));
+    const stickerPayload = readLengthField(encodedMessage, 26);
+    const embeddedAudio = stickerPayload && readLengthField(stickerPayload, 26);
+    const audioTagPresent = Boolean(embeddedAudio && embeddedAudio.length === audioBytes.length);
     ssLog("Validación protobuf:", {
       messageBytes: encodedMessage.length,
       audioMessageBytes: audioBytes.length,
+      embeddedAudioBytes: embeddedAudio?.length || 0,
       stickerHash: hash.slice(0, 12) + "...",
       field26TagPresent: audioTagPresent,
       envelope: "stickerMessage"
