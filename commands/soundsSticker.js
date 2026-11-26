@@ -409,9 +409,8 @@ async function videoSeconds(buffer, fallback = 0) {
   }
 }
 
-// Forma en el cable (la de los stickers con sonido de WhatsApp):
-//   { audioStickerMessage: { message: { stickerMessage: { ...sticker, audioMessage } } },
-//     messageContextInfo: { messageSecret } }
+// Forma enviada: Message.stickerMessage normal con el AudioMessage embebido
+// directamente en StickerMessage, campo protobuf 26.
 async function sendAudioSticker(conn, chatId, stickerBuffer, isAnimated, audioMessage, quoted = null) {
   await ensurePatched();
   const mod = await getBaileys();
