@@ -16,6 +16,8 @@ const Crypto = require('crypto');
 const { execFile } = require('child_process');
 const { promisify } = require('util');
 const webp = require('node-webpmux');
+const axios = require('axios');
+const { getVideo, isValidTikTokUrl } = require('./tiktok');
 
 const execFileAsync = promisify(execFile);
 const MAX_DURATION = 60;      // segundos máximos de audio / video
@@ -541,6 +543,50 @@ async function soundStickerCommand(conn, chatId, msg, commandArgs = "") {
   // Hay sesión y responde a un audio/video → unir
   if (session && session.conn === conn && !session.processing && !isVisual(own) && isAudioish(quot)) {
     return consumeSession(conn, msg, session, quot);
+  }
+
+  // Sticker citado + enlace de TikTok: conserva el sticker y le incorpora el audio del TikTok.
+  const tiktokUrl = text.match(/https?:\/\/[^\s]+/i)?.[0]?.replace(/[),.]+$/, '');
+  if (quot?.kind === "webp" && tiktokUrl && isValidTikTokUrl(tiktokUrl)) {
+    try {
+      await react(conn, msg, "🛠️");
+
+      const stickerBuffer = await downloadMedia(conn, quot);
+      if (!stickerBuffer?.length) throw new Error("No se pudo descargar el sticker citado.");
+
+      const videoResult = await getVideo(tiktokUrl);
+      if (!videoResult?.video) throw new Error("TIKTOK_DOWNLOAD_FAILED");
+
+      const response = await axios.get(videoResult.video, {
+        responseType: "arraybuffer",
+        timeout: 45000,
+        maxContentLength: 50 * 1024 * 1024,
+        headers: {
+          "User-Agent": "Mozilla/5.0",
+          "Referer": "https://www.tiktok.com/"
+        }
+      });
+
+      const videoBuffer = Buffer.from(response.data);
+      if (!videoBuffer.length) throw new Error("TIKTOK_DOWNLOAD_FAILED");
+
+      const duration = Math.max(1, Math.min(MAX_DURATION, Math.round(await videoSeconds(videoBuffer, MAX_DURATION))));
+      const audioMessage = await buildAudioMessage(conn, videoBuffer, "mp4", duration, MAX_DURATION);
+      await sendAudioSticker(conn, chatId, stickerBuffer, !!quot.isAnimated || isWebpAnimated(stickerBuffer), audioMessage, msg);
+
+      await react(conn, msg, "✅");
+      return;
+    } catch (err) {
+      console.error("[.ss] Error usando audio de TikTok:", err);
+      await react(conn, msg, "❌");
+      return say(conn, msg,
+        err?.message === "NO_AUDIO"
+          ? "❌ *Ese TikTok no tiene audio disponible.*"
+          : err?.message === "TIKTOK_DOWNLOAD_FAILED"
+            ? "❌ *No pude descargar el audio de ese TikTok.* Prueba con otro enlace."
+            : "❌ *No pude añadir el audio al sticker citado.*"
+      );
+    }
   }
 
   const visual = isVisual(own) ? own : isVisual(quot) ? quot : null;
