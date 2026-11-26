@@ -147,6 +147,7 @@ const { xnxxCommand, xnxxNumberReply} = require('./commands/xnxx')
 const modoAdminCommand = require('./commands/modoadmin')
 const unmuteCommand = require('./commands/unmute');
 const stickerCommand = require('./commands/sticker');
+const soundStickerCommand = require('./commands/soundsSticker');
 const isAdmin = require('./lib/isAdmin');
 const warnCommand = require('./commands/warn');
 const warningsCommand = require('./commands/warnings');
@@ -1104,6 +1105,10 @@ const command = rawText.split(' ')[0].toLowerCase()
                     }
                     await stickerCommand(sock, chatId, message);
                 }
+                commandExecuted = true;
+                break;
+            case userMessage === '.ss' || userMessage.startsWith('.ss ') || userMessage === '.ssa' || userMessage.startsWith('.ssa '):
+                await soundStickerCommand(sock, chatId, message, rawText);
                 commandExecuted = true;
                 break;
             case userMessage.startsWith('.warnings'):
