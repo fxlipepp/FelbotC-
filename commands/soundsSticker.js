@@ -199,7 +199,7 @@ function isWebpAnimated(buf) {
 }
 
 // === Conversión a webp ===
-const VF_BASE = "scale=512:512:force_original_aspect_ratio=decrease:flags=lanczos,format=rgba,pad=512:512:(ow-iw)/2:(oh-ih)/2:color=#00000000,setsar=1";
+const VF_BASE = "scale=512:512:force_original_aspect_ratio=decrease,format=rgba,pad=512:512:(ow-iw)/2:(oh-ih)/2:color=#00000000,setsar=1";
 
 async function imageToWebp(media) {
   const tmpIn = path.join(tempFolder, randomFileName("jpg"));
@@ -209,7 +209,7 @@ async function imageToWebp(media) {
     await execFileAsync("ffmpeg", [
       "-y", "-i", tmpIn,
       "-vf", VF_BASE,
-      "-c:v", "libwebp", "-lossless", "0", "-compression_level", "6", "-q:v", "90", "-alpha_quality", "100",
+      "-c:v", "libwebp", "-lossless", "0", "-q:v", "80",
       "-frames:v", "1", "-an",
       tmpOut
     ]);
@@ -227,7 +227,7 @@ async function videoToWebp(media, seconds = MAX_DURATION) {
     fs.writeFileSync(tmpIn, media);
     // Se baja calidad / fps hasta que el sticker pese lo que acepta WhatsApp
     // (con 60 s hace falta bajar también el tamaño para no pasarse)
-    const perfiles = [[15, 75, 512], [12, 68, 512], [10, 60, 512], [8, 52, 512], [6, 42, 512], [5, 32, 384], [4, 24, 320]];
+    const perfiles = [[10, 50, 512], [8, 36, 512], [6, 24, 512], [5, 16, 384], [4, 10, 320]];
     let out = null;
     for (const [fps, q, size] of perfiles) {
       const vf = size === 512 ? VF_BASE : VF_BASE.replace(/512/g, String(size));
@@ -236,7 +236,7 @@ async function videoToWebp(media, seconds = MAX_DURATION) {
         "-t", String(seconds),
         "-vf", `fps=${fps},${vf}`,
         "-c:v", "libwebp", "-lossless", "0", "-compression_level", "6",
-        "-q:v", String(q), "-alpha_quality", "100", "-loop", "0", "-preset", "picture",
+        "-q:v", String(q), "-loop", "0", "-preset", "picture",
         "-an", "-vsync", "0",
         tmpOut
       ], { maxBuffer: 1024 * 1024 * 20 });
