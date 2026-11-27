@@ -165,7 +165,7 @@ async function sendText(sock, chatId, text, quoted) {
    return sock.sendMessage(chatId, { text }, quoted ? { quoted } : {})
 }
 async function searchVideo(query) {
-   const key = String(query).trim().toLowerCase().replace(/\\s+/g, ' ')
+   const key = String(query).trim().toLowerCase().replace(/\s+/g, ' ')
    const cached = searchCache.get(key)
    if (cached && cached.expiresAt > Date.now()) return cached.video
    if (searchInFlight.has(key)) return searchInFlight.get(key)
