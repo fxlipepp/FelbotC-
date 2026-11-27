@@ -626,7 +626,35 @@ if (userData?.banned) {
             else if (stickerConfig?.openStickerHash === incomingStickerHash) stickerAction = 'open';
 
             if (stickerAction) {
-                const { isSenderAdmin, isBotAdmin } = await isAdmin(sock, chatId, senderId);
+                // Verificar a cualquier administrador del grupo, contemplando JID y LID.
+                const metadata = await sock.groupMetadata(chatId);
+                const participants = metadata?.participants || [];
+                const normalizeParticipantId = value => {
+                    if (!value) return [];
+                    const raw = String(value).split(':')[0].toLowerCase();
+                    const bare = raw.split('@')[0];
+                    return [raw, bare, bare.replace(/\\D/g, '')].filter(Boolean);
+                };
+                const senderCandidates = [
+                    senderId,
+                    message?.key?.participant,
+                    message?.participant,
+                    message?.key?.participantAlt,
+                    message?.participantAlt,
+                    message?.key?.remoteJidAlt
+                ];
+                const senderIds = new Set(senderCandidates.flatMap(normalizeParticipantId));
+                const isSenderAdmin = participants.some(participant => {
+                    if (participant.admin !== 'admin' && participant.admin !== 'superadmin') return false;
+                    const participantIds = [
+                        participant.id,
+                        participant.lid,
+                        participant.phoneNumber
+                    ].flatMap(normalizeParticipantId);
+                    return participantIds.some(id => senderIds.has(id));
+                });
+                const { isBotAdmin } = await isAdmin(sock, chatId, senderId);
+
                 if (isSenderAdmin && isBotAdmin) {
                     const setting = stickerAction === 'close' ? 'announcement' : 'not_announcement';
                     await sock.groupSettingUpdate(chatId, setting);
