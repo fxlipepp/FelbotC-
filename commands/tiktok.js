@@ -45,7 +45,7 @@ function pickVideo(data) {
         data?.data?.video_url,
         ...(Array.isArray(data?.data?.urls) ? data.data.urls : [])
     ];
-    return values.find(value => typeof value === "string" && /^https?:\\/\\//i.test(value)) || null;
+    return values.find(value => typeof value === "string" && /^https?:\/\//i.test(value)) || null;
 }
 
 // ==============================
