@@ -200,7 +200,7 @@ async function getVideoFromUrl(url) {
    } catch {}
    return { url, title: 'YouTube', thumbnail: '', duration: '—', views: 0, author: 'YouTube', published: '' }
 }
-async function downloadAudio(sock, job, quoted) {
+async function downloadAudio(sock, job, asDocument = false, quoted) {
    const startedAt = Date.now()
    const { chatId, videoUrl, title } = job
    let resolved
@@ -230,7 +230,7 @@ async function downloadAudio(sock, job, quoted) {
       if (fileSizeMB(finalFile) > MAX_MB) throw new Error('El audio supera el límite de ' + MAX_MB + ' MB')
       const format = audioFormat(finalFile)
       await sock.sendMessage(chatId, {
-         audio: { url: finalFile },
+         [asDocument ? 'document' : 'audio']: { url: finalFile },
          mimetype: format === 'mp3' ? 'audio/mpeg' : 'application/octet-stream',
          ptt: false,
          fileName: base + (format === 'mp3' ? '.mp3' : '.' + (format || 'bin'))
@@ -239,7 +239,7 @@ async function downloadAudio(sock, job, quoted) {
       await sendText(sock, chatId, '❌ Error descargando audio: ' + error.message, quoted)
    } finally { cleanup(input, output) }
 }
-async function downloadVideo(sock, job, quoted) {
+async function downloadVideo(sock, job, asDocument = false, quoted) {
    const startedAt = Date.now()
    const { chatId, videoUrl, title } = job
    const quality = VALID_QUALITIES.has(job.videoQuality) ? job.videoQuality : DEFAULT_VIDEO_QUALITY
@@ -254,7 +254,7 @@ async function downloadVideo(sock, job, quoted) {
       if (!state.formatOk) throw new Error('La API no entregó un MP4 reproducible')
       if (fileSizeMB(file) > MAX_MB) throw new Error('El video supera el límite de ' + MAX_MB + ' MB')
       await sock.sendMessage(chatId, {
-         video: { url: file },
+         [asDocument ? 'document' : 'video']: { url: file },
          mimetype: 'video/mp4',
          fileName: base + '_' + quality + 'p.mp4'
       }, { quoted })
@@ -267,8 +267,14 @@ async function processChoice(sock, job, choice, quoted) {
    job.processing = true
    if (job.timer) clearTimeout(job.timer)
    try {
-      if (choice === 'audio') return await downloadAudio(sock, job, quoted)
-      if (choice === 'video') return await downloadVideo(sock, job, quoted)
+      if (choice === 'audio' || choice === 'audiodoc') {
+         await react(sock, quoted, choice === 'audio' ? '🎵' : '📄')
+         return await downloadAudio(sock, job, choice === 'audiodoc', quoted)
+      }
+      if (choice === 'video' || choice === 'videodoc') {
+         await react(sock, quoted, choice === 'video' ? '🎬' : '📁')
+         return await downloadVideo(sock, job, choice === 'videodoc', quoted)
+      }
    } finally {
       if (job.previewMessage?.key?.id) pending.delete(job.previewMessage.key.id)
    }
@@ -282,7 +288,7 @@ async function handleIncoming(sock, event) {
          const targetId = message.message.reactionMessage.key?.id
          const job = pending.get(targetId)
          if (!job || job.sock !== sock || job.chatId !== chatId) continue
-         const map = { '👍': 'audio', '❤️': 'video' }
+         const map = { '👍': 'audio', '❤️': 'video', '📄': 'audiodoc', '📁': 'videodoc' }
          const choice = map[message.message.reactionMessage.text]
          if (choice) await processChoice(sock, job, choice, job.previewMessage)
          continue
