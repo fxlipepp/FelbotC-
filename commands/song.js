@@ -325,24 +325,19 @@ async function songCommand(sock, chatId, message) {
       const quality = VALID_QUALITIES.has(parsed.quality) ? parsed.quality : DEFAULT_VIDEO_QUALITY
       const searchSeconds = ((Date.now() - searchStartedAt) / 1000).toFixed(1)
       const caption = [
-         '╭━━〔 𝕱𝖊𝖑𝖇𝖔𝖙 夜 〕━━╮',
-         '│  ♬  *DESCARGA MULTIMEDIA*',
-         '╰━━━━━━━━━━━━━━━━━━━━',
+         '𝕱𝖊𝖑𝖇𝖔𝖙 夜  •  *RESULTADO ENCONTRADO*',
          '',
-         '✦ *' + video.title + '*',
+         '> 🎵 *Título:* ' + video.title,
+         '> 👤 *Canal:* ' + video.author,
+         '> ⏱️ *Duración:* ' + video.duration,
+         '> 👀 *Vistas:* ' + Number(video.views || 0).toLocaleString(),
+         '> 🔗 *Enlace:* ' + video.url,
+         '> ⚡ *Búsqueda:* ' + searchSeconds + ' segundos',
          '',
-         '│ ◇ *Artista / Canal:* ' + video.author,
-         '│ ◇ *Duración:* ' + video.duration,
-         '│ ◇ *Reproducciones:* ' + Number(video.views || 0).toLocaleString(),
-         '',
-         '╭━━〔 *ELIGE TU DESCARGA* 〕━━╮',
-         '│ ♫ Audio en MP3',
-         '│ ▶ Video en ' + quality + 'p',
-         '╰━━━━━━━━━━━━━━━━━━━━━━━━━━',
-         '',
-         '_Selecciona una opción y Felbot enviará únicamente el archivo._'
-      ].join('\n')
-      // La miniatura es opcional: si falla su carga, el menú se envía igualmente.
+         '📥 *¿Qué deseas descargar?*',
+         '🎵 Audio MP3  •  🎬 Video ' + quality + 'p'
+      ].join('\\n')
+      // Preparar la miniatura como imagen en el encabezado, igual que el menú principal.
       let preparedImage = null
       if (video.thumbnail) {
          try {
