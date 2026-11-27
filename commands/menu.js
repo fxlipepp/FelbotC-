@@ -17,27 +17,17 @@ function formatUptime(seconds) {
 }
 
 function buildIntroHeader(uptimeSeconds, version = '2.0.0') {
+
     const uptime = formatUptime(uptimeSeconds)
-    const now = new Date().toLocaleString('es-CO', {
-        timeZone: 'America/Bogota',
-        dateStyle: 'medium',
-        timeStyle: 'short'
-    })
 
-    return `⌒࣪᷼⏜͡ ۪ ࿚ꨪᰰ࿙ ࣭࣪⢏࣭۟⢢࣭ׄ᎐፝֟᎐࣭ׄ⡔࣭۟⡹࣭ׄ ࿚ꨪᰰ࿙ ۪ ͡⏜ׄ᷼⌒
-
-> *¡ʜᴏʟᴀ!* Bienvenido a *𝕱𝖊𝖑𝖇𝖔𝖙 夜* ʚ♡⃛ɞ
-
-: ̗̀〄 *ᴅᴇᴠᴇʟᴏᴘᴇʀ ::* Fxlipe 夜
-: ̗̀☕︎ *ᴏᴡɴᴇʀ ::* Fxlipe 夜
-: ̗̀ꕥ *ᴛɪᴘᴏ ::* WhatsApp Bot
-: ̗̀❖ *ᴠᴇʀsɪᴏ́ɴ ::* v${version}
-: ̗̀❖ *ᴄᴏᴍᴀɴᴅᴏs ::* 120
-: ̗̀❖ *ᴜᴘᴛɪᴍᴇ ::* ${uptime}
-: ̗̀❖ *ʜᴏʀᴀ ::* ${now} (Colombia)
-: ̗̀❖ *ᴄᴀɴᴀʟ ::* ✧ FELBOT 夜 | Oficial ✧
-
-⌒࣪᷼⏜͡ ۪ ࿚ꨪᰰ࿙ ࣭࣪⢏࣭۟⢢࣭ׄ᎐፝֟᎐࣭ׄ⡔࣭۟⡹࣭ׄ ࿚ꨪᰰ࿙ ۪ ͡⏜ׄ᷼⌒`
+    return `╭━━━〔 𝕱𝖊𝖑𝖇𝖔𝖙 夜 〕━━━⬣
+┃ 👑 Creador: Fxlipe 夜
+┃ ⚙️ Versión: v${version}
+┃ 📚 Comandos: 120
+┃ ⏳ Uptime: ${uptime}
+┃ 📢 Canal Oficial:
+┃ ✧ FELBOT 夜 | Oficial ✧
+╰━━━━━━━━━━━━━━━━⬣`
 }
 
 function buildMenuText(uptimeSeconds, version = '2.0.0') {
@@ -50,7 +40,7 @@ function buildMenuText(uptimeSeconds, version = '2.0.0') {
     const helpMessage = `
 ${introHeader}
 
-╭━━〔 👑 OWNER 〕━━╮\n
+╭━━〔 👑 OWNER 〕━━⬣
 > ✦ Comandos de administracion.
 
 ❀ \`.felbot on\`
@@ -59,9 +49,9 @@ ${introHeader}
 ❀ \`.felbot off\`
 > Desactivar Felbot en el grupo.
 
-╰━━━━━━━━━━━━━━━━╯
+╰━━━━━━━━━━━━━━━━⬣
 
-╭━━〔 🌐 GENERAL 〕━━╮\n
+╭━━〔 🌐 GENERAL 〕━━⬣
 > ✦ Comandos principales e información del bot.
 
 ❀ \`.menu\` › \`.help\`
@@ -87,9 +77,9 @@ ${introHeader}
 
 ❀ \`.staff\` › \`.admins\`
 > Ver la lista de administradores.
-╰━━━━━━━━━━━━━━━━╯
+╰━━━━━━━━━━━━━━━━⬣
 
-╭━━〔 🛠️ UTILIDADES 〕━━╮\n
+╭━━〔 🛠️ UTILIDADES 〕━━⬣
 > ✦ Herramientas útiles y funciones extras.
 
 ❀ \`.tts\` + <texto>
@@ -103,9 +93,9 @@ ${introHeader}
 
 ❀ \`.8ball\` + <pregunta>
 > Respuestas aleatorias tipo bola mágica.
-╰━━━━━━━━━━━━━━━━╯
+╰━━━━━━━━━━━━━━━━⬣
 
-╭━━〔 👮 ADMIN 〕━━╮\n
+╭━━〔 👮 ADMIN 〕━━⬣
 > ✦ Herramientas de administración para grupos.
 
 ❀ \`.ban\` + <@usuario>
@@ -179,9 +169,9 @@ ${introHeader}
 
 ❀ \`.cerrar\`
 > Cerrar el grupo.
-╰━━━━━━━━━━━━━━━━╯
+╰━━━━━━━━━━━━━━━━⬣
 
-╭━━〔 🔫 FREE FIRE 〕━━╮\n
+╭━━〔 🔫 FREE FIRE 〕━━⬣
 > ✦ Comandos para ff.
 
 ❀ \`.2vs2\` + <hora>
@@ -201,9 +191,9 @@ ${introHeader}
 
 ❀ \`.int6\`
 > Lista de 6vs6 (interna).
-╰━━━━━━━━━━━━━━━━╯
+╰━━━━━━━━━━━━━━━━⬣
 
-╭━━〔 🔞 NSFW 〕━━╮\n
+╭━━〔 🔞 NSFW 〕━━⬣
 > ✦ Comandos Pornograficos.
 
 ❀ \`.xxnx\` + <texto>
@@ -220,9 +210,9 @@ ${introHeader}
 
 ❀ \`.masturbarsem\` (Masculino)
 > Masturbarse.
-╰━━━━━━━━━━━━━━━━╯
+╰━━━━━━━━━━━━━━━━⬣
 
-╭━━〔 🎨 STICKERS 〕━━╮\n
+╭━━〔 🎨 STICKERS 〕━━⬣
 > ✦ Herramientas de stickers e imágenes.
 
 ❀ \`.s\`
@@ -245,9 +235,9 @@ ${introHeader}
 
 ❀ \`.removebg\`
 > Eliminar fondo de imágenes.
-╰━━━━━━━━━━━━━━━━╯
+╰━━━━━━━━━━━━━━━━⬣
 
-╭━━〔 🔤 TEXTMAKER 〕━━╮\n
+╭━━〔 🔤 TEXTMAKER 〕━━⬣
 > ✦ Crear textos con estilos épicos.
 
 ❀ \`.metallic\` + <texto>
@@ -303,9 +293,9 @@ ${introHeader}
 
 ❀ \`.fire\` + <texto>
 > Texto en llamas 🔥
-╰━━━━━━━━━━━━━━━━╯
+╰━━━━━━━━━━━━━━━━⬣
 
-╭━━〔 🖼️ ANIME 〕━━╮\n
+╭━━〔 🖼️ ANIME 〕━━⬣
 > ✦ Reacciones y gifs estilo anime.
 
 ❀ \`.nom\`
@@ -331,9 +321,9 @@ ${introHeader}
 
 ❀ \`.facepalm\`
 > Hacer facepalm anime.
-╰━━━━━━━━━━━━━━━━╯
+╰━━━━━━━━━━━━━━━━⬣
 
-╭━━〔 🎮 JUEGOS 〕━━╮\n
+╭━━〔 🎮 JUEGOS 〕━━⬣
 > ✦ Juegos y entretenimiento interactivo.
 
 ❀ \`.ppt\` + <@usuario>
@@ -392,9 +382,9 @@ ${introHeader}
 
 ❀ \`.rank\`
 > Ranking de jugadores.
-╰━━━━━━━━━━━━━━━━╯
+╰━━━━━━━━━━━━━━━━⬣
 
-╭━━〔 🎯 DIVERSIÓN 〕━━╮\n
+╭━━〔 🎯 DIVERSIÓN 〕━━⬣
 > ✦ Comandos divertidos y sociales.
 
 ❀ \`.Parejas\`
@@ -429,9 +419,9 @@ ${introHeader}
 
 ❀ \`.stupid\` + <@usuario>
 > Estúpido del grupo.
-╰━━━━━━━━━━━━━━━━╯
+╰━━━━━━━━━━━━━━━━⬣
 
-╭━━〔 📥 DESCARGAS 〕━━╮\n
+╭━━〔 📥 DESCARGAS 〕━━⬣
 > ✦ Descargar contenido multimedia.
 
 ❀ \`.play\` + <nombre>
@@ -457,7 +447,7 @@ ${introHeader}
 
 ❀ \`.ytmp4\` + <link>
 > Descargar videos de YouTube.
-╰━━━━━━━━━━━━━━━━╯
+╰━━━━━━━━━━━━━━━━⬣
 
 ╭━〔 𝕱𝖊𝖑𝖇𝖔𝖙 夜 〕━⬣
 > *🚀 Powered By Fxlipe 夜*
