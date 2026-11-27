@@ -36,16 +36,16 @@ function isValidTikTokUrl(url) {
 }
 
 function pickVideo(data) {
-    return (
-        data?.data?.play ||
-        data?.data?.hdplay ||
-        data?.data?.wmplay ||
-        data?.data?.download ||
-        data?.data?.url ||
-        data?.data?.video_url ||
-        data?.data?.urls?.[0] ||
-        null
-    );
+    const values = [
+        data?.data?.play,
+        data?.data?.hdplay,
+        data?.data?.wmplay,
+        data?.data?.download,
+        data?.data?.url,
+        data?.data?.video_url,
+        ...(Array.isArray(data?.data?.urls) ? data.data.urls : [])
+    ];
+    return values.find(value => typeof value === "string" && /^https?:\\/\\//i.test(value)) || null;
 }
 
 // ==============================
