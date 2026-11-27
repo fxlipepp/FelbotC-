@@ -1,0 +1,887 @@
+
+const fs = require('fs')
+const path = require('path')
+
+const {
+    generateWAMessageFromContent,
+    prepareWAMessageMedia
+} = require('@whiskeysockets/baileys')
+
+function formatUptime(seconds) {
+
+    const h = Math.floor(seconds / 3600)
+    const m = Math.floor((seconds % 3600) / 60)
+    const s = Math.floor(seconds % 60)
+
+    return `${h}h ${m}m ${s}s`
+}
+
+function buildIntroHeader(uptimeSeconds, version = '2.0.0') {
+
+    const uptime = formatUptime(uptimeSeconds)
+
+    return `╭━━━〔 𝕱𝖊𝖑𝖇𝖔𝖙 夜 〕━━━⬣
+┃ 👑 Creador: Fxlipe 夜
+┃ ⚙️ Versión: v${version}
+┃ 📚 Comandos: 120
+┃ ⏳ Uptime: ${uptime}
+┃ 📢 Canal Oficial:
+┃ ✧ FELBOT 夜 | Oficial ✧
+╰━━━━━━━━━━━━━━━━⬣`
+}
+
+function buildMenuText(uptimeSeconds, version = '2.0.0') {
+
+    const introHeader = buildIntroHeader(
+        uptimeSeconds,
+        version
+    )
+
+    const helpMessage = `
+${introHeader}
+
+╭━━〔 👑 OWNER 〕━━⬣
+> ✦ Comandos de administracion.
+
+❀ \`.felbot on\`
+> Activar Felbot en el grupo.
+
+❀ \`.felbot off\`
+> Desactivar Felbot en el grupo.
+
+╰━━━━━━━━━━━━━━━━⬣
+
+╭━━〔 🌐 GENERAL 〕━━⬣
+> ✦ Comandos principales e información del bot.
+
+❀ \`.menu\` › \`.help\`
+> Mostrar el menú completo del bot.
+
+❀ \`.ping\`
+> Ver la velocidad y respuesta del bot.
+
+❀ \`.alive\`
+> Comprobar si el bot está activo.
+
+❀ \`.info\`
+> Ver la información de los creadores.
+
+❀ \`.owner\`
+> Ver el contacto del creador del bot.
+
+❀ \`.jid\`
+> Obtener tu ID de WhatsApp.
+
+❀ \`.groupinfo\`
+> Mostrar información del grupo.
+
+❀ \`.staff\` › \`.admins\`
+> Ver la lista de administradores.
+╰━━━━━━━━━━━━━━━━⬣
+
+╭━━〔 🛠️ UTILIDADES 〕━━⬣
+> ✦ Herramientas útiles y funciones extras.
+
+❀ \`.tts\` + <texto>
+> Convertir texto a voz.
+
+❀ \`.trt\` + <texto>
+> Traducir texto automáticamente.
+
+❀ \`.vv\`
+> Ver mensajes de visualización única.
+
+❀ \`.8ball\` + <pregunta>
+> Respuestas aleatorias tipo bola mágica.
+╰━━━━━━━━━━━━━━━━⬣
+
+╭━━〔 👮 ADMIN 〕━━⬣
+> ✦ Herramientas de administración para grupos.
+
+❀ \`.ban\` + <@usuario>
+> Banear un usuario del bot.
+
+❀ \`.unban\` + <@usuario>
+> Desbanear un usuario del bot.
+
+❀ \`.kick\` + <@usuario>
+> Expulsar un miembro del grupo.
+
+❀ \`.warn\` + <@usuario>
+> Dar advertencias a un usuario.
+
+❀ \`.warnings\` + <@usuario>
+> Ver advertencias acumuladas.
+
+❀ \`.mute\`
+> Silenciar el grupo temporalmente.
+
+❀ \`.unmute\`
+> Volver a activar mensajes del grupo.
+
+❀ \`.promote\` + <@usuario>
+> Dar administrador a un usuario.
+
+❀ \`.demote\` + <@usuario>
+> Quitar administrador a un usuario.
+
+❀ \`.delete\` › \`.del\`
+> Eliminar mensajes enviados.
+
+❀ \`.antilink\` on/off
+> Activar o desactivar anti enlaces.
+
+❀ \`.modoadmin\` on/off
+> Activar o desactivar modo admin.
+
+❀ \`.welcome\` on/off
+> Activar o desactivar bienvenidas.
+
+❀ \`.setwelcome\`
+> Audio personalizado de bienvenida.
+
+❀ \`.resetwelcome\`
+> Eliminar audio de bienvenida.
+
+❀ \`.setbye\`
+> Audio personalizado de despedida.
+
+❀ \`.resetbye\`
+> Eliminar audio de despedida.
+
+❀ \`.n\` + <texto>
+> Mencionar a todos los miembros.
+
+❀ \`.todos\`
+> Etiquetar a todos los participantes.
+
+❀ \`.setgname\` + <texto>
+> Cambiar nombre del grupo.
+
+❀ \`.setgpp\` + <imagen>
+> Cambiar foto del grupo.
+
+❀ \`.setgdesc\` + <texto>
+> Cambiar descripción del grupo.
+
+❀ \`.abrir\`
+> Abrir el grupo.
+
+❀ \`.cerrar\`
+> Cerrar el grupo.
+╰━━━━━━━━━━━━━━━━⬣
+
+╭━━〔 🔫 FREE FIRE 〕━━⬣
+> ✦ Comandos para ff.
+
+❀ \`.2vs2\` + <hora>
+> Lista de 2vs2.
+
+❀ \`.4vs4\` + <hora>
+> Lista de 4vs4.
+
+❀ \`.6vs6\` + <hora>
+> Lista de 6vs6.
+
+❀ \`.int2\`
+> Lista de 2vs2 (interna).
+
+❀ \`.int4\`
+> Lista de 4vs4 (interna).
+
+❀ \`.int6\`
+> Lista de 6vs6 (interna).
+╰━━━━━━━━━━━━━━━━⬣
+
+╭━━〔 🔞 NSFW 〕━━⬣
+> ✦ Comandos Pornograficos.
+
+❀ \`.xxnx\` + <texto>
+> Busqueda porno (Para descarga).
+
+❀ \`.follar\` + <@usuario>
+> Follarse a un usuario.
+
+❀ \`.cum\` + <@usuario>
+> Cum sobre un usuario.
+
+❀ \`.masturbarsef\` (Femenino)
+> Masturbarse.
+
+❀ \`.masturbarsem\` (Masculino)
+> Masturbarse.
+╰━━━━━━━━━━━━━━━━⬣
+
+╭━━〔 🎨 STICKERS 〕━━⬣
+> ✦ Herramientas de stickers e imágenes.
+
+❀ \`.s\`
+> Convertir imagen o video en sticker.
+
+❀ \`.crop\`
+> Imagen-Video a stiker (centrado).
+
+❀ \`.brat\`
+> Convertir texto sticker.
+
+❀ \`.wm\`
+> Cambiar packname de un sticker.
+
+❀ \`.attp\` + <texto>
+> Crear sticker animado con texto.
+
+❀ \`.emojimix\` + <emoji+emoji>
+> Combinar emojis en stickers.
+
+❀ \`.removebg\`
+> Eliminar fondo de imágenes.
+╰━━━━━━━━━━━━━━━━⬣
+
+╭━━〔 🔤 TEXTMAKER 〕━━⬣
+> ✦ Crear textos con estilos épicos.
+
+❀ \`.metallic\` + <texto>
+> Texto metálico brillante.
+
+❀ \`.ice\` + <texto>
+> Texto congelado estilo hielo.
+
+❀ \`.snow\` + <texto>
+> Texto cubierto de nieve.
+
+❀ \`.impressive\` + <texto>
+> Texto impresionante decorado.
+
+❀ \`.matrix\` + <texto>
+> Texto estilo Matrix hacker.
+
+❀ \`.light\` + <texto>
+> Texto iluminado.
+
+❀ \`.neon\` + <texto>
+> Texto con efecto neón.
+
+❀ \`.devil\` + <texto>
+> Texto estilo demoníaco.
+
+❀ \`.purple\` + <texto>
+> Texto morado brillante.
+
+❀ \`.thunder\` + <texto>
+> Texto con rayos eléctricos.
+
+❀ \`.parejas\`
+> Texto decorado con hojas.
+
+❀ \`.1917\` + <texto>
+> Texto estilo película 1917.
+
+❀ \`.arena\` + <texto>
+> Texto arena/desierto.
+
+❀ \`.hacker\` + <texto>
+> Texto hacker oscuro.
+
+❀ \`.sand\` + <texto>
+> Texto de arena caliente.
+
+❀ \`.blackpink\` + <texto>
+> Texto estilo BLACKPINK.
+
+❀ \`.glitch\` + <texto>
+> Texto con efecto glitch.
+
+❀ \`.fire\` + <texto>
+> Texto en llamas 🔥
+╰━━━━━━━━━━━━━━━━⬣
+
+╭━━〔 🖼️ ANIME 〕━━⬣
+> ✦ Reacciones y gifs estilo anime.
+
+❀ \`.nom\`
+> Comer cariñosamente a alguien.
+
+❀ \`.poke\`
+> Picar/molestar a alguien.
+
+❀ \`.cry\`
+> Llorar estilo anime.
+
+❀ \`.besar\` + <@usuario>
+> Besar a Usuario.
+
+❀ \`.pat\`
+> Dar palmadas en la cabeza.
+
+❀ \`.hug\`
+> Abrazar a alguien.
+
+❀ \`.wink\`
+> Guiñar el ojo.
+
+❀ \`.facepalm\`
+> Hacer facepalm anime.
+╰━━━━━━━━━━━━━━━━⬣
+
+╭━━〔 🎮 JUEGOS 〕━━⬣
+> ✦ Juegos y entretenimiento interactivo.
+
+❀ \`.ppt\` + <@usuario>
+> Piedra, papel o tijera.
+
+❀ \`.dados\`
+> Lanzar dos dados.
+
+❀ \`.moneda\` + cara/cruz
+> Cara o cruz.
+
+❀ \`.ruleta\` [@usuario]
+> Ruleta aleatoria recreativa.
+
+❀ \`.8ball\` + <pregunta>
+> Consultar la bola mágica.
+
+❀ \`.adivina\` [categoria]
+> Adivinar una palabra.
+
+❀ \`.quiz\`
+> Preguntas y respuestas.
+
+❀ \`.duelo\` + <@usuario>
+> Duelo entre usuarios.
+
+❀ \`.blackjack\`
+> Jugar blackjack.
+
+❀ \`.slots\`
+> Maquina tragamonedas recreativa.
+
+❀ \`.memoria\`
+> Juego de memoria.
+
+❀ \`.tictactoe\`
+> Jugar tres en raya.
+
+❀ \`.hangman\`
+> Jugar ahorcado.
+
+❀ \`.guess\`
+> Juego de adivinar palabras.
+
+❀ \`.trivia\`
+> Responder preguntas de trivia.
+
+❀ \`.truth\`
+> Preguntas de verdad.
+
+❀ \`.dare\`
+> Retos aleatorios.
+
+❀ \`.perfil\`
+> Ver tus estadisticas.
+
+❀ \`.rank\`
+> Ranking de jugadores.
+╰━━━━━━━━━━━━━━━━⬣
+
+╭━━〔 🎯 DIVERSIÓN 〕━━⬣
+> ✦ Comandos divertidos y sociales.
+
+❀ \`.Parejas\`
+> Top 5 parejas del grupo.
+
+❀ \`.compliment\` + <@usuario>
+> Enviar cumplidos a alguien.
+
+❀ \`.propuesta\` + <@usuario>
+> Envia propuesta de matrimonio.
+
+❀ \`.divorcio\` + <@usuario>
+> Finaliza un matrimonio activo en el grupo.
+
+❀ \`.top\` + <texto>
+> Top 5 (categoria).
+
+❀ \`.piropo\` + <@usuario>
+> Enviar piropos a alguien.
+
+❀ \`.insult\` + <@usuario>
+> Insultar amistosamente a alguien.
+
+❀ \`.flirt\`
+> Coquetear con un usuario.
+
+❀ \`.ship\`
+> Ver porcentaje de compatibilidad.
+
+❀ \`.simp\` + <@usuario>
+> Tarjeta Simp.
+
+❀ \`.stupid\` + <@usuario>
+> Estúpido del grupo.
+╰━━━━━━━━━━━━━━━━⬣
+
+╭━━〔 📥 DESCARGAS 〕━━⬣
+> ✦ Descargar contenido multimedia.
+
+❀ \`.play\` + <nombre>
+> Buscar y descargar música.
+
+❀ \`.video\` + <nombre>
+> Buscar y video de yt.
+
+❀ \`.song\` + <nombre>
+> Descargar canciones en mp3.
+
+❀ \`.spotify\` + <link>
+> Descargar audio de Spotify.
+
+❀ \`.tiktok\` + <link>
+> Descargar videos de TikTok.
+
+❀ \`.facebook\` + <link>
+> Descargar videos de Facebook.
+
+❀ \`.instagram\` + <link>
+> Descargar reels y publicaciones.
+
+❀ \`.ytmp4\` + <link>
+> Descargar videos de YouTube.
+╰━━━━━━━━━━━━━━━━⬣
+
+╭━〔 𝕱𝖊𝖑𝖇𝖔𝖙 夜 〕━⬣
+> *🚀 Powered By Fxlipe 夜*
+╰━━━━━━━━━━━━⬣`
+
+    return helpMessage.trim()
+}
+
+
+// ==========================================
+// ACCIONES DE LOS BOTONES
+// ==========================================
+
+function getMenuButtonAction(buttonId) {
+
+    switch (buttonId) {
+
+        case 'view_full_menu':
+            return {
+                type: 'send_full_menu'
+            }
+
+        case 'owner':
+            return {
+                type: 'owner'
+            }
+
+        case 'report_error':
+            return {
+                type: 'report_error'
+            }
+
+        case 'request_command':
+            return {
+                type: 'request_command'
+            }
+
+        case 'buy_bot':
+            return {
+                type: 'buy_bot'
+            }
+
+        default:
+            return null
+    }
+}
+
+
+// ==========================================
+// MANEJAR BOTÓN
+// ==========================================
+
+async function handleMenuButton(
+    sock,
+    chatId,
+    buttonId,
+    message
+) {
+
+    const action = getMenuButtonAction(buttonId)
+
+    if (!action) return false
+
+
+    // ======================================
+    // MENU COMPLETO
+    // ======================================
+
+    if (action.type === 'send_full_menu') {
+
+        const fullMenu = buildMenuText(
+            process.uptime(),
+            '2.0.0'
+        )
+
+        try {
+
+            const gifsPath = path.join(
+                __dirname,
+                '..',
+                'assets',
+                'gifs',
+                'menucompleto',
+                'menu.mp4'
+            )
+
+            if (!fs.existsSync(gifsPath)) {
+
+                throw new Error(
+                    `No existe el archivo: ${gifsPath}`
+                )
+            }
+
+            const videoBuffer =
+                fs.readFileSync(gifsPath)
+
+            await sock.sendMessage(
+                chatId,
+                {
+                    video: videoBuffer,
+
+                    gifPlayback: true,
+
+                    caption: fullMenu
+                },
+                {
+                    quoted: message
+                }
+            )
+
+        } catch (error) {
+
+            console.error(
+                '❌ ERROR EN MENU COMPLETO:',
+                error
+            )
+
+            await sock.sendMessage(
+                chatId,
+                {
+                    text: fullMenu
+                },
+                {
+                    quoted: message
+                }
+            )
+        }
+
+        return true
+    }
+
+
+    // ======================================
+    // LOS DEMÁS BOTONES
+    // ======================================
+
+    return false
+}
+
+
+// ==========================================
+// COMANDO .MENU
+// ==========================================
+
+async function helpCommand(
+    sock,
+    chatId,
+    message
+) {
+
+    const introCaption = `${buildIntroHeader(
+        process.uptime(),
+        '2.0.0'
+    )}
+
+Bienvenido a Felbot 夜.
+Aquí encontrarás herramientas, administración, entretenimiento y mucho más.
+
+👇 Elige una opción para continuar.`
+
+
+    try {
+
+        const gifsPath = path.join(
+            __dirname,
+            '..',
+            'assets',
+            'gifs',
+            'menucompleto',
+            'menu.mp4'
+        )
+
+
+        if (!fs.existsSync(gifsPath)) {
+
+            throw new Error(
+                `No existe el archivo del menú: ${gifsPath}`
+            )
+        }
+
+
+        const videoBuffer =
+            fs.readFileSync(gifsPath)
+
+
+        // ======================================
+        // PREPARAR VIDEO
+        // ======================================
+
+        const preparedVideo =
+            await prepareWAMessageMedia(
+                {
+                    video: videoBuffer,
+
+                    gifPlayback: true
+                },
+                {
+                    upload:
+                        sock.waUploadToServer
+                }
+            )
+
+
+        // ======================================
+        // BOTONES NATIVOS
+        // ======================================
+
+        const buttons = [
+
+            {
+                name: 'cta_url',
+                buttonParamsJson: JSON.stringify({
+                    display_text: '🌐 VER WEB OFICIAL',
+                    url: 'https://fxlipe.skyultraplus.online/',
+                    merchant_url: 'https://fxlipe.skyultraplus.online/'
+                })
+            },
+
+            ...[
+            [
+                'VER MENU COMPLETO',
+                'view_full_menu'
+            ],
+
+            [
+                'CONTACTAME 夜',
+                'owner'
+            ],
+
+            [
+                'REPORTAR ERROR ❗',
+                'report_error'
+            ],
+
+            [
+                'SOLICITUD DE COMANDO 🕸️',
+                'request_command'
+            ],
+
+            [
+                'ADQUIRIR BOT 💵',
+                'buy_bot'
+            ]
+
+        ].map(
+            ([display_text, id]) => ({
+
+                name: 'quick_reply',
+
+                buttonParamsJson:
+                    JSON.stringify({
+
+                        display_text,
+
+                        id
+
+                    })
+            })
+        ),
+        ]
+
+
+        // ======================================
+        // MENSAJE INTERACTIVO
+        // ======================================
+
+        const menuMessage =
+            generateWAMessageFromContent(
+
+                chatId,
+
+                {
+
+                    interactiveMessage: {
+
+                        header: {
+
+                            title:
+                                '𝕱𝖊𝖑𝖇𝖔𝖙 夜',
+
+                            subtitle:
+                                'Menú interactivo',
+
+                            hasMediaAttachment:
+                                true,
+
+                            ...preparedVideo
+                        },
+
+
+                        body: {
+
+                            text:
+                                introCaption
+                        },
+
+                        footer: {
+
+                            text:
+                                '𝕱𝖊𝖑𝖇𝖔𝖙 夜 • Menú interactivo'
+                        },
+
+
+                        nativeFlowMessage: {
+
+                            buttons
+                        }
+                    }
+
+                },
+
+                {
+
+                    quoted: message
+                }
+            )
+
+
+        // ======================================
+        // ENVIAR
+        // ======================================
+
+        await sock.relayMessage(
+
+            menuMessage.key.remoteJid,
+
+            menuMessage.message,
+
+            {
+
+                messageId:
+                    menuMessage.key.id,
+
+                additionalNodes: [
+
+                    {
+
+                        tag: 'biz',
+
+                        attrs: {},
+
+                        content: [
+
+                            {
+
+                                tag:
+                                    'interactive',
+
+                                attrs: {
+
+                                    type:
+                                        'native_flow',
+
+                                    v: '1'
+                                },
+
+                                content: [
+
+                                    {
+
+                                        tag:
+                                            'native_flow',
+
+                                        attrs: {
+
+                                            v: '9',
+
+                                            name:
+                                                'mixed'
+                                        }
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                ]
+            }
+        )
+
+
+    } catch (error) {
+
+        console.error(
+            '❌ ERROR EN MENU:',
+            error
+        )
+
+
+        // ======================================
+        // FALLBACK
+        // ======================================
+
+        await sock.sendMessage(
+
+            chatId,
+
+            {
+
+                text:
+                    introCaption
+
+            },
+
+            {
+
+                quoted:
+                    message
+            }
+        )
+    }
+}
+
+
+// ==========================================
+// EXPORTACIONES
+// ==========================================
+
+helpCommand.buildMenuText =
+    buildMenuText
+
+helpCommand.getMenuButtonAction =
+    getMenuButtonAction
+
+helpCommand.handleMenuButton =
+    handleMenuButton
+
+module.exports =
+    helpCommand
+
+module.exports.buildMenuText =
+    buildMenuText
+
+module.exports.getMenuButtonAction =
+    getMenuButtonAction
+
+module.exports.handleMenuButton =
+    handleMenuButton
