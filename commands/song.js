@@ -19,6 +19,9 @@ const DEFAULT_AUDIO_FORMAT = 'mp3'
 const MAX_MB = 200
 const VALID_QUALITIES = new Set(['144', '240', '360', '720'])
 const pending = new Map()
+const searchCache = new Map()
+const searchInFlight = new Map()
+const SEARCH_CACHE_TTL = 5 * 60 * 1000
 const TMP_DIR = path.join(os.tmpdir(), 'felbot-play')
 
 function ensureTmp() {
@@ -162,15 +165,27 @@ async function sendText(sock, chatId, text, quoted) {
    return sock.sendMessage(chatId, { text }, quoted ? { quoted } : {})
 }
 async function searchVideo(query) {
-   console.log('[play] Buscando en YouTube:', query)
-   const result = await yts(query)
-   const video = result.videos?.[0]
-   if (!video) throw new Error('No encontré resultados para esa búsqueda')
-   return {
-      url: video.url, title: video.title || 'YouTube', thumbnail: video.thumbnail || '',
-      duration: video.timestamp || '—', views: Number(video.views || 0),
-      author: video.author?.name || video.author || 'Desconocido', published: video.ago || ''
-   }
+   const key = String(query).trim().toLowerCase().replace(/\\s+/g, ' ')
+   const cached = searchCache.get(key)
+   if (cached && cached.expiresAt > Date.now()) return cached.video
+   if (searchInFlight.has(key)) return searchInFlight.get(key)
+
+   const request = (async () => {
+      console.log('[play] Buscando en YouTube:', query)
+      const result = await yts(query)
+      const video = result.videos?.[0]
+      if (!video) throw new Error('No encontré resultados para esa búsqueda')
+      const item = {
+         url: video.url, title: video.title || 'YouTube', thumbnail: video.thumbnail || '',
+         duration: video.timestamp || '—', views: Number(video.views || 0),
+         author: video.author?.name || video.author || 'Desconocido', published: video.ago || ''
+      }
+      searchCache.set(key, { video: item, expiresAt: Date.now() + SEARCH_CACHE_TTL })
+      if (searchCache.size > 100) searchCache.delete(searchCache.keys().next().value)
+      return item
+   })()
+   searchInFlight.set(key, request)
+   try { return await request } finally { searchInFlight.delete(key) }
 }
 async function getVideoFromUrl(url) {
    const match = String(url).match(/(?:v=|youtu\.be\/|shorts\/)([0-9A-Za-z_-]{11})/)
@@ -243,23 +258,19 @@ async function downloadVideo(sock, job, quoted) {
          mimetype: 'video/mp4',
          fileName: base + '_' + quality + 'p.mp4'
       }, { quoted })
-      await sendText(sock, chatId, '✅ Video listo (' + quality + 'p). ⏱️ Tiempo de descarga: ' + ((Date.now() - startedAt) / 1000).toFixed(1) + ' segundos.', quoted)
    } catch (error) {
       await sendText(sock, chatId, '❌ Error descargando video: ' + error.message, quoted)
    } finally { cleanup(file, file + '.alt') }
 }
 async function processChoice(sock, job, choice, quoted) {
-   const chatId = job.chatId
-   if (choice === 'audio') {
-      await react(sock, quoted, '🎵')
-      await sendText(sock, chatId, '🎶 Descargando audio MP3...', quoted)
-      return downloadAudio(sock, job, quoted)
-   }
-   if (choice === 'video') {
-      const quality = job.videoQuality || DEFAULT_VIDEO_QUALITY
-      await react(sock, quoted, '🎬')
-      await sendText(sock, chatId, '🎥 Descargando video (' + quality + 'p)...', quoted)
-      return downloadVideo(sock, job, quoted)
+   if (!job || job.processing) return
+   job.processing = true
+   if (job.timer) clearTimeout(job.timer)
+   try {
+      if (choice === 'audio') return await downloadAudio(sock, job, quoted)
+      if (choice === 'video') return await downloadVideo(sock, job, quoted)
+   } finally {
+      if (job.previewMessage?.key?.id) pending.delete(job.previewMessage.key.id)
    }
 }
 async function handleIncoming(sock, event) {
@@ -314,25 +325,35 @@ async function songCommand(sock, chatId, message) {
       const quality = VALID_QUALITIES.has(parsed.quality) ? parsed.quality : DEFAULT_VIDEO_QUALITY
       const searchSeconds = ((Date.now() - searchStartedAt) / 1000).toFixed(1)
       const caption = [
-         '𝕱𝖊𝖑𝖇𝖔𝖙 夜  •  *RESULTADO ENCONTRADO*',
+         '╭━━〔 𝕱𝖊𝖑𝖇𝖔𝖙 夜 〕━━╮',
+         '│  ♬  *DESCARGA MULTIMEDIA*',
+         '╰━━━━━━━━━━━━━━━━━━━━',
          '',
-         '> 🎵 *Título:* ' + video.title,
-         '> 👤 *Canal:* ' + video.author,
-         '> ⏱️ *Duración:* ' + video.duration,
-         '> 👀 *Vistas:* ' + Number(video.views || 0).toLocaleString(),
-         '> 🔗 *Enlace:* ' + video.url,
-         '> ⚡ *Búsqueda:* ' + searchSeconds + ' segundos',
+         '✦ *' + video.title + '*',
          '',
-         '📥 *¿Qué deseas descargar?*',
-         '🎵 Audio MP3  •  🎬 Video ' + quality + 'p'
+         '│ ◇ *Artista / Canal:* ' + video.author,
+         '│ ◇ *Duración:* ' + video.duration,
+         '│ ◇ *Reproducciones:* ' + Number(video.views || 0).toLocaleString(),
+         '',
+         '╭━━〔 *ELIGE TU DESCARGA* 〕━━╮',
+         '│ ♫ Audio en MP3',
+         '│ ▶ Video en ' + quality + 'p',
+         '╰━━━━━━━━━━━━━━━━━━━━━━━━━━',
+         '',
+         '_Selecciona una opción y Felbot enviará únicamente el archivo._'
       ].join('\n')
-      // Preparar la miniatura como imagen en el encabezado, igual que el menú principal.
-      const preparedImage = video.thumbnail
-         ? await prepareWAMessageMedia(
-            { image: { url: video.thumbnail } },
-            { upload: sock.waUploadToServer }
-         )
-         : null
+      // La miniatura es opcional: si falla su carga, el menú se envía igualmente.
+      let preparedImage = null
+      if (video.thumbnail) {
+         try {
+            preparedImage = await prepareWAMessageMedia(
+               { image: { url: video.thumbnail } },
+               { upload: sock.waUploadToServer }
+            )
+         } catch (imageError) {
+            console.warn('[play] No se pudo cargar la miniatura:', imageError.message)
+         }
+      }
 
       // Mismo formato nativo y botones que usa commands/menu.js
       const buttons = [
