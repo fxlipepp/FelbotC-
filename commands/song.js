@@ -151,12 +151,31 @@ function getQuotedId(message) {
       message?.message?.interactiveResponseMessage?.contextInfo?.stanzaId || ''
 }
 function getSelectedId(message) {
-   const interactive = message?.message?.interactiveResponseMessage?.nativeFlowResponseMessage
-   if (message?.message?.listResponseMessage?.singleSelectReply?.selectedRowId) return message.message.listResponseMessage.singleSelectReply.selectedRowId
-   if (message?.message?.buttonsResponseMessage?.selectedButtonId) return message.message.buttonsResponseMessage.selectedButtonId
-   if (message?.message?.templateButtonReplyMessage?.selectedId) return message.message.templateButtonReplyMessage.selectedId
-   if (interactive?.paramsJson) { try { return JSON.parse(interactive.paramsJson).id || '' } catch {} }
-   return interactive?.body?.text || ''
+   const msg = message?.message || {}
+   const interactive = msg?.interactiveResponseMessage?.nativeFlowResponseMessage
+   const direct = msg?.listResponseMessage?.singleSelectReply?.selectedRowId ||
+      msg?.buttonsResponseMessage?.selectedButtonId ||
+      msg?.templateButtonReplyMessage?.selectedId
+   if (direct) return String(direct)
+
+   if (interactive?.paramsJson) {
+      try {
+         const params = JSON.parse(interactive.paramsJson)
+         const id = params?.id || params?.selectedId || params?.buttonId || params?.row_id
+         if (id) return String(id)
+      } catch {}
+   }
+
+   const candidates = [
+      interactive?.body?.text,
+      msg?.interactiveResponseMessage?.body?.text,
+      msg?.messageContextInfo?.buttonReply?.id
+   ]
+   for (const value of candidates) {
+      const match = String(value || '').match(/play_(?:audio|video)/i)
+      if (match) return match[0].toLowerCase()
+   }
+   return ''
 }
 async function react(sock, message, emoji) {
    try { await sock.sendMessage(message.key.remoteJid, { react: { text: emoji, key: message.key } }) } catch {}
@@ -268,11 +287,11 @@ async function processChoice(sock, job, choice, quoted) {
    if (job.timer) clearTimeout(job.timer)
    try {
       if (choice === 'audio' || choice === 'audiodoc') {
-         await react(sock, quoted, choice === 'audio' ? '🎵' : '📄')
+         await react(sock, job.commandMessage || quoted, '🎵')
          return await downloadAudio(sock, job, choice === 'audiodoc', quoted)
       }
       if (choice === 'video' || choice === 'videodoc') {
-         await react(sock, quoted, choice === 'video' ? '🎬' : '📁')
+         await react(sock, job.commandMessage || quoted, '🎬')
          return await downloadVideo(sock, job, choice === 'videodoc', quoted)
       }
    } finally {
@@ -323,6 +342,12 @@ async function songCommand(sock, chatId, message) {
       return sendText(sock, chatId, '🎵 *FELBOT PLAY*\n\nUsa: *.play nombre de la canción [calidad]*\nEjemplo: *.play Canserbero Es épico 720*', message)
    }
    const searchStartedAt = Date.now()
+   if (!sock._felbotPlayListener) {
+      sock._felbotPlayListener = true
+      sock.ev.on('messages.upsert', event => {
+         handleIncoming(sock, event).catch(error => console.error('[play] Listener:', error))
+      })
+   }
    await react(sock, message, '⏳')
    try {
       const video = /^https?:\/\/(www\.)?(youtube\.com|youtu\.be)\//i.test(parsed.query)
@@ -433,19 +458,13 @@ async function songCommand(sock, chatId, message) {
 
       const preview = menuMessage
       const job = {
-         sock, chatId, videoUrl: video.url, title: video.title, thumbnail: video.thumbnail,
+         sock, chatId, commandMessage: message, videoUrl: video.url, title: video.title, thumbnail: video.thumbnail,
          duration: video.duration, views: video.views, author: video.author,
          videoQuality: quality, previewMessage: preview, createdAt: Date.now()
       }
       pending.set(preview.key.id, job)
       job.timer = setTimeout(() => pending.delete(preview.key.id), 10 * 60 * 1000)
       await react(sock, message, '✅')
-      if (!sock._felbotPlayListener) {
-         sock._felbotPlayListener = true
-         sock.ev.on('messages.upsert', event => {
-            handleIncoming(sock, event).catch(error => console.error('[play] Listener:', error))
-         })
-      }
       return true
    } catch (error) {
       console.error('[play] Error:', error?.response?.data || error.message || error)
