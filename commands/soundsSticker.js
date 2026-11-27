@@ -30,6 +30,8 @@ if (!fs.existsSync(tempFolder)) fs.mkdirSync(tempFolder, { recursive: true });
 
 // Sesiones activas: "chat:remitente" → { stickerBuffer, isAnimated, conn, ... }
 const sessions = new Map();
+// Evita procesar dos veces el mismo comando si Baileys duplica el evento.
+const handledCommands = new Set();
 // Sockets (bot principal / subbots) que ya tienen el listener de audio
 const listening = new WeakSet();
 
@@ -439,7 +441,9 @@ async function sendAudioSticker(conn, chatId, stickerBuffer, isAnimated, audioMe
 
 // === Sesiones ===
 const react = (conn, msg, text) =>
-  conn.sendMessage(msg.key.remoteJid, { react: { text, key: msg.key } }).catch(() => {});
+  conn.sendMessage(msg.key.remoteJid, { react: { text, key: msg.key } }).catch((error) => {
+    console.error("[.ss] No se pudo enviar la reacción:", error?.message || error);
+  });
 
 const say = (conn, msg, text) =>
   conn.sendMessage(msg.key.remoteJid, {
@@ -453,7 +457,9 @@ const say = (conn, msg, text) =>
         serverMessageId: -1
       }
     }
-  }, { quoted: msg }).catch(() => {});
+  }, { quoted: msg }).catch((error) => {
+    console.error("[.ss] No se pudo enviar el mensaje de estado:", error?.message || error);
+  });
 
 function sessionKey(msg) {
   const chat = msg.key.remoteJid;
@@ -558,6 +564,14 @@ function attachListener(conn) {
 
 // === Comando principal ===
 async function soundStickerCommand(conn, chatId, msg, commandArgs = "") {
+  const commandMessageKey = msg?.key?.id ? `${chatId}:${msg.key.id}` : null;
+  if (commandMessageKey) {
+    if (handledCommands.has(commandMessageKey)) return;
+    handledCommands.add(commandMessageKey);
+    const timer = setTimeout(() => handledCommands.delete(commandMessageKey), 5 * 60 * 1000);
+    if (typeof timer.unref === "function") timer.unref();
+  }
+
   const pref = global.prefixes?.[0] || ".";
   const command = "ss";
   const text = String(commandArgs || "").replace(/^\s*\.?(?:ss|ssa)\b/i, "").trim();
