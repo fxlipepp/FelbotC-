@@ -907,6 +907,41 @@ const command = rawText.split(' ')[0].toLowerCase()
         let commandExecuted = false;
 
         switch (true) {
+            case userMessage === '.id': {
+                let quotedSticker = message.message?.extendedTextMessage?.contextInfo?.quotedMessage;
+
+                // Desempaquetar posibles envolturas del mensaje citado.
+                for (let i = 0; i < 5 && quotedSticker; i++) {
+                    const unwrapped =
+                        quotedSticker.ephemeralMessage?.message ||
+                        quotedSticker.viewOnceMessage?.message ||
+                        quotedSticker.viewOnceMessageV2?.message ||
+                        quotedSticker.viewOnceMessageV2Extension?.message;
+
+                    if (!unwrapped) break;
+                    quotedSticker = unwrapped;
+                }
+
+                const sticker = quotedSticker?.stickerMessage;
+                if (!sticker?.fileSha256) {
+                    await sock.sendMessage(chatId, {
+                        text: '❌ Responde directamente a un sticker con *.id* para obtener su identificador.'
+                    }, { quoted: message });
+                    commandExecuted = true;
+                    break;
+                }
+
+                const stickerHash = Buffer.from(sticker.fileSha256);
+                await sock.sendMessage(chatId, {
+                    text: '🆔 *IDENTIFICADOR DEL STICKER*\\n\\n' +
+                        '*Base64 (el que usa Felbot):*\\n' +
+                        '```' + stickerHash.toString('base64') + '```\\n' +
+                        '*Hexadecimal:*\\n' +
+                        '```' + stickerHash.toString('hex') + '```'
+                }, { quoted: message });
+                commandExecuted = true;
+                break;
+            }
             case userMessage === '.setcerrar':
             case userMessage === '.setabrir': {
                 if (!isGroup) {
