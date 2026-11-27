@@ -623,7 +623,7 @@ async function soundStickerCommand(conn, chatId, msg, commandArgs = "") {
   }
 
   // Sticker citado + enlace de TikTok: prueba varios proveedores y valida el audio real.
-  const tiktokUrl = text.match(/https?:\\/\\/[^\\s]+/i)?.[0]?.replace(/[),.]+$/, '');
+  const tiktokUrl = text.match(/https?:\/\/[^\s]+/i)?.[0]?.replace(/[),.]+$/, '');
   if (quot?.kind === "webp" && tiktokUrl && isValidTikTokUrl(tiktokUrl)) {
     try {
       await react(conn, msg, "🛠️");
