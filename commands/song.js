@@ -336,7 +336,7 @@ async function songCommand(sock, chatId, message) {
          '',
          '📥 *¿Qué deseas descargar?*',
          '🎵 Audio MP3  •  🎬 Video ' + quality + 'p'
-      ].join('\\n')
+      ].join('\n')
       // Preparar la miniatura como imagen en el encabezado, igual que el menú principal.
       let preparedImage = null
       if (video.thumbnail) {
