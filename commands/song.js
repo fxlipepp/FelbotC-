@@ -287,11 +287,11 @@ async function processChoice(sock, job, choice, quoted) {
    if (job.timer) clearTimeout(job.timer)
    try {
       if (choice === 'audio' || choice === 'audiodoc') {
-         await react(sock, job.commandMessage || quoted, '🎵')
+         await react(sock, job.commandMessage || quoted, choice === 'audio' ? '🎵' : '📄')
          return await downloadAudio(sock, job, choice === 'audiodoc', quoted)
       }
       if (choice === 'video' || choice === 'videodoc') {
-         await react(sock, job.commandMessage || quoted, '🎬')
+         await react(sock, job.commandMessage || quoted, choice === 'video' ? '🎬' : '📁')
          return await downloadVideo(sock, job, choice === 'videodoc', quoted)
       }
    } finally {
