@@ -17,17 +17,27 @@ function formatUptime(seconds) {
 }
 
 function buildIntroHeader(uptimeSeconds, version = '2.0.0') {
-
     const uptime = formatUptime(uptimeSeconds)
+    const now = new Date().toLocaleString('es-CO', {
+        timeZone: 'America/Bogota',
+        dateStyle: 'medium',
+        timeStyle: 'short'
+    })
 
-    return `╭━━━〔 𝕱𝖊𝖑𝖇𝖔𝖙 夜 〕━━━⬣
-┃ 👑 Creador: Fxlipe 夜
-┃ ⚙️ Versión: v${version}
-┃ 📚 Comandos: 120
-┃ ⏳ Uptime: ${uptime}
-┃ 📢 Canal Oficial:
-┃ ✧ FELBOT 夜 | Oficial ✧
-╰━━━━━━━━━━━━━━━━⬣`
+    return `⌒࣪᷼⏜͡ ۪ ࿚ꨪᰰ࿙ ࣭࣪⢏࣭۟⢢࣭ׄ᎐፝֟᎐࣭ׄ⡔࣭۟⡹࣭ׄ ࿚ꨪᰰ࿙ ۪ ͡⏜ׄ᷼⌒
+
+> *¡ʜᴏʟᴀ!* Bienvenido a *𝕱𝖊𝖑𝖇𝖔𝖙 夜* ʚ♡⃛ɞ
+
+: ̗̀〄 *ᴅᴇᴠᴇʟᴏᴘᴇʀ ::* Fxlipe 夜
+: ̗̀☕︎ *ᴏᴡɴᴇʀ ::* Fxlipe 夜
+: ̗̀ꕥ *ᴛɪᴘᴏ ::* WhatsApp Bot
+: ̗̀❖ *ᴠᴇʀsɪᴏ́ɴ ::* v${version}
+: ̗̀❖ *ᴄᴏᴍᴀɴᴅᴏs ::* 120
+: ̗̀❖ *ᴜᴘᴛɪᴍᴇ ::* ${uptime}
+: ̗̀❖ *ʜᴏʀᴀ ::* ${now} (Colombia)
+: ̗̀❖ *ᴄᴀɴᴀʟ ::* ✧ FELBOT 夜 | Oficial ✧
+
+⌒࣪᷼⏜͡ ۪ ࿚ꨪᰰ࿙ ࣭࣪⢏࣭۟⢢࣭ׄ᎐፝֟᎐࣭ׄ⡔࣭۟⡹࣭ׄ ࿚ꨪᰰ࿙ ۪ ͡⏜ׄ᷼⌒`
 }
 
 function buildMenuText(uptimeSeconds, version = '2.0.0') {
