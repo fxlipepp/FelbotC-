@@ -634,34 +634,34 @@ if (userData?.banned) {
             }
         }
 
-        // El sticker queda habilitado para TODO el grupo una vez que un admin lo configura.
-        // Cualquier integrante puede activarlo; el bot sí debe ser administrador para cambiar el grupo.
+        // Sticker de control del grupo: cualquier integrante puede activarlo.
+        // WhatsApp valida los permisos reales del bot al ejecutar groupSettingUpdate.
         if (isGroup && messageContent?.stickerMessage?.fileSha256) {
             const incomingStickerHash = Buffer.from(messageContent.stickerMessage.fileSha256).toString('base64');
             const stickerConfig = await Group.findOne({ groupId: chatId })
                 .select('closeStickerHash openStickerHash')
                 .lean();
+
             let stickerAction = null;
             if (stickerConfig?.closeStickerHash === incomingStickerHash) stickerAction = 'close';
             else if (stickerConfig?.openStickerHash === incomingStickerHash) stickerAction = 'open';
 
             if (stickerAction) {
-                const { isBotAdmin } = await isAdmin(sock, chatId, senderId);
-
-                if (!isBotAdmin) {
-                    await sock.sendMessage(chatId, {
-                        text: '❌ Necesito ser administrador para abrir o cerrar el grupo.'
-                    }, { quoted: message });
-                    return;
-                }
-
                 const setting = stickerAction === 'close' ? 'announcement' : 'not_announcement';
-                await sock.groupSettingUpdate(chatId, setting);
-                await sock.sendMessage(chatId, {
-                    text: stickerAction === 'close'
-                        ? '🔒 Grupo cerrado mediante el sticker configurado.'
-                        : '🔓 Grupo abierto mediante el sticker configurado.'
-                }, { quoted: message });
+
+                try {
+                    await sock.groupSettingUpdate(chatId, setting);
+                    await sock.sendMessage(chatId, {
+                        text: stickerAction === 'close'
+                            ? '🔒 Grupo cerrado mediante el sticker configurado.'
+                            : '🔓 Grupo abierto mediante el sticker configurado.'
+                    }, { quoted: message });
+                } catch (stickerError) {
+                    console.error('[STICKER GROUP CONTROL] Error:', stickerError);
+                    await sock.sendMessage(chatId, {
+                        text: '❌ No pude cambiar la configuración del grupo. Verifica que Felbot sea administrador y tenga permisos para modificar el grupo.'
+                    }, { quoted: message });
+                }
                 return;
             }
         }
