@@ -50,7 +50,7 @@ function buildMenuText(uptimeSeconds, version = '2.0.0') {
     const helpMessage = `
 ${introHeader}
 
-╭━━〔 👑 OWNER 〕━━⬣
+╭╼ׅࣶ፝֟╾╌ֵ╾͜─ํ͜┈ְ ࣭࣪⢏࣭ࣧ⢢࣭ׄ᎐፝֟᎐࣭ׄ⡔࣭ࣧ⡹࣭ׄ ְ┈ํ͜─͜╼ꨪᰰ╾࣮╌╼ࣶׅ፝֟╾╮\n│❀ *👑 OWNER ☆*\n├╾ׅ╴ׂ╌╶ׅ╌ׂ─ 〫─ׂ┄ׅ╴ׂ╌ׅ╶╼. ╾ׅ╴ׂ╌╶ׅ╶╼.
 > ✦ Comandos de administracion.
 
 ❀ \`.felbot on\`
@@ -59,9 +59,9 @@ ${introHeader}
 ❀ \`.felbot off\`
 > Desactivar Felbot en el grupo.
 
-╰━━━━━━━━━━━━━━━━⬣
+╰╼ׅࣶ፝֟╾╌ֵ╾͜─ํ͜┈ְ ࣭࣪⢏࣭ࣧ⢢࣭ׄ᎐፝֟᎐࣭ׄ⡔࣭ࣧ⡹࣭ׄ ְ┈ํ͜─͜╼ꨪᰰ╾࣮╌╼ࣶׅ፝֟╾╯
 
-╭━━〔 🌐 GENERAL 〕━━⬣
+╭╼ׅࣶ፝֟╾╌ֵ╾͜─ํ͜┈ְ ࣭࣪⢏࣭ࣧ⢢࣭ׄ᎐፝֟᎐࣭ׄ⡔࣭ࣧ⡹࣭ׄ ְ┈ํ͜─͜╼ꨪᰰ╾࣮╌╼ࣶׅ፝֟╾╮\n│❀ *🌐 GENERAL ☆*\n├╾ׅ╴ׂ╌╶ׅ╌ׂ─ 〫─ׂ┄ׅ╴ׂ╌ׅ╶╼. ╾ׅ╴ׂ╌╶ׅ╶╼.
 > ✦ Comandos principales e información del bot.
 
 ❀ \`.menu\` › \`.help\`
@@ -87,9 +87,9 @@ ${introHeader}
 
 ❀ \`.staff\` › \`.admins\`
 > Ver la lista de administradores.
-╰━━━━━━━━━━━━━━━━⬣
+╰╼ׅࣶ፝֟╾╌ֵ╾͜─ํ͜┈ְ ࣭࣪⢏࣭ࣧ⢢࣭ׄ᎐፝֟᎐࣭ׄ⡔࣭ࣧ⡹࣭ׄ ְ┈ํ͜─͜╼ꨪᰰ╾࣮╌╼ࣶׅ፝֟╾╯
 
-╭━━〔 🛠️ UTILIDADES 〕━━⬣
+╭╼ׅࣶ፝֟╾╌ֵ╾͜─ํ͜┈ְ ࣭࣪⢏࣭ࣧ⢢࣭ׄ᎐፝֟᎐࣭ׄ⡔࣭ࣧ⡹࣭ׄ ְ┈ํ͜─͜╼ꨪᰰ╾࣮╌╼ࣶׅ፝֟╾╮\n│❀ *🛠️ UTILIDADES ☆*\n├╾ׅ╴ׂ╌╶ׅ╌ׂ─ 〫─ׂ┄ׅ╴ׂ╌ׅ╶╼. ╾ׅ╴ׂ╌╶ׅ╶╼.
 > ✦ Herramientas útiles y funciones extras.
 
 ❀ \`.tts\` + <texto>
@@ -103,9 +103,9 @@ ${introHeader}
 
 ❀ \`.8ball\` + <pregunta>
 > Respuestas aleatorias tipo bola mágica.
-╰━━━━━━━━━━━━━━━━⬣
+╰╼ׅࣶ፝֟╾╌ֵ╾͜─ํ͜┈ְ ࣭࣪⢏࣭ࣧ⢢࣭ׄ᎐፝֟᎐࣭ׄ⡔࣭ࣧ⡹࣭ׄ ְ┈ํ͜─͜╼ꨪᰰ╾࣮╌╼ࣶׅ፝֟╾╯
 
-╭━━〔 👮 ADMIN 〕━━⬣
+╭╼ׅࣶ፝֟╾╌ֵ╾͜─ํ͜┈ְ ࣭࣪⢏࣭ࣧ⢢࣭ׄ᎐፝֟᎐࣭ׄ⡔࣭ࣧ⡹࣭ׄ ְ┈ํ͜─͜╼ꨪᰰ╾࣮╌╼ࣶׅ፝֟╾╮\n│❀ *👮 ADMIN ☆*\n├╾ׅ╴ׂ╌╶ׅ╌ׂ─ 〫─ׂ┄ׅ╴ׂ╌ׅ╶╼. ╾ׅ╴ׂ╌╶ׅ╶╼.
 > ✦ Herramientas de administración para grupos.
 
 ❀ \`.ban\` + <@usuario>
@@ -179,9 +179,9 @@ ${introHeader}
 
 ❀ \`.cerrar\`
 > Cerrar el grupo.
-╰━━━━━━━━━━━━━━━━⬣
+╰╼ׅࣶ፝֟╾╌ֵ╾͜─ํ͜┈ְ ࣭࣪⢏࣭ࣧ⢢࣭ׄ᎐፝֟᎐࣭ׄ⡔࣭ࣧ⡹࣭ׄ ְ┈ํ͜─͜╼ꨪᰰ╾࣮╌╼ࣶׅ፝֟╾╯
 
-╭━━〔 🔫 FREE FIRE 〕━━⬣
+╭╼ׅࣶ፝֟╾╌ֵ╾͜─ํ͜┈ְ ࣭࣪⢏࣭ࣧ⢢࣭ׄ᎐፝֟᎐࣭ׄ⡔࣭ࣧ⡹࣭ׄ ְ┈ํ͜─͜╼ꨪᰰ╾࣮╌╼ࣶׅ፝֟╾╮\n│❀ *🔫 FREE FIRE ☆*\n├╾ׅ╴ׂ╌╶ׅ╌ׂ─ 〫─ׂ┄ׅ╴ׂ╌ׅ╶╼. ╾ׅ╴ׂ╌╶ׅ╶╼.
 > ✦ Comandos para ff.
 
 ❀ \`.2vs2\` + <hora>
@@ -201,9 +201,9 @@ ${introHeader}
 
 ❀ \`.int6\`
 > Lista de 6vs6 (interna).
-╰━━━━━━━━━━━━━━━━⬣
+╰╼ׅࣶ፝֟╾╌ֵ╾͜─ํ͜┈ְ ࣭࣪⢏࣭ࣧ⢢࣭ׄ᎐፝֟᎐࣭ׄ⡔࣭ࣧ⡹࣭ׄ ְ┈ํ͜─͜╼ꨪᰰ╾࣮╌╼ࣶׅ፝֟╾╯
 
-╭━━〔 🔞 NSFW 〕━━⬣
+╭╼ׅࣶ፝֟╾╌ֵ╾͜─ํ͜┈ְ ࣭࣪⢏࣭ࣧ⢢࣭ׄ᎐፝֟᎐࣭ׄ⡔࣭ࣧ⡹࣭ׄ ְ┈ํ͜─͜╼ꨪᰰ╾࣮╌╼ࣶׅ፝֟╾╮\n│❀ *🔞 NSFW ☆*\n├╾ׅ╴ׂ╌╶ׅ╌ׂ─ 〫─ׂ┄ׅ╴ׂ╌ׅ╶╼. ╾ׅ╴ׂ╌╶ׅ╶╼.
 > ✦ Comandos Pornograficos.
 
 ❀ \`.xxnx\` + <texto>
@@ -220,9 +220,9 @@ ${introHeader}
 
 ❀ \`.masturbarsem\` (Masculino)
 > Masturbarse.
-╰━━━━━━━━━━━━━━━━⬣
+╰╼ׅࣶ፝֟╾╌ֵ╾͜─ํ͜┈ְ ࣭࣪⢏࣭ࣧ⢢࣭ׄ᎐፝֟᎐࣭ׄ⡔࣭ࣧ⡹࣭ׄ ְ┈ํ͜─͜╼ꨪᰰ╾࣮╌╼ࣶׅ፝֟╾╯
 
-╭━━〔 🎨 STICKERS 〕━━⬣
+╭╼ׅࣶ፝֟╾╌ֵ╾͜─ํ͜┈ְ ࣭࣪⢏࣭ࣧ⢢࣭ׄ᎐፝֟᎐࣭ׄ⡔࣭ࣧ⡹࣭ׄ ְ┈ํ͜─͜╼ꨪᰰ╾࣮╌╼ࣶׅ፝֟╾╮\n│❀ *🎨 STICKERS ☆*\n├╾ׅ╴ׂ╌╶ׅ╌ׂ─ 〫─ׂ┄ׅ╴ׂ╌ׅ╶╼. ╾ׅ╴ׂ╌╶ׅ╶╼.
 > ✦ Herramientas de stickers e imágenes.
 
 ❀ \`.s\`
@@ -245,9 +245,9 @@ ${introHeader}
 
 ❀ \`.removebg\`
 > Eliminar fondo de imágenes.
-╰━━━━━━━━━━━━━━━━⬣
+╰╼ׅࣶ፝֟╾╌ֵ╾͜─ํ͜┈ְ ࣭࣪⢏࣭ࣧ⢢࣭ׄ᎐፝֟᎐࣭ׄ⡔࣭ࣧ⡹࣭ׄ ְ┈ํ͜─͜╼ꨪᰰ╾࣮╌╼ࣶׅ፝֟╾╯
 
-╭━━〔 🔤 TEXTMAKER 〕━━⬣
+╭╼ׅࣶ፝֟╾╌ֵ╾͜─ํ͜┈ְ ࣭࣪⢏࣭ࣧ⢢࣭ׄ᎐፝֟᎐࣭ׄ⡔࣭ࣧ⡹࣭ׄ ְ┈ํ͜─͜╼ꨪᰰ╾࣮╌╼ࣶׅ፝֟╾╮\n│❀ *🔤 TEXTMAKER ☆*\n├╾ׅ╴ׂ╌╶ׅ╌ׂ─ 〫─ׂ┄ׅ╴ׂ╌ׅ╶╼. ╾ׅ╴ׂ╌╶ׅ╶╼.
 > ✦ Crear textos con estilos épicos.
 
 ❀ \`.metallic\` + <texto>
@@ -303,9 +303,9 @@ ${introHeader}
 
 ❀ \`.fire\` + <texto>
 > Texto en llamas 🔥
-╰━━━━━━━━━━━━━━━━⬣
+╰╼ׅࣶ፝֟╾╌ֵ╾͜─ํ͜┈ְ ࣭࣪⢏࣭ࣧ⢢࣭ׄ᎐፝֟᎐࣭ׄ⡔࣭ࣧ⡹࣭ׄ ְ┈ํ͜─͜╼ꨪᰰ╾࣮╌╼ࣶׅ፝֟╾╯
 
-╭━━〔 🖼️ ANIME 〕━━⬣
+╭╼ׅࣶ፝֟╾╌ֵ╾͜─ํ͜┈ְ ࣭࣪⢏࣭ࣧ⢢࣭ׄ᎐፝֟᎐࣭ׄ⡔࣭ࣧ⡹࣭ׄ ְ┈ํ͜─͜╼ꨪᰰ╾࣮╌╼ࣶׅ፝֟╾╮\n│❀ *🖼️ ANIME ☆*\n├╾ׅ╴ׂ╌╶ׅ╌ׂ─ 〫─ׂ┄ׅ╴ׂ╌ׅ╶╼. ╾ׅ╴ׂ╌╶ׅ╶╼.
 > ✦ Reacciones y gifs estilo anime.
 
 ❀ \`.nom\`
@@ -331,9 +331,9 @@ ${introHeader}
 
 ❀ \`.facepalm\`
 > Hacer facepalm anime.
-╰━━━━━━━━━━━━━━━━⬣
+╰╼ׅࣶ፝֟╾╌ֵ╾͜─ํ͜┈ְ ࣭࣪⢏࣭ࣧ⢢࣭ׄ᎐፝֟᎐࣭ׄ⡔࣭ࣧ⡹࣭ׄ ְ┈ํ͜─͜╼ꨪᰰ╾࣮╌╼ࣶׅ፝֟╾╯
 
-╭━━〔 🎮 JUEGOS 〕━━⬣
+╭╼ׅࣶ፝֟╾╌ֵ╾͜─ํ͜┈ְ ࣭࣪⢏࣭ࣧ⢢࣭ׄ᎐፝֟᎐࣭ׄ⡔࣭ࣧ⡹࣭ׄ ְ┈ํ͜─͜╼ꨪᰰ╾࣮╌╼ࣶׅ፝֟╾╮\n│❀ *🎮 JUEGOS ☆*\n├╾ׅ╴ׂ╌╶ׅ╌ׂ─ 〫─ׂ┄ׅ╴ׂ╌ׅ╶╼. ╾ׅ╴ׂ╌╶ׅ╶╼.
 > ✦ Juegos y entretenimiento interactivo.
 
 ❀ \`.ppt\` + <@usuario>
@@ -392,9 +392,9 @@ ${introHeader}
 
 ❀ \`.rank\`
 > Ranking de jugadores.
-╰━━━━━━━━━━━━━━━━⬣
+╰╼ׅࣶ፝֟╾╌ֵ╾͜─ํ͜┈ְ ࣭࣪⢏࣭ࣧ⢢࣭ׄ᎐፝֟᎐࣭ׄ⡔࣭ࣧ⡹࣭ׄ ְ┈ํ͜─͜╼ꨪᰰ╾࣮╌╼ࣶׅ፝֟╾╯
 
-╭━━〔 🎯 DIVERSIÓN 〕━━⬣
+╭╼ׅࣶ፝֟╾╌ֵ╾͜─ํ͜┈ְ ࣭࣪⢏࣭ࣧ⢢࣭ׄ᎐፝֟᎐࣭ׄ⡔࣭ࣧ⡹࣭ׄ ְ┈ํ͜─͜╼ꨪᰰ╾࣮╌╼ࣶׅ፝֟╾╮\n│❀ *🎯 DIVERSIÓN ☆*\n├╾ׅ╴ׂ╌╶ׅ╌ׂ─ 〫─ׂ┄ׅ╴ׂ╌ׅ╶╼. ╾ׅ╴ׂ╌╶ׅ╶╼.
 > ✦ Comandos divertidos y sociales.
 
 ❀ \`.Parejas\`
@@ -429,9 +429,9 @@ ${introHeader}
 
 ❀ \`.stupid\` + <@usuario>
 > Estúpido del grupo.
-╰━━━━━━━━━━━━━━━━⬣
+╰╼ׅࣶ፝֟╾╌ֵ╾͜─ํ͜┈ְ ࣭࣪⢏࣭ࣧ⢢࣭ׄ᎐፝֟᎐࣭ׄ⡔࣭ࣧ⡹࣭ׄ ְ┈ํ͜─͜╼ꨪᰰ╾࣮╌╼ࣶׅ፝֟╾╯
 
-╭━━〔 📥 DESCARGAS 〕━━⬣
+╭╼ׅࣶ፝֟╾╌ֵ╾͜─ํ͜┈ְ ࣭࣪⢏࣭ࣧ⢢࣭ׄ᎐፝֟᎐࣭ׄ⡔࣭ࣧ⡹࣭ׄ ְ┈ํ͜─͜╼ꨪᰰ╾࣮╌╼ࣶׅ፝֟╾╮\n│❀ *📥 DESCARGAS ☆*\n├╾ׅ╴ׂ╌╶ׅ╌ׂ─ 〫─ׂ┄ׅ╴ׂ╌ׅ╶╼. ╾ׅ╴ׂ╌╶ׅ╶╼.
 > ✦ Descargar contenido multimedia.
 
 ❀ \`.play\` + <nombre>
@@ -457,7 +457,7 @@ ${introHeader}
 
 ❀ \`.ytmp4\` + <link>
 > Descargar videos de YouTube.
-╰━━━━━━━━━━━━━━━━⬣
+╰╼ׅࣶ፝֟╾╌ֵ╾͜─ํ͜┈ְ ࣭࣪⢏࣭ࣧ⢢࣭ׄ᎐፝֟᎐࣭ׄ⡔࣭ࣧ⡹࣭ׄ ְ┈ํ͜─͜╼ꨪᰰ╾࣮╌╼ࣶׅ፝֟╾╯
 
 ╭━〔 𝕱𝖊𝖑𝖇𝖔𝖙 夜 〕━⬣
 > *🚀 Powered By Fxlipe 夜*
