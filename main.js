@@ -817,7 +817,7 @@ if (/^\d+$/.test(userMessage)) {
         }
         // In private mode, only owner/sudo can run commands
         const isMenuCommand = ['.menu', '.help', '.bot', '.list'].includes(userMessage.split(/\s+/)[0]);
-        if (!isPublic && !(await isOwnerOrSudoCheck()) && !isMenuCommand) {
+        if (!isPublic && !(await isOwnerOrSudoCheck()) && !isMenuCommand && !isStickerSetupCommand) {
             return;
         }
 
