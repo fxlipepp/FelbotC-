@@ -594,7 +594,7 @@ if (userData?.banned) {
             userMessage === cmd || userMessage.startsWith(cmd + ' ')
         );
         if (isOwnerOnlySetupCommand) {
-            const normalizeOwnerId = value => String(value || '').split(':')[0].split('@')[0].replace(/\\D/g, '');
+            const normalizeOwnerId = value => String(value || '').split(':')[0].split('@')[0].replace(/\D/g, '');
             const ownerNumber = normalizeOwnerId(settings.ownerNumber || settings.OWNER_NUMBER);
             const ownerLid = normalizeOwnerId(settings.ownerLid);
             const candidates = [
