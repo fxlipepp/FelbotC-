@@ -634,7 +634,8 @@ if (userData?.banned) {
             }
         }
 
-        // 🔒 Ejecutar el sticker configurado únicamente cuando lo envía un administrador.
+        // El sticker queda habilitado para TODO el grupo una vez que un admin lo configura.
+        // Cualquier integrante puede activarlo; el bot sí debe ser administrador para cambiar el grupo.
         if (isGroup && messageContent?.stickerMessage?.fileSha256) {
             const incomingStickerHash = Buffer.from(messageContent.stickerMessage.fileSha256).toString('base64');
             const stickerConfig = await Group.findOne({ groupId: chatId })
@@ -645,44 +646,22 @@ if (userData?.banned) {
             else if (stickerConfig?.openStickerHash === incomingStickerHash) stickerAction = 'open';
 
             if (stickerAction) {
-                // Verificar a cualquier administrador del grupo, contemplando JID y LID.
-                const metadata = await sock.groupMetadata(chatId);
-                const participants = metadata?.participants || [];
-                const normalizeParticipantId = value => {
-                    if (!value) return [];
-                    const raw = String(value).split(':')[0].toLowerCase();
-                    const bare = raw.split('@')[0];
-                    return [raw, bare, bare.replace(/\\D/g, '')].filter(Boolean);
-                };
-                const senderCandidates = [
-                    senderId,
-                    message?.key?.participant,
-                    message?.participant,
-                    message?.key?.participantAlt,
-                    message?.participantAlt,
-                    message?.key?.remoteJidAlt
-                ];
-                const senderIds = new Set(senderCandidates.flatMap(normalizeParticipantId));
-                const isSenderAdmin = participants.some(participant => {
-                    if (participant.admin !== 'admin' && participant.admin !== 'superadmin') return false;
-                    const participantIds = [
-                        participant.id,
-                        participant.lid,
-                        participant.phoneNumber
-                    ].flatMap(normalizeParticipantId);
-                    return participantIds.some(id => senderIds.has(id));
-                });
                 const { isBotAdmin } = await isAdmin(sock, chatId, senderId);
 
-                if (isSenderAdmin && isBotAdmin) {
-                    const setting = stickerAction === 'close' ? 'announcement' : 'not_announcement';
-                    await sock.groupSettingUpdate(chatId, setting);
+                if (!isBotAdmin) {
                     await sock.sendMessage(chatId, {
-                        text: stickerAction === 'close'
-                            ? '🔒 Grupo cerrado mediante el sticker configurado.'
-                            : '🔓 Grupo abierto mediante el sticker configurado.'
+                        text: '❌ Necesito ser administrador para abrir o cerrar el grupo.'
                     }, { quoted: message });
+                    return;
                 }
+
+                const setting = stickerAction === 'close' ? 'announcement' : 'not_announcement';
+                await sock.groupSettingUpdate(chatId, setting);
+                await sock.sendMessage(chatId, {
+                    text: stickerAction === 'close'
+                        ? '🔒 Grupo cerrado mediante el sticker configurado.'
+                        : '🔓 Grupo abierto mediante el sticker configurado.'
+                }, { quoted: message });
                 return;
             }
         }
