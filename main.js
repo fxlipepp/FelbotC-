@@ -587,29 +587,48 @@ if (userData?.banned) {
             return await getOwnerStatus();
         };
 
-        // 🔐 Los comandos de configuración de stickers son exclusivos del owner real.
-        // No se permite sudo para .setcerrar ni .setabrir.
-        const ownerOnlySetupCommands = ['.setcerrar', '.setabrir'];
-        const isOwnerOnlySetupCommand = ownerOnlySetupCommands.some(cmd =>
+        // 🔐 Cualquier administrador del grupo puede configurar los stickers.
+        const isStickerSetupCommand = ['.setcerrar', '.setabrir'].some(cmd =>
             userMessage === cmd || userMessage.startsWith(cmd + ' ')
         );
-        if (isOwnerOnlySetupCommand) {
-            const normalizeOwnerId = value => String(value || '').split(':')[0].split('@')[0].replace(/\D/g, '');
-            const ownerNumber = normalizeOwnerId(settings.ownerNumber || settings.OWNER_NUMBER);
-            const ownerLid = normalizeOwnerId(settings.ownerLid);
-            const candidates = [
+        if (isStickerSetupCommand) {
+            if (!isGroup) {
+                await sock.sendMessage(chatId, {
+                    text: '❌ Este comando solo se puede usar dentro de un grupo.'
+                }, { quoted: message });
+                return;
+            }
+
+            const metadata = await sock.groupMetadata(chatId);
+            const participants = metadata?.participants || [];
+            const normalizeParticipantId = value => {
+                if (!value) return [];
+                const raw = String(value).split(':')[0].toLowerCase();
+                const bare = raw.split('@')[0];
+                return [raw, bare, bare.replace(/\D/g, '')].filter(Boolean);
+            };
+            const senderCandidates = [
                 senderId,
+                message?.key?.participant,
+                message?.participant,
                 message?.key?.participantAlt,
                 message?.participantAlt,
                 message?.key?.remoteJidAlt
             ];
-            const isRealOwner = message.key?.fromMe || candidates.some(value => {
-                const candidate = normalizeOwnerId(value);
-                return candidate && (candidate === ownerNumber || (ownerLid && candidate === ownerLid));
+            const senderIds = new Set(senderCandidates.flatMap(normalizeParticipantId));
+            const isSenderGroupAdmin = participants.some(participant => {
+                if (participant.admin !== 'admin' && participant.admin !== 'superadmin') return false;
+                const participantIds = [
+                    participant.id,
+                    participant.lid,
+                    participant.phoneNumber
+                ].flatMap(normalizeParticipantId);
+                return participantIds.some(id => senderIds.has(id));
             });
-            if (!isRealOwner) {
+
+            if (!isSenderGroupAdmin) {
                 await sock.sendMessage(chatId, {
-                    text: '❌ Solo el OWNER principal puede configurar los stickers de cierre y apertura.'
+                    text: '❌ Solo los administradores del grupo pueden configurar estos stickers.'
                 }, { quoted: message });
                 return;
             }
