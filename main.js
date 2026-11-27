@@ -680,23 +680,6 @@ if (/^\d+$/.test(userMessage)) {
 
         // Then check for command prefix
         if (!userMessage.startsWith('.')) {
-            const normalizedPlainText = (rawText || '')
-                .toLowerCase()
-                .normalize('NFD')
-                .replace(/[\u0300-\u036f]/g, '')
-                .replace(/[^a-z0-9\s]/g, ' ')
-                .replace(/\s+/g, ' ')
-                .trim();
-
-            const isRicoTrigger =
-                normalizedPlainText.includes('que rico') ||
-                normalizedPlainText.includes('que rica estas');
-
-            if (isRicoTrigger) {
-                await viewOnceCommand(sock, chatId, message);
-                return;
-            }
-
             // Show typing indicator if autotyping is enabled
             await handleAutotypingForMessage(sock, chatId, userMessage);
 
