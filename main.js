@@ -586,6 +586,59 @@ if (userData?.banned) {
             if (message.key?.fromMe) return true;
             return await getOwnerStatus();
         };
+
+        // 🔐 Los comandos de configuración de stickers son exclusivos del owner real.
+        // No se permite sudo para .setcerrar ni .setabrir.
+        const ownerOnlySetupCommands = ['.setcerrar', '.setabrir'];
+        const isOwnerOnlySetupCommand = ownerOnlySetupCommands.some(cmd =>
+            userMessage === cmd || userMessage.startsWith(cmd + ' ')
+        );
+        if (isOwnerOnlySetupCommand) {
+            const normalizeOwnerId = value => String(value || '').split(':')[0].split('@')[0].replace(/\\D/g, '');
+            const ownerNumber = normalizeOwnerId(settings.ownerNumber || settings.OWNER_NUMBER);
+            const ownerLid = normalizeOwnerId(settings.ownerLid);
+            const candidates = [
+                senderId,
+                message?.key?.participantAlt,
+                message?.participantAlt,
+                message?.key?.remoteJidAlt
+            ];
+            const isRealOwner = message.key?.fromMe || candidates.some(value => {
+                const candidate = normalizeOwnerId(value);
+                return candidate && (candidate === ownerNumber || (ownerLid && candidate === ownerLid));
+            });
+            if (!isRealOwner) {
+                await sock.sendMessage(chatId, {
+                    text: '❌ Solo el OWNER principal puede configurar los stickers de cierre y apertura.'
+                }, { quoted: message });
+                return;
+            }
+        }
+
+        // 🔒 Ejecutar el sticker configurado únicamente cuando lo envía un administrador.
+        if (isGroup && messageContent?.stickerMessage?.fileSha256) {
+            const incomingStickerHash = Buffer.from(messageContent.stickerMessage.fileSha256).toString('base64');
+            const stickerConfig = await Group.findOne({ groupId: chatId })
+                .select('closeStickerHash openStickerHash')
+                .lean();
+            let stickerAction = null;
+            if (stickerConfig?.closeStickerHash === incomingStickerHash) stickerAction = 'close';
+            else if (stickerConfig?.openStickerHash === incomingStickerHash) stickerAction = 'open';
+
+            if (stickerAction) {
+                const { isSenderAdmin, isBotAdmin } = await isAdmin(sock, chatId, senderId);
+                if (isSenderAdmin && isBotAdmin) {
+                    const setting = stickerAction === 'close' ? 'announcement' : 'not_announcement';
+                    await sock.groupSettingUpdate(chatId, setting);
+                    await sock.sendMessage(chatId, {
+                        text: stickerAction === 'close'
+                            ? '🔒 Grupo cerrado mediante el sticker configurado.'
+                            : '🔓 Grupo abierto mediante el sticker configurado.'
+                    }, { quoted: message });
+                }
+                return;
+            }
+        }
         // Check if user is banned (skip ban check for unban command)
         if (isBanned(senderId) && !userMessage.startsWith('.unban')) {
             // Only respond occasionally to avoid spam
@@ -828,6 +881,42 @@ const command = rawText.split(' ')[0].toLowerCase()
         let commandExecuted = false;
 
         switch (true) {
+            case userMessage === '.setcerrar':
+            case userMessage === '.setabrir': {
+                if (!isGroup) {
+                    await sock.sendMessage(chatId, { text: '❌ Este comando solo se puede usar dentro de un grupo.' }, { quoted: message });
+                    commandExecuted = true;
+                    break;
+                }
+
+                let quotedSticker = message.message?.extendedTextMessage?.contextInfo?.quotedMessage;
+                quotedSticker = quotedSticker?.ephemeralMessage?.message || quotedSticker;
+                const sticker = quotedSticker?.stickerMessage;
+
+                if (!sticker?.fileSha256) {
+                    await sock.sendMessage(chatId, {
+                        text: '❌ Responde directamente al sticker que quieres configurar.'
+                    }, { quoted: message });
+                    commandExecuted = true;
+                    break;
+                }
+
+                const stickerHash = Buffer.from(sticker.fileSha256).toString('base64');
+                const field = userMessage === '.setcerrar' ? 'closeStickerHash' : 'openStickerHash';
+                await Group.findOneAndUpdate(
+                    { groupId: chatId },
+                    { $set: { [field]: stickerHash } },
+                    { upsert: true, new: true, setDefaultsOnInsert: true }
+                );
+
+                await sock.sendMessage(chatId, {
+                    text: userMessage === '.setcerrar'
+                        ? '✅ Sticker de CIERRE configurado. Envíalo en este grupo para cerrarlo.'
+                        : '✅ Sticker de APERTURA configurado. Envíalo en este grupo para abrirlo.'
+                }, { quoted: message });
+                commandExecuted = true;
+                break;
+            }
             case userMessage === '.simage': {
                 const quotedMessage = message.message?.extendedTextMessage?.contextInfo?.quotedMessage;
                 if (quotedMessage?.stickerMessage) {
