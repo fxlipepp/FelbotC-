@@ -17,7 +17,7 @@ const { execFile } = require('child_process');
 const { promisify } = require('util');
 const webp = require('node-webpmux');
 const axios = require('axios');
-const { getVideo, isValidTikTokUrl } = require('./tiktok');
+const { getVideo, getVideoCandidates, isValidTikTokUrl } = require('./tiktok');
 
 const execFileAsync = promisify(execFile);
 const MAX_DURATION = 60;      // segundos máximos de audio / video
@@ -281,8 +281,12 @@ async function toOggOpus(buffer, ext, maxSeconds = MAX_DURATION) {
         "-application", "audio", "-avoid_negative_ts", "make_zero",
         "-f", "ogg", tmpOut
       ], { maxBuffer: 1024 * 1024 * 20 }));
-    } catch {
-      throw new Error("NO_AUDIO");
+    } catch (error) {
+      const detail = `${error?.stderr || ""} ${error?.message || ""}`;
+      if (/matches no streams|does not contain any stream|no audio|stream map.*audio.*no streams/i.test(detail)) {
+        throw new Error("NO_AUDIO");
+      }
+      throw new Error("AUDIO_CONVERSION_FAILED: " + detail.slice(0, 300));
     }
     const ogg = fs.readFileSync(tmpOut);
     if (!ogg || ogg.length < 200) throw new Error("NO_AUDIO");
@@ -296,12 +300,14 @@ async function toOggOpus(buffer, ext, maxSeconds = MAX_DURATION) {
 // El audio del sticker NO es nota de voz: va como audio normal (ptt: false),
 // igual que los stickers con sonido que manda WhatsApp.
 // maxSeconds = lo que dura el sticker (video animado), así el audio se ajusta a él.
-async function buildAudioMessage(conn, buffer, ext, fallbackSeconds = 0, maxSeconds = MAX_DURATION) {
+async function buildAudioMessageFromOgg(conn, ogg, realSeconds = 0, fallbackSeconds = 0, maxSeconds = MAX_DURATION) {
   const { prepareWAMessageMedia } = await getBaileys();
   const limit = Math.max(1, Math.min(MAX_DURATION, Math.round(maxSeconds) || MAX_DURATION));
-  const { ogg, realSeconds } = await toOggOpus(buffer, ext, limit);
-  const soundSha256 = Crypto.createHash("sha256").update(ogg).digest("base64");
+  if (!Buffer.isBuffer(ogg) || ogg.length < 200 || ogg.toString("ascii", 0, 4) !== "OggS") {
+    throw new Error("AUDIO_CONVERSION_FAILED: FFmpeg no produjo un OGG válido.");
+  }
 
+  const soundSha256 = Crypto.createHash("sha256").update(ogg).digest("base64");
   const { audioMessage } = await prepareWAMessageMedia(
     { audio: ogg, mimetype: "audio/ogg; codecs=opus", ptt: false },
     { upload: conn.waUploadToServer }
@@ -314,6 +320,12 @@ async function buildAudioMessage(conn, buffer, ext, fallbackSeconds = 0, maxSeco
   audioMessage.mimetype = "audio/ogg; codecs=opus";
   audioMessage.__felbotSoundSha256 = soundSha256;
   return audioMessage;
+}
+
+async function buildAudioMessage(conn, buffer, ext, fallbackSeconds = 0, maxSeconds = MAX_DURATION) {
+  const limit = Math.max(1, Math.min(MAX_DURATION, Math.round(maxSeconds) || MAX_DURATION));
+  const { ogg, realSeconds } = await toOggOpus(buffer, ext, limit);
+  return buildAudioMessageFromOgg(conn, ogg, realSeconds, fallbackSeconds, limit);
 }
 
 // === Parche de proto: stickerMessage.audioMessage (26) y audioStickerMessage (134) ===
@@ -610,8 +622,8 @@ async function soundStickerCommand(conn, chatId, msg, commandArgs = "") {
     }
   }
 
-  // Sticker citado + enlace de TikTok: conserva el sticker y le incorpora el audio del TikTok.
-  const tiktokUrl = text.match(/https?:\/\/[^\s]+/i)?.[0]?.replace(/[),.]+$/, '');
+  // Sticker citado + enlace de TikTok: prueba varios proveedores y valida el audio real.
+  const tiktokUrl = text.match(/https?:\\/\\/[^\\s]+/i)?.[0]?.replace(/[),.]+$/, '');
   if (quot?.kind === "webp" && tiktokUrl && isValidTikTokUrl(tiktokUrl)) {
     try {
       await react(conn, msg, "🛠️");
@@ -619,25 +631,56 @@ async function soundStickerCommand(conn, chatId, msg, commandArgs = "") {
       const stickerBuffer = await downloadMedia(conn, quot);
       if (!stickerBuffer?.length) throw new Error("No se pudo descargar el sticker citado.");
 
-      const videoResult = await getVideo(tiktokUrl);
-      if (!videoResult?.video) throw new Error("TIKTOK_DOWNLOAD_FAILED");
+      // No confiar solo en que una API devuelva una URL: descargamos y comprobamos
+      // que FFmpeg pueda extraer una pista de audio válida antes de subirla.
+      let candidates = await getVideoCandidates(tiktokUrl);
+      if (!candidates?.length) {
+        const single = await getVideo(tiktokUrl);
+        if (single?.video) candidates = [single];
+      }
 
-      const response = await axios.get(videoResult.video, {
-        responseType: "arraybuffer",
-        timeout: 45000,
-        maxContentLength: 50 * 1024 * 1024,
-        headers: {
-          "User-Agent": "Mozilla/5.0",
-          "Referer": "https://www.tiktok.com/"
+      if (!candidates?.length) throw new Error("TIKTOK_DOWNLOAD_FAILED");
+
+      let audioMessage = null;
+      let lastError = null;
+      for (const candidate of candidates) {
+        try {
+          const response = await axios.get(candidate.video, {
+            responseType: "arraybuffer",
+            timeout: 45000,
+            maxContentLength: 50 * 1024 * 1024,
+            maxBodyLength: 50 * 1024 * 1024,
+            headers: {
+              "User-Agent": "Mozilla/5.0",
+              "Referer": "https://www.tiktok.com/"
+            }
+          });
+
+          const videoBuffer = Buffer.from(response.data || []);
+          if (videoBuffer.length < 1024) throw new Error("TIKTOK_DOWNLOAD_FAILED");
+
+          const { ogg, realSeconds } = await toOggOpus(videoBuffer, "mp4", MAX_DURATION);
+          audioMessage = await buildAudioMessageFromOgg(conn, ogg, realSeconds, MAX_DURATION, MAX_DURATION);
+          break;
+        } catch (candidateError) {
+          lastError = candidateError;
+          console.warn("[.ss] Proveedor TikTok descartado:", candidateError?.message || candidateError);
         }
-      });
+      }
 
-      const videoBuffer = Buffer.from(response.data);
-      if (!videoBuffer.length) throw new Error("TIKTOK_DOWNLOAD_FAILED");
+      if (!audioMessage) {
+        if (lastError?.message === "NO_AUDIO") throw new Error("NO_AUDIO");
+        throw new Error("TIKTOK_DOWNLOAD_FAILED");
+      }
 
-      const duration = Math.max(1, Math.min(MAX_DURATION, Math.round(await videoSeconds(videoBuffer, MAX_DURATION))));
-      const audioMessage = await buildAudioMessage(conn, videoBuffer, "mp4", duration, MAX_DURATION);
-      await sendAudioSticker(conn, chatId, stickerBuffer, !!quot.isAnimated || isWebpAnimated(stickerBuffer), audioMessage, msg);
+      await sendAudioSticker(
+        conn,
+        chatId,
+        stickerBuffer,
+        !!quot.isAnimated || isWebpAnimated(stickerBuffer),
+        audioMessage,
+        msg
+      );
 
       await react(conn, msg, "✅");
       return;
@@ -646,9 +689,9 @@ async function soundStickerCommand(conn, chatId, msg, commandArgs = "") {
       await react(conn, msg, "❌");
       return say(conn, msg,
         err?.message === "NO_AUDIO"
-          ? "❌ *Ese TikTok no tiene audio disponible.*"
+          ? "❌ *No encontré una pista de audio válida en ese TikTok.* Prueba con otro enlace."
           : err?.message === "TIKTOK_DOWNLOAD_FAILED"
-            ? "❌ *No pude descargar el audio de ese TikTok.* Prueba con otro enlace."
+            ? "❌ *No pude descargar/procesar ese TikTok.* Probé varios servidores; intenta con otro enlace."
             : "❌ *No pude añadir el audio al sticker citado.*"
       );
     }
