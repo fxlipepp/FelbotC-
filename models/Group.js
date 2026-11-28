@@ -28,17 +28,6 @@ const groupSchema = new mongoose.Schema({
       default: false
    },
 
-   // Stickers personalizados para cerrar y abrir cada grupo.
-   closeStickerHash: {
-      type: String,
-      default: null
-   },
-
-   openStickerHash: {
-      type: String,
-      default: null
-   },
-
    // 💰 FelCoins: activación independiente por grupo
    economyEnabled: {
       type: Boolean,
