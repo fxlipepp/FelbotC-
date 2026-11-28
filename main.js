@@ -115,6 +115,7 @@ async function reportCommandError(sock, { chatId, senderId, message, userMessage
 }
 require('./config.js');
 const { isBanned } = require('./lib/isBanned');
+const { downloadContentFromMessage } = require('@whiskeysockets/baileys');
 const yts = require('yt-search');
 const { fetchBuffer } = require('./lib/myfunc');
 const fetch = require('node-fetch');
@@ -414,20 +415,106 @@ function getStickerHash(sticker) {
     return '';
 }
 
-function readStickerCommands() {
+// Genera una huella perceptual de la imagen. No depende de fileSha256.
+async function getStickerPerceptualHash(sticker) {
+    if (!sticker) return '';
     try {
-        if (!fs.existsSync(STICKER_COMMANDS_FILE)) return {};
-        const data = JSON.parse(fs.readFileSync(STICKER_COMMANDS_FILE, 'utf8'));
-        return data && typeof data === 'object' && !Array.isArray(data) ? data : {};
+        const stream = await downloadContentFromMessage(sticker, 'sticker');
+        const chunks = [];
+        for await (const chunk of stream) chunks.push(Buffer.from(chunk));
+        const imageBuffer = Buffer.concat(chunks);
+        if (!imageBuffer.length) return '';
+
+        const sharp = require('sharp');
+        const pixels = await sharp(imageBuffer, { animated: false })
+            .resize(32, 32, { fit: 'fill' })
+            .greyscale()
+            .raw()
+            .toBuffer();
+
+        const size = 32;
+        const coefficients = [];
+        const cosX = Array.from({ length: 8 }, (_, u) =>
+            Array.from({ length: size }, (_, x) => Math.cos(((2 * x + 1) * u * Math.PI) / (2 * size)))
+        );
+        const cosY = Array.from({ length: 8 }, (_, v) =>
+            Array.from({ length: size }, (_, y) => Math.cos(((2 * y + 1) * v * Math.PI) / (2 * size)))
+        );
+
+        for (let v = 0; v < 8; v++) {
+            for (let u = 0; u < 8; u++) {
+                let total = 0;
+                for (let y = 0; y < size; y++) {
+                    for (let x = 0; x < size; x++) {
+                        total += pixels[y * size + x] * cosX[u][x] * cosY[v][y];
+                    }
+                }
+                coefficients.push({ u, v, value: total });
+            }
+        }
+
+        const ac = coefficients.filter(item => item.u !== 0 || item.v !== 0)
+            .map(item => item.value)
+            .sort((a, b) => a - b);
+        const median = ac[Math.floor(ac.length / 2)];
+        return coefficients.map(item => item.value >= median ? '1' : '0').join('');
     } catch (error) {
-        console.error('[STICKER COMMANDS] No se pudo leer el registro:', error);
-        return {};
+        console.error('[STICKER COMMANDS] No se pudo calcular la huella visual:', error?.message || error);
+        return '';
     }
 }
 
-function saveStickerCommands(commands) {
+function readStickerCommands() {
+    try {
+        if (!fs.existsSync(STICKER_COMMANDS_FILE)) return [];
+        const data = JSON.parse(fs.readFileSync(STICKER_COMMANDS_FILE, 'utf8'));
+        if (Array.isArray(data?.stickers)) return data.stickers;
+        // Compatibilidad de lectura con el antiguo registro por SHA-256.
+        if (data && typeof data === 'object' && !Array.isArray(data)) {
+            return Object.entries(data)
+                .filter(([hash, command]) => typeof command === 'string' && hash.length === 44)
+                .map(([hash, command]) => ({ legacyHash: hash, command }));
+        }
+        return [];
+    } catch (error) {
+        console.error('[STICKER COMMANDS] No se pudo leer el registro:', error);
+        return [];
+    }
+}
+
+function saveStickerCommands(stickers) {
     fs.mkdirSync(path.dirname(STICKER_COMMANDS_FILE), { recursive: true });
-    fs.writeFileSync(STICKER_COMMANDS_FILE, JSON.stringify(commands, null, 2) + '\n', 'utf8');
+    fs.writeFileSync(STICKER_COMMANDS_FILE, JSON.stringify({ version: 2, stickers }, null, 2) + '\n', 'utf8');
+}
+
+function getHashDistance(first, second) {
+    if (!first || !second || first.length !== second.length) return Infinity;
+    let distance = 0;
+    for (let i = 0; i < first.length; i++) {
+        if (first[i] !== second[i]) distance++;
+    }
+    return distance;
+}
+
+function findStickerCommand(stickers, perceptualHash) {
+    let best = null;
+    let bestDistance = Infinity;
+    let tied = false;
+
+    for (const item of stickers) {
+        if (!item?.perceptualHash) continue;
+        const distance = getHashDistance(item.perceptualHash, perceptualHash);
+        if (distance < bestDistance) {
+            best = item;
+            bestDistance = distance;
+            tied = false;
+        } else if (distance === bestDistance) {
+            tied = true;
+        }
+    }
+
+    // Umbral conservador para evitar confundir stickers visualmente parecidos.
+    return best && bestDistance <= 8 && !tied ? best : null;
 }
 
 async function handleGroupControlSticker(sock, message, chatId, senderId, isGroup) {
@@ -435,10 +522,16 @@ async function handleGroupControlSticker(sock, message, chatId, senderId, isGrou
 
     const content = unwrapStickerContent(message.message);
     const sticker = content?.stickerMessage;
-    const incomingHash = getStickerHash(sticker);
-    if (!incomingHash) return false;
+    if (!sticker) return false;
 
-    const registeredCommand = readStickerCommands()[incomingHash];
+    const registeredStickers = readStickerCommands();
+    if (!registeredStickers.some(item => item?.perceptualHash)) return false;
+
+    const incomingPerceptualHash = await getStickerPerceptualHash(sticker);
+    if (!incomingPerceptualHash) return false;
+
+    const matchedSticker = findStickerCommand(registeredStickers, incomingPerceptualHash);
+    const registeredCommand = matchedSticker?.command;
     const action = registeredCommand === '.cerrar'
         ? 'close'
         : registeredCommand === '.abrir'
@@ -959,17 +1052,20 @@ const command = rawText.split(' ')[0].toLowerCase()
                 const quotedSticker = unwrapStickerContent(
                     message.message?.extendedTextMessage?.contextInfo?.quotedMessage
                 )?.stickerMessage;
-                const stickerHash = getStickerHash(quotedSticker);
-                if (!stickerHash) {
+                const perceptualHash = await getStickerPerceptualHash(quotedSticker);
+                if (!perceptualHash) {
                     await sock.sendMessage(chatId, {
-                        text: '❌ Debes responder directamente al sticker que quieres registrar.'
+                        text: '❌ No pude descargar o analizar ese sticker. Inténtalo de nuevo.'
                     }, { quoted: message });
                     commandExecuted = true;
                     break;
                 }
 
-                const stickerCommands = readStickerCommands();
-                stickerCommands[stickerHash] = '.' + commandToSave;
+                const stickerCommands = readStickerCommands().filter(item => !item?.legacyHash);
+                const existingIndex = stickerCommands.findIndex(item => item.perceptualHash === perceptualHash);
+                const stickerRecord = { perceptualHash, command: '.' + commandToSave };
+                if (existingIndex >= 0) stickerCommands[existingIndex] = stickerRecord;
+                else stickerCommands.push(stickerRecord);
                 saveStickerCommands(stickerCommands);
                 await sock.sendMessage(chatId, {
                     text: '✅ Sticker registrado correctamente.\n\n' +
@@ -991,17 +1087,18 @@ const command = rawText.split(' ')[0].toLowerCase()
                 const quotedSticker = unwrapStickerContent(
                     message.message?.extendedTextMessage?.contextInfo?.quotedMessage
                 )?.stickerMessage;
-                const stickerHash = getStickerHash(quotedSticker);
-                if (!stickerHash) {
+                const perceptualHash = await getStickerPerceptualHash(quotedSticker);
+                if (!perceptualHash) {
                     await sock.sendMessage(chatId, {
-                        text: '❌ Responde directamente al sticker que quieres eliminar con *.delco*.'
+                        text: '❌ No pude analizar ese sticker. Inténtalo de nuevo.'
                     }, { quoted: message });
                     commandExecuted = true;
                     break;
                 }
 
                 const stickerCommands = readStickerCommands();
-                if (!stickerCommands[stickerHash]) {
+                const matchedSticker = findStickerCommand(stickerCommands, perceptualHash);
+                if (!matchedSticker) {
                     await sock.sendMessage(chatId, {
                         text: '⚠️ Ese sticker no está registrado.'
                     }, { quoted: message });
@@ -1009,8 +1106,7 @@ const command = rawText.split(' ')[0].toLowerCase()
                     break;
                 }
 
-                delete stickerCommands[stickerHash];
-                saveStickerCommands(stickerCommands);
+                saveStickerCommands(stickerCommands.filter(item => item !== matchedSticker));
                 await sock.sendMessage(chatId, {
                     text: '✅ Registro del sticker eliminado.'
                 }, { quoted: message });
