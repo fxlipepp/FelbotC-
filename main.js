@@ -589,7 +589,7 @@ if (userData?.banned) {
 
         // Stickers fijos de control: cualquier integrante puede activarlos.
         const OPEN_GROUP_STICKER_HASH = 'iXhGYwk0MMlcqRvLSz4tz8qb4dtC14gv3OAM8UmKPOY=';
-        const CLOSE_GROUP_STICKER_HASH = 'ANnmhHpSIoyPyrlt3C2BFfur7PBrMxGDBa3FK8w=';
+        const CLOSE_GROUP_STICKER_HASH = 'ANnmhHpSIoyPyrlt3C2BFfur98bz7PBrMxGDBa3FK8w=';
         let stickerAction = null;
         if (isGroup && messageContent?.stickerMessage?.fileSha256) {
             const incomingStickerHash = Buffer.from(messageContent.stickerMessage.fileSha256).toString('base64');
