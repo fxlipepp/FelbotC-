@@ -416,6 +416,11 @@ async function handleGroupControlSticker(sock, message, chatId, senderId, isGrou
     let action = null;
     if (incomingHash === GROUP_CLOSE_STICKER_HASH) action = 'close';
     if (incomingHash === GROUP_OPEN_STICKER_HASH) action = 'open';
+
+    console.log(
+        `[GROUP STICKER DEBUG] chat=${chatId} hash=${incomingHash} action=${action || 'unmatched'}`
+    );
+
     if (!action) return false;
 
     // WhatsApp puede entregar al remitente como PN o LID.
