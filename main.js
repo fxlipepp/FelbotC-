@@ -386,46 +386,70 @@ async function economyCommandLocked(sock, chatId, senderId, message, product) {
     } catch (error) { console.error('[FELCOINS GATE]', error); return false; }
 }
 
-// Control de grupo por stickers fijos. Independiente de comandos, admins del grupo,
- // usuarios registrados, modo público y configuraciones guardadas en MongoDB.
-const GROUP_OPEN_STICKER_HASH = 'iXhGYwk0MMlcqRvLSz4tz8qb4dtC14gv3OAM8UmKPOY=';
-const GROUP_CLOSE_STICKER_HASH = 'ANnmhHpSIoyPyrlt3C2BFfur98bz7PBrMxGDBa3FK8w=';
+// Sistema de stickers vinculados a comandos mediante fileSha256 (método tipo Suki).
+// Los hashes se guardan en data/stickerCommands.json y sobreviven a los reinicios.
+const STICKER_COMMANDS_FILE = path.join(__dirname, 'data', 'stickerCommands.json');
+
+function unwrapStickerContent(content) {
+    let current = content;
+    for (let i = 0; i < 8 && current; i++) {
+        const wrapped =
+            current?.ephemeralMessage?.message ||
+            current?.viewOnceMessage?.message ||
+            current?.viewOnceMessageV2?.message ||
+            current?.viewOnceMessageV2Extension?.message;
+        if (!wrapped) break;
+        current = wrapped;
+    }
+    return current;
+}
+
+function getStickerHash(sticker) {
+    const sha = sticker?.fileSha256;
+    if (!sha) return '';
+    if (typeof sha === 'string') return sha.trim();
+    if (Buffer.isBuffer(sha) || ArrayBuffer.isView(sha) || Array.isArray(sha)) {
+        return Buffer.from(sha).toString('base64');
+    }
+    return '';
+}
+
+function readStickerCommands() {
+    try {
+        if (!fs.existsSync(STICKER_COMMANDS_FILE)) return {};
+        const data = JSON.parse(fs.readFileSync(STICKER_COMMANDS_FILE, 'utf8'));
+        return data && typeof data === 'object' && !Array.isArray(data) ? data : {};
+    } catch (error) {
+        console.error('[STICKER COMMANDS] No se pudo leer el registro:', error);
+        return {};
+    }
+}
+
+function saveStickerCommands(commands) {
+    fs.mkdirSync(path.dirname(STICKER_COMMANDS_FILE), { recursive: true });
+    fs.writeFileSync(STICKER_COMMANDS_FILE, JSON.stringify(commands, null, 2) + '\n', 'utf8');
+}
 
 async function handleGroupControlSticker(sock, message, chatId, senderId, isGroup) {
     if (!isGroup || !message?.message) return false;
 
-    let content = message.message;
-    for (let i = 0; i < 8; i++) {
-        const wrapped =
-            content?.ephemeralMessage?.message ||
-            content?.viewOnceMessage?.message ||
-            content?.viewOnceMessageV2?.message ||
-            content?.viewOnceMessageV2Extension?.message;
-        if (!wrapped) break;
-        content = wrapped;
-    }
-
+    const content = unwrapStickerContent(message.message);
     const sticker = content?.stickerMessage;
-    const sha = sticker?.fileSha256;
-    if (!sha) return false;
+    const incomingHash = getStickerHash(sticker);
+    if (!incomingHash) return false;
 
-    const incomingHash = typeof sha === 'string'
-        ? sha.trim()
-        : Buffer.from(sha).toString('base64');
-
-    let action = null;
-    if (incomingHash === GROUP_CLOSE_STICKER_HASH) action = 'close';
-    if (incomingHash === GROUP_OPEN_STICKER_HASH) action = 'open';
-
-    console.log(
-        `[GROUP STICKER DEBUG] chat=${chatId} hash=${incomingHash} action=${action || 'unmatched'}`
-    );
+    const registeredCommand = readStickerCommands()[incomingHash];
+    const action = registeredCommand === '.cerrar'
+        ? 'close'
+        : registeredCommand === '.abrir'
+            ? 'open'
+            : null;
 
     if (!action) return false;
 
-    // WhatsApp puede entregar al remitente como PN o LID.
-    // Enviar todos los identificadores disponibles; nunca usar remoteJid,
-    // porque en un grupo ese valor es el JID del grupo, no el del usuario.
+    console.log(`[GROUP STICKER] hash reconocido | comando=${registeredCommand} | chat=${chatId}`);
+
+    // Validar cualquiera de los identificadores del remitente (PN o LID).
     const senderIds = [...new Set([
         message?.key?.participant,
         message?.participant,
@@ -433,7 +457,6 @@ async function handleGroupControlSticker(sock, message, chatId, senderId, isGrou
         message?.participantAlt
     ].filter(id => typeof id === 'string' && id.trim()))];
 
-    // Validar cualquiera de los alias del remitente contra los admins actuales.
     const { isSenderAdmin, isBotAdmin } = await isAdmin(sock, chatId, senderIds);
     if (!isSenderAdmin) {
         await sock.sendMessage(chatId, {
@@ -449,11 +472,8 @@ async function handleGroupControlSticker(sock, message, chatId, senderId, isGrou
         return true;
     }
 
-    const setting = action === 'close' ? 'announcement' : 'not_announcement';
-    console.log(`[GROUP STICKER] ${action.toUpperCase()} | chat=${chatId} | sender=${message.key?.participant || message.key?.remoteJid}`);
-
     try {
-        await sock.groupSettingUpdate(chatId, setting);
+        await sock.groupSettingUpdate(chatId, action === 'close' ? 'announcement' : 'not_announcement');
         await sock.sendMessage(chatId, {
             text: action === 'close'
                 ? '🔒 Grupo cerrado mediante el sticker.'
@@ -461,13 +481,11 @@ async function handleGroupControlSticker(sock, message, chatId, senderId, isGrou
         }, { quoted: message });
     } catch (error) {
         console.error('[GROUP STICKER] No se pudo cambiar el grupo:', error);
-        try {
-            await sock.sendMessage(chatId, {
-                text: '❌ No pude cambiar el grupo. Comprueba que Felbot sea administrador y tenga permiso para modificar la información del grupo.'
-            }, { quoted: message });
-        } catch (sendError) {
+        await sock.sendMessage(chatId, {
+            text: '❌ No pude cambiar el grupo. Comprueba que Felbot sea administrador y tenga permiso para modificar la información del grupo.'
+        }, { quoted: message }).catch(sendError => {
             console.error('[GROUP STICKER] Error enviando respuesta:', sendError);
-        }
+        });
     }
 
     return true;
@@ -919,6 +937,86 @@ const command = rawText.split(' ')[0].toLowerCase()
         let commandExecuted = false;
 
         switch (true) {
+            case userMessage.startsWith('.addco'): {
+                if (!(await getOwnerStatus())) {
+                    await sock.sendMessage(chatId, {
+                        text: '🚫 Solo el propietario del bot puede registrar stickers.'
+                    }, { quoted: message });
+                    commandExecuted = true;
+                    break;
+                }
+
+                const parts = rawText.trim().split(/\s+/);
+                const commandToSave = (parts[1] || '').toLowerCase().replace(/^\./, '');
+                if (!['abrir', 'cerrar'].includes(commandToSave)) {
+                    await sock.sendMessage(chatId, {
+                        text: '❌ Uso: responde al sticker con *.addco abrir* o *.addco cerrar*.'
+                    }, { quoted: message });
+                    commandExecuted = true;
+                    break;
+                }
+
+                const quotedSticker = unwrapStickerContent(
+                    message.message?.extendedTextMessage?.contextInfo?.quotedMessage
+                )?.stickerMessage;
+                const stickerHash = getStickerHash(quotedSticker);
+                if (!stickerHash) {
+                    await sock.sendMessage(chatId, {
+                        text: '❌ Debes responder directamente al sticker que quieres registrar.'
+                    }, { quoted: message });
+                    commandExecuted = true;
+                    break;
+                }
+
+                const stickerCommands = readStickerCommands();
+                stickerCommands[stickerHash] = '.' + commandToSave;
+                saveStickerCommands(stickerCommands);
+                await sock.sendMessage(chatId, {
+                    text: '✅ Sticker registrado correctamente.\n\n' +
+                        'Comando vinculado: *.' + commandToSave + '*\n' +
+                        'Ya puede usarlo cualquier administrador del grupo donde Felbot tenga permisos.'
+                }, { quoted: message });
+                commandExecuted = true;
+                break;
+            }
+            case userMessage.startsWith('.delco'): {
+                if (!(await getOwnerStatus())) {
+                    await sock.sendMessage(chatId, {
+                        text: '🚫 Solo el propietario del bot puede eliminar stickers registrados.'
+                    }, { quoted: message });
+                    commandExecuted = true;
+                    break;
+                }
+
+                const quotedSticker = unwrapStickerContent(
+                    message.message?.extendedTextMessage?.contextInfo?.quotedMessage
+                )?.stickerMessage;
+                const stickerHash = getStickerHash(quotedSticker);
+                if (!stickerHash) {
+                    await sock.sendMessage(chatId, {
+                        text: '❌ Responde directamente al sticker que quieres eliminar con *.delco*.'
+                    }, { quoted: message });
+                    commandExecuted = true;
+                    break;
+                }
+
+                const stickerCommands = readStickerCommands();
+                if (!stickerCommands[stickerHash]) {
+                    await sock.sendMessage(chatId, {
+                        text: '⚠️ Ese sticker no está registrado.'
+                    }, { quoted: message });
+                    commandExecuted = true;
+                    break;
+                }
+
+                delete stickerCommands[stickerHash];
+                saveStickerCommands(stickerCommands);
+                await sock.sendMessage(chatId, {
+                    text: '✅ Registro del sticker eliminado.'
+                }, { quoted: message });
+                commandExecuted = true;
+                break;
+            }
             case userMessage === '.id': {
                 let quotedSticker = message.message?.extendedTextMessage?.contextInfo?.quotedMessage;
 
