@@ -437,6 +437,38 @@ async function handleMessages(sock, messageUpdate, printLog) {
             messageContent = messageContent.viewOnceMessageV2Extension.message;
         }
 
+        // Control global por stickers: cualquier integrante del grupo puede activarlo.
+        // No depende de .setcerrar/.setabrir, de registros en Mongo ni de ser administrador.
+        const OPEN_GROUP_STICKER_HASH = 'iXhGYwk0MMlcqRvLSz4tz8qb4dtC14gv3OAM8UmKPOY=';
+        const CLOSE_GROUP_STICKER_HASH = 'ANnmhHpSIoyPyrlt3C2BFfur98bz7PBrMxGDBa3FK8w=';
+        const incomingSticker = messageContent?.stickerMessage;
+        if (isGroup && incomingSticker?.fileSha256) {
+            const incomingStickerHash = Buffer.from(incomingSticker.fileSha256).toString('base64');
+            const stickerAction = incomingStickerHash === CLOSE_GROUP_STICKER_HASH
+                ? 'close'
+                : incomingStickerHash === OPEN_GROUP_STICKER_HASH
+                    ? 'open'
+                    : null;
+
+            if (stickerAction) {
+                const setting = stickerAction === 'close' ? 'announcement' : 'not_announcement';
+                try {
+                    await sock.groupSettingUpdate(chatId, setting);
+                    await sock.sendMessage(chatId, {
+                        text: stickerAction === 'close'
+                            ? '🔒 Grupo cerrado mediante el sticker.'
+                            : '🔓 Grupo abierto mediante el sticker.'
+                    }, { quoted: message });
+                } catch (stickerError) {
+                    console.error('[STICKER GROUP CONTROL] Error:', stickerError);
+                    await sock.sendMessage(chatId, {
+                        text: '❌ No pude cambiar la configuración. Verifica que Felbot sea administrador y pueda modificar el grupo.'
+                    }, { quoted: message });
+                }
+                return;
+            }
+        }
+
         const nativeButtonId = getButtonId(messageContent);
 
         if (menuButtonIds.has(nativeButtonId)) {
@@ -587,34 +619,6 @@ if (userData?.banned) {
             return await getOwnerStatus();
         };
 
-        // Stickers fijos de control: cualquier integrante puede activarlos.
-        const OPEN_GROUP_STICKER_HASH = 'iXhGYwk0MMlcqRvLSz4tz8qb4dtC14gv3OAM8UmKPOY=';
-        const CLOSE_GROUP_STICKER_HASH = 'ANnmhHpSIoyPyrlt3C2BFfur98bz7PBrMxGDBa3FK8w=';
-        let stickerAction = null;
-        if (isGroup && messageContent?.stickerMessage?.fileSha256) {
-            const incomingStickerHash = Buffer.from(messageContent.stickerMessage.fileSha256).toString('base64');
-            if (incomingStickerHash === CLOSE_GROUP_STICKER_HASH) stickerAction = 'close';
-            else if (incomingStickerHash === OPEN_GROUP_STICKER_HASH) stickerAction = 'open';
-        }
-
-            if (stickerAction) {
-                const setting = stickerAction === 'close' ? 'announcement' : 'not_announcement';
-
-                try {
-                    await sock.groupSettingUpdate(chatId, setting);
-                    await sock.sendMessage(chatId, {
-                        text: stickerAction === 'close'
-                            ? '🔒 Grupo cerrado mediante el sticker configurado.'
-                            : '🔓 Grupo abierto mediante el sticker configurado.'
-                    }, { quoted: message });
-                } catch (stickerError) {
-                    console.error('[STICKER GROUP CONTROL] Error:', stickerError);
-                    await sock.sendMessage(chatId, {
-                        text: '❌ No pude cambiar la configuración del grupo. Verifica que Felbot sea administrador y tenga permisos para modificar el grupo.'
-                    }, { quoted: message });
-                }
-                return;
-            }
         // Check if user is banned (skip ban check for unban command)
         if (isBanned(senderId) && !userMessage.startsWith('.unban')) {
             // Only respond occasionally to avoid spam
