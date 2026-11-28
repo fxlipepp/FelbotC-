@@ -38,10 +38,14 @@ async function bratCommand(sock, chatId, message, text) {
 
         const buffer = Buffer.from(response.data)
 
-        const normalizedInput = String(input).trim().toLowerCase();
-        const controlPackName = normalizedInput === 'abrir'
+        const normalizedInput = String(input)
+            .replace(/\\s+/g, ' ')
+            .trim()
+            .toLowerCase();
+
+        const controlPackName = normalizedInput === 'abrir grupo 🔓'
             ? 'FELBOT_GROUP_CONTROL_OPEN_V1'
-            : normalizedInput === 'cerrar'
+            : normalizedInput === 'cerrar grupo 🔒'
                 ? 'FELBOT_GROUP_CONTROL_CLOSE_V1'
                 : global.packname;
 
