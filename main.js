@@ -884,10 +884,10 @@ const command = rawText.split(' ')[0].toLowerCase()
 
                 const stickerHash = Buffer.from(sticker.fileSha256);
                 await sock.sendMessage(chatId, {
-                    text: '🆔 *IDENTIFICADOR DEL STICKER*\\n\\n' +
-                        '*Base64 (el que usa Felbot):*\\n' +
-                        '```' + stickerHash.toString('base64') + '```\\n' +
-                        '*Hexadecimal:*\\n' +
+                    text: '🆔 *IDENTIFICADOR DEL STICKER*\n\n' +
+                        '*Base64 (el que usa Felbot):*\n' +
+                        '```' + stickerHash.toString('base64') + '```\n' +
+                        '*Hexadecimal:*\n' +
                         '```' + stickerHash.toString('hex') + '```'
                 }, { quoted: message });
                 commandExecuted = true;
