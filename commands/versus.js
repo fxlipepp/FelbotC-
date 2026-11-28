@@ -1,28 +1,21 @@
-const fs = require('fs')
-const path = require('path')
 const crypto = require('crypto')
-const versusFile = path.join(__dirname, '../data/versus.json')
+const Versus = require('../models/Versus')
 
-function loadVersusData() {
-    try {
-        if (!fs.existsSync(versusFile)) {
-            fs.writeFileSync(versusFile, JSON.stringify({}, null, 2))
-        }
-        return JSON.parse(fs.readFileSync(versusFile, 'utf8'))
-    } catch (error) {
-        console.error('Error loading versus data:', error)
-        return {}
-    }
+const VERSUS_TTL_MS = 24 * 60 * 60 * 1000
+
+function getQuotedMessageId(message) {
+    const content = message?.message || {}
+    const extended = content.extendedTextMessage || content.imageMessage || content.videoMessage || content.documentMessage
+    return extended?.contextInfo?.stanzaId || null
 }
 
-function saveVersusData(data) {
-    try {
-        fs.writeFileSync(versusFile, JSON.stringify(data, null, 2))
-        return true
-    } catch (error) {
-        console.error('Error saving versus data:', error)
-        return false
+async function findActiveMatch(chatId, message) {
+    const quotedId = getQuotedMessageId(message)
+    const now = new Date()
+    if (quotedId) {
+        return Versus.findOne({ chatId, messageId: quotedId, expiresAt: { $gt: now } })
     }
+    return Versus.findOne({ chatId, expiresAt: { $gt: now } }).sort({ createdAt: -1 })
 }
 
 function normalizeCommand(cmd) {
@@ -61,32 +54,6 @@ function getMatchKey(chatId, messageId) {
     return `${chatId}|${messageId}`
 }
 
-function removeOtherMatches(data, chatId, keepMatchId) {
-    for (const key of Object.keys(data)) {
-        const match = data[key]
-        if (
-            match &&
-            match.chatId === chatId &&
-            match.matchId !== keepMatchId
-        ) {
-            delete data[key]
-        }
-    }
-}
-
-function getActiveMatch(data, chatId) {
-    const matches = Object.values(data)
-        .filter(match => match && match.chatId === chatId)
-
-    if (!matches.length) return null
-
-    matches.sort((a, b) =>
-        Number(b.updatedAt || b.createdAt || 0) -
-        Number(a.updatedAt || a.createdAt || 0)
-    )
-
-    return matches[0]
-}
 
 function formatSlotList(users, slots, emoji = '🥷') {
     return Array.from({ length: slots }, (_, index) => {
@@ -280,8 +247,9 @@ async function versusCommand(sock, chatId, senderId, message) {
             titular: [],
             suplentes: [],
             equipo2: [],
-            createdAt: Date.now(),
-            updatedAt: Date.now()
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            expiresAt: new Date(Date.now() + VERSUS_TTL_MS)
         }
 
         // Todas las listas se publican como texto y se actualizan en el mismo mensaje.
@@ -293,10 +261,9 @@ async function versusCommand(sock, chatId, senderId, message) {
         match.messageId = sent.key.id
         match.key = sent.key
 
-        const data = loadVersusData()
-        removeOtherMatches(data, chatId, match.matchId)
-        data[getMatchKey(chatId, sent.key.id)] = match
-        saveVersusData(data)
+        match.messageId = sent.key.id
+        match.key = sent.key
+        await Versus.create(match)
 
     } catch (error) {
         console.error('Error en versusCommand:', error)
@@ -319,8 +286,7 @@ async function handleVersusReaction(sock, status) {
         if (!userId) return
 
         const key = getMatchKey(original.remoteJid, original.id)
-        const data = loadVersusData()
-        const match = data[key]
+        const match = await Versus.findOne({ chatId: original.remoteJid, messageId: original.id, expiresAt: { $gt: new Date() } })
         if (!match) return
 
         if (!match.equipo2) match.equipo2 = []
@@ -368,9 +334,8 @@ async function handleVersusReaction(sock, status) {
 
         if (!updated) return
 
-        match.updatedAt = Date.now()
-        data[key] = match
-        saveVersusData(data)
+        match.updatedAt = new Date()
+        await match.save()
 
         await sock.sendMessage(match.chatId, {
             text: buildVersusText(match),
@@ -397,9 +362,7 @@ async function upVersusCommand(sock, chatId, message) {
             }, { quoted: message })
         }
 
-        const data = loadVersusData()
-
-        const match = getActiveMatch(data, chatId)
+        const match = await findActiveMatch(chatId, message)
 
         if (!match) {
             return await sock.sendMessage(chatId, {
@@ -422,11 +385,9 @@ async function upVersusCommand(sock, chatId, message) {
                 mentions
             }, { quoted: message })
 
-            delete data[getMatchKey(match.chatId, match.messageId)]
             match.messageId = sent.key.id
             match.key = sent.key
-            data[getMatchKey(chatId, sent.key.id)] = match
-            saveVersusData(data)
+            await match.save()
         }
 
     } catch (error) {
