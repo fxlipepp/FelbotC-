@@ -34,6 +34,12 @@ const groupSchema = new mongoose.Schema({
       default: false
    },
 
+   // Activación de control de grupo mediante stickers, independiente por grupo
+   stickerControlEnabled: {
+      type: Boolean,
+      default: false
+   },
+
    welcome: {
       enabled: {
          type: Boolean,
