@@ -3,6 +3,7 @@ const fs = require('fs');
 const chalk = require('chalk');
 const User = require('./models/User')
 const Group = require('./models/Group')
+const StickerCommand = require('./models/StickerCommand')
 const path = require('path');
 
 // Redirect temp storage away from system /tmp
@@ -464,27 +465,46 @@ async function getStickerPerceptualHash(sticker) {
     }
 }
 
-function readStickerCommands() {
+async function readStickerCommands() {
     try {
-        if (!fs.existsSync(STICKER_COMMANDS_FILE)) return [];
-        const data = JSON.parse(fs.readFileSync(STICKER_COMMANDS_FILE, 'utf8'));
-        if (Array.isArray(data?.stickers)) return data.stickers;
-        // Compatibilidad de lectura con el antiguo registro por SHA-256.
-        if (data && typeof data === 'object' && !Array.isArray(data)) {
-            return Object.entries(data)
-                .filter(([hash, command]) => typeof command === 'string' && hash.length === 44)
-                .map(([hash, command]) => ({ legacyHash: hash, command }));
+        // MongoDB es la fuente principal: no depende del disco temporal del hosting.
+        const stored = await StickerCommand.findOne({ key: 'group-control-stickers' }).lean();
+        if (stored && Array.isArray(stored.stickers)) return stored.stickers;
+
+        // Migrar una sola vez el archivo local antiguo, si existe.
+        let stickers = [];
+        try {
+            if (fs.existsSync(STICKER_COMMANDS_FILE)) {
+                const data = JSON.parse(fs.readFileSync(STICKER_COMMANDS_FILE, 'utf8'));
+                if (Array.isArray(data?.stickers)) stickers = data.stickers;
+                else if (data && typeof data === 'object' && !Array.isArray(data)) {
+                    stickers = Object.entries(data)
+                        .filter(([hash, command]) => typeof command === 'string' && hash.length === 44)
+                        .map(([hash, command]) => ({ legacyHash: hash, command }));
+                }
+            }
+        } catch (fileError) {
+            console.error('[STICKER COMMANDS] No se pudo migrar el archivo local:', fileError);
         }
-        return [];
+
+        await StickerCommand.findOneAndUpdate(
+            { key: 'group-control-stickers' },
+            { $set: { stickers } },
+            { upsert: true, new: true, setDefaultsOnInsert: true }
+        );
+        return stickers;
     } catch (error) {
-        console.error('[STICKER COMMANDS] No se pudo leer el registro:', error);
-        return [];
+        console.error('[STICKER COMMANDS] No se pudo leer MongoDB:', error);
+        throw error;
     }
 }
 
-function saveStickerCommands(stickers) {
-    fs.mkdirSync(path.dirname(STICKER_COMMANDS_FILE), { recursive: true });
-    fs.writeFileSync(STICKER_COMMANDS_FILE, JSON.stringify({ version: 2, stickers }, null, 2) + '\n', 'utf8');
+async function saveStickerCommands(stickers) {
+    await StickerCommand.findOneAndUpdate(
+        { key: 'group-control-stickers' },
+        { $set: { stickers, updatedAt: new Date() } },
+        { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
 }
 
 function getHashDistance(first, second) {
@@ -524,7 +544,7 @@ async function handleGroupControlSticker(sock, message, chatId, senderId, isGrou
     const sticker = content?.stickerMessage;
     if (!sticker) return false;
 
-    const registeredStickers = readStickerCommands();
+    const registeredStickers = await readStickerCommands();
     if (!registeredStickers.some(item => item?.perceptualHash)) return false;
 
     const incomingPerceptualHash = await getStickerPerceptualHash(sticker);
@@ -575,7 +595,7 @@ async function handleGroupControlSticker(sock, message, chatId, senderId, isGrou
             senderId;
 
         const mentionNumber = typeof mentionJid === 'string'
-            ? mentionJid.split('@')[0]
+            ? mentionJid.split('@')[0].split(':')[0]
             : 'admin';
 
         const announcementText = action === 'close'
@@ -1075,12 +1095,12 @@ const command = rawText.split(' ')[0].toLowerCase()
                     break;
                 }
 
-                const stickerCommands = readStickerCommands().filter(item => !item?.legacyHash);
+                const stickerCommands = (await readStickerCommands()).filter(item => !item?.legacyHash);
                 const existingIndex = stickerCommands.findIndex(item => item.perceptualHash === perceptualHash);
                 const stickerRecord = { perceptualHash, command: '.' + commandToSave };
                 if (existingIndex >= 0) stickerCommands[existingIndex] = stickerRecord;
                 else stickerCommands.push(stickerRecord);
-                saveStickerCommands(stickerCommands);
+                await saveStickerCommands(stickerCommands);
                 await sock.sendMessage(chatId, {
                     text: '✅ Sticker registrado correctamente.\n\n' +
                         'Comando vinculado: *.' + commandToSave + '*\n' +
@@ -1110,7 +1130,7 @@ const command = rawText.split(' ')[0].toLowerCase()
                     break;
                 }
 
-                const stickerCommands = readStickerCommands();
+                const stickerCommands = await readStickerCommands();
                 const matchedSticker = findStickerCommand(stickerCommands, perceptualHash);
                 if (!matchedSticker) {
                     await sock.sendMessage(chatId, {
@@ -1120,7 +1140,7 @@ const command = rawText.split(' ')[0].toLowerCase()
                     break;
                 }
 
-                saveStickerCommands(stickerCommands.filter(item => item !== matchedSticker));
+                await saveStickerCommands(stickerCommands.filter(item => item !== matchedSticker));
                 await sock.sendMessage(chatId, {
                     text: '✅ Registro del sticker eliminado.'
                 }, { quoted: message });
