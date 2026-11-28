@@ -544,6 +544,9 @@ async function handleGroupControlSticker(sock, message, chatId, senderId, isGrou
     const sticker = content?.stickerMessage;
     if (!sticker) return false;
 
+    const groupStickerConfig = await Group.findOne({ groupId: chatId }).select('stickerControlEnabled').lean();
+    if (!groupStickerConfig?.stickerControlEnabled) return false;
+
     const registeredStickers = await readStickerCommands();
     if (!registeredStickers.some(item => item?.perceptualHash)) return false;
 
@@ -1284,6 +1287,48 @@ const command = rawText.split(' ')[0].toLowerCase()
                 await showEconomyMenu(sock, chatId, senderId, message);
                 commandExecuted = true;
                 break;
+            case userMessage.startsWith('.stk'): {
+                if (!isGroup) {
+                    await sock.sendMessage(chatId, { text: '❌ Este comando solo funciona dentro de un grupo.' }, { quoted: message });
+                    commandExecuted = true;
+                    break;
+                }
+
+                const stkAction = userMessage.split(/\\s+/)[1]?.toLowerCase();
+                if (!['on', 'off'].includes(stkAction)) {
+                    await sock.sendMessage(chatId, { text: 'Uso: *.stk on* para activar los stickers o *.stk off* para desactivarlos en este grupo.' }, { quoted: message });
+                    commandExecuted = true;
+                    break;
+                }
+
+                const stkAdminStatus = await isAdmin(sock, chatId, [
+                    message?.key?.participant,
+                    message?.participant,
+                    message?.key?.participantAlt,
+                    message?.participantAlt,
+                    senderId
+                ].filter(Boolean));
+                if (!stkAdminStatus.isSenderAdmin && !message.key.fromMe) {
+                    await sock.sendMessage(chatId, { text: '🚫 Solo los administradores del grupo pueden cambiar esta configuración.' }, { quoted: message });
+                    commandExecuted = true;
+                    break;
+                }
+
+                const enabled = stkAction === 'on';
+                await Group.findOneAndUpdate(
+                    { groupId: chatId },
+                    { $set: { stickerControlEnabled: enabled } },
+                    { upsert: true, new: true, setDefaultsOnInsert: true }
+                );
+
+                await sock.sendMessage(chatId, {
+                    text: enabled
+                        ? '✅ Los stickers de abrir y cerrar ya están ACTIVADOS en este grupo.\\n\\nLos administradores pueden utilizarlos.'
+                        : '🔒 Los stickers de abrir y cerrar quedaron DESACTIVADOS en este grupo.'
+                }, { quoted: message });
+                commandExecuted = true;
+                break;
+            }
             case userMessage.startsWith('.modoeconomia'):
                 if (!message.key.fromMe && !(await getOwnerStatus())) {
                     await sock.sendMessage(chatId, { text: '❌ Solo el OWNER puede activar la economía.' }, { quoted: message });
