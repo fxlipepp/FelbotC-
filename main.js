@@ -1287,14 +1287,14 @@ const command = rawText.split(' ')[0].toLowerCase()
                 await showEconomyMenu(sock, chatId, senderId, message);
                 commandExecuted = true;
                 break;
-            case userMessage.startsWith('.stk'): {
+            case userMessage === '.stk' || userMessage.startsWith('.stk '): {
                 if (!isGroup) {
                     await sock.sendMessage(chatId, { text: '❌ Este comando solo funciona dentro de un grupo.' }, { quoted: message });
                     commandExecuted = true;
                     break;
                 }
 
-                const stkAction = userMessage.split(/\\s+/)[1]?.toLowerCase();
+                const stkAction = userMessage.split(/\s+/)[1]?.toLowerCase();
                 if (!['on', 'off'].includes(stkAction)) {
                     await sock.sendMessage(chatId, { text: 'Uso: *.stk on* para activar los stickers o *.stk off* para desactivarlos en este grupo.' }, { quoted: message });
                     commandExecuted = true;
@@ -1323,7 +1323,7 @@ const command = rawText.split(' ')[0].toLowerCase()
 
                 await sock.sendMessage(chatId, {
                     text: enabled
-                        ? '✅ Los stickers de abrir y cerrar ya están ACTIVADOS en este grupo.\\n\\nLos administradores pueden utilizarlos.'
+                        ? '✅ Los stickers de abrir y cerrar ya están ACTIVADOS en este grupo.\n\nLos administradores pueden utilizarlos.'
                         : '🔒 Los stickers de abrir y cerrar quedaron DESACTIVADOS en este grupo.'
                 }, { quoted: message });
                 commandExecuted = true;
