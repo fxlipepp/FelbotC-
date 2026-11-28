@@ -4,14 +4,26 @@ const Versus = require('../models/Versus')
 const VERSUS_TTL_MS = 24 * 60 * 60 * 1000
 
 function getQuotedMessageId(message) {
-    let content = message?.message || {}
-    for (let i = 0; i < 6 && content; i++) {
-        const wrapped = content.ephemeralMessage?.message || content.viewOnceMessage?.message || content.viewOnceMessageV2?.message || content.documentWithCaptionMessage?.message
-        if (!wrapped) break
-        content = wrapped
+    const root = message?.message || {}
+    const queue = [root]
+    const visited = new Set()
+
+    while (queue.length) {
+        const node = queue.shift()
+        if (!node || typeof node !== 'object' || visited.has(node)) continue
+        visited.add(node)
+
+        const context = node.contextInfo || node.messageContextInfo
+        if (context?.stanzaId) return context.stanzaId
+
+        for (const [key, value] of Object.entries(node)) {
+            // No buscar dentro del mensaje citado de otro nivel.
+            if (key === 'quotedMessage' || key === 'quotedMessageV2' || key === 'quotedMessageV3') continue
+            if (value && typeof value === 'object') queue.push(value)
+        }
     }
-    const extended = content.extendedTextMessage || content.imageMessage || content.videoMessage || content.documentMessage
-    return extended?.contextInfo?.stanzaId || null
+
+    return null
 }
 
 async function findActiveMatch(chatId, message) {
@@ -157,7 +169,7 @@ ${esInterna
 💔 │ Salir de la Lista
 
 > 🏴‍☠️ *${match.groupName}*
-> Usa .up para volver a mandar la ultima lista creada
+> Usa .up para volver a publicar esta lista
 `.trim()
 }
 
@@ -374,23 +386,16 @@ async function upVersusCommand(sock, chatId, message) {
 
         const mentions = mentionsForMatch(match)
 
-        try {
-            await sock.sendMessage(chatId, {
-                text: buildVersusText(match),
-                mentions,
-                edit: match.key
-            })
-        } catch (error) {
-            console.error('Error editando VS con .up:', error)
-            const sent = await sock.sendMessage(chatId, {
-                text: buildVersusText(match),
-                mentions
-            }, { quoted: message })
+        // .up vuelve a publicar la lista seleccionada; no intenta editar
+        // el mensaje anterior. El nuevo mensaje queda como destino de reacciones.
+        const sent = await sock.sendMessage(chatId, {
+            text: buildVersusText(match),
+            mentions
+        }, { quoted: message })
 
-            match.messageId = sent.key.id
-            match.key = sent.key
-            await match.save()
-        }
+        match.messageId = sent.key.id
+        match.key = sent.key
+        await match.save()
 
     } catch (error) {
         console.error('Error en upVersusCommand:', error)
