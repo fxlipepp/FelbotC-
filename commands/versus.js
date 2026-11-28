@@ -1,19 +1,7 @@
 const fs = require('fs')
 const path = require('path')
 const crypto = require('crypto')
-const { ButtonV2 } = require('../lib/airich')
 const versusFile = path.join(__dirname, '../data/versus.json')
-
-// En estos grupos el VS usa reacciones y edita siempre el mismo mensaje.
-// Fuera de ellos se mantiene el sistema clásico con botones.
-const REACTION_VERSUS_GROUPS = new Set([
-    '120363411245707852@g.us',
-    '120363425282487642@g.us'
-])
-
-function usesReactionVersus(chatId) {
-    return REACTION_VERSUS_GROUPS.has(chatId)
-}
 
 function loadVersusData() {
     try {
@@ -296,26 +284,11 @@ async function versusCommand(sock, chatId, senderId, message) {
             updatedAt: Date.now()
         }
 
-        let sent
-
-        if (usesReactionVersus(chatId)) {
-            sent = await sock.sendMessage(chatId, {
-                text: buildVersusText(match),
-                mentions: mentionsForMatch(match)
-            }, { quoted: message })
-        } else {
-            const buttonMenu = new ButtonV2(sock)
-                .setBody(buildVersusText(match))
-                .setFooter('FelbotC - Registro Versus')
-                .addButton('❤️ Titular', `versus::${match.matchId}::titular`)
-                .addButton(match.type.startsWith('int') ? '👍 Equipo 2' : '👍 Suplente', `versus::${match.matchId}::suplente`)
-                .addButton('💔 Salir', `versus::${match.matchId}::remove`)
-
-            sent = await buttonMenu.send(chatId, {
-                quoted: message,
-                viewOnce: false
-            })
-        }
+        // Todas las listas se publican como texto y se actualizan en el mismo mensaje.
+        const sent = await sock.sendMessage(chatId, {
+            text: buildVersusText(match),
+            mentions: mentionsForMatch(match)
+        }, { quoted: message })
 
         match.messageId = sent.key.id
         match.key = sent.key
@@ -339,10 +312,8 @@ async function handleVersusReaction(sock, status) {
         const original = status.key
 
         if (!original?.remoteJid || !original?.id) return
-        if (!usesReactionVersus(original.remoteJid)) return
-
         const emoji = getReactionEmoji(status)
-        if (!['❤️', '👍', '💔'].includes(emoji)) return
+        if (!['❤️', '👍', '👍🏻', '💔'].includes(emoji)) return
 
         const userId = getReactingUser(status)
         if (!userId) return
@@ -375,7 +346,7 @@ async function handleVersusReaction(sock, status) {
                 match.titular.push(userId)
                 updated = true
             }
-        } else if (emoji === '👍') {
+        } else if (emoji === '👍' || emoji === '👍🏻') {
             if (match.type.startsWith('int')) {
                 if (
                     !match.equipo2.includes(userId) &&
@@ -411,89 +382,10 @@ async function handleVersusReaction(sock, status) {
     }
 }
 
-async function handleVersusButton(sock, senderId, buttonId, message) {
-    try {
-        const parsed = parseVersusButtonId(buttonId)
-        if (!parsed) return
-
-        const { matchId, action } = parsed
-        const data = loadVersusData()
-        const match = Object.values(data).find((m) => m.matchId === matchId)
-        if (!match) return
-        if (!match.equipo2) match.equipo2 = []
-        if (senderId === sock.user?.id) return
-
-        let updated = false
-
-        if (action === 'remove') {
-            if (
-                match.titular.includes(senderId) ||
-                match.suplentes.includes(senderId) ||
-                match.equipo2.includes(senderId)
-            ) {
-                removeUserFromMatch(match, senderId)
-                updated = true
-            }
-        } else if (action === 'titular') {
-            if (
-                !match.titular.includes(senderId) &&
-                match.titular.length < match.maxTitular
-            ) {
-                removeUserFromMatch(match, senderId)
-                match.titular.push(senderId)
-                updated = true
-            }
-        } else if (action === 'suplente') {
-            if (match.type.startsWith('int')) {
-                if (
-                    !match.equipo2.includes(senderId) &&
-                    match.equipo2.length < match.maxTitular
-                ) {
-                    removeUserFromMatch(match, senderId)
-                    match.equipo2.push(senderId)
-                    updated = true
-                }
-            } else if (
-                !match.suplentes.includes(senderId) &&
-                match.suplentes.length < match.maxSuplentes
-            ) {
-                removeUserFromMatch(match, senderId)
-                match.suplentes.push(senderId)
-                updated = true
-            }
-        }
-
-        if (!updated) return
-
-        const oldKey = getMatchKey(match.chatId, match.messageId)
-
-        const buttonMenu = new ButtonV2(sock)
-            .setBody(buildVersusText(match))
-            .setFooter('FelbotC - Registro Versus')
-            .addButton('❤️ Titular', `versus::${match.matchId}::titular`)
-            .addButton(
-                match.type.startsWith('int') ? '👍 Equipo 2' : '👍 Suplente',
-                `versus::${match.matchId}::suplente`
-            )
-            .addButton('💔 Salir', `versus::${match.matchId}::remove`)
-
-        const sent = await buttonMenu.send(match.chatId, {
-            quoted: message,
-            mentions: mentionsForMatch(match),
-            viewOnce: false
-        })
-
-        delete data[oldKey]
-
-        match.messageId = sent.key.id
-        match.key = sent.key
-        match.updatedAt = Date.now()
-
-        data[getMatchKey(match.chatId, sent.key.id)] = match
-        saveVersusData(data)
-    } catch (error) {
-        console.error('Error en handleVersusButton:', error)
-    }
+// Los registros nuevos ya no usan botones. Se conserva el handler vacío
+// para que los botones de listas antiguas no vuelvan a generar publicaciones.
+async function handleVersusButton() {
+    return
 }
 
 async function upVersusCommand(sock, chatId, message) {
@@ -517,20 +409,14 @@ async function upVersusCommand(sock, chatId, message) {
 
         const mentions = mentionsForMatch(match)
 
-        if (usesReactionVersus(chatId)) {
-            // En estos grupos .up conserva la misma publicación y solo la actualiza.
-            try {
-                await sock.sendMessage(chatId, {
-                    text: buildVersusText(match),
-                    mentions,
-                    edit: match.key
-                })
-                return
-            } catch (error) {
-                console.error('Error editando VS con .up:', error)
-                // Si WhatsApp ya no permite editar ese mensaje, se crea uno nuevo.
-            }
-
+        try {
+            await sock.sendMessage(chatId, {
+                text: buildVersusText(match),
+                mentions,
+                edit: match.key
+            })
+        } catch (error) {
+            console.error('Error editando VS con .up:', error)
             const sent = await sock.sendMessage(chatId, {
                 text: buildVersusText(match),
                 mentions
@@ -541,35 +427,7 @@ async function upVersusCommand(sock, chatId, message) {
             match.key = sent.key
             data[getMatchKey(chatId, sent.key.id)] = match
             saveVersusData(data)
-            return
         }
-
-        const buttonMenu = new ButtonV2(sock)
-            .setBody(buildVersusText(match))
-            .setFooter('FelbotC - Registro Versus')
-            .addButton('❤️ Titular', `versus::${match.matchId}::titular`)
-            .addButton(match.type.startsWith('int') ? '👍 Equipo 2' : '👍 Suplente', `versus::${match.matchId}::suplente`)
-            .addButton('💔 Salir', `versus::${match.matchId}::remove`)
-
-        const sent = await buttonMenu.send(chatId, {
-            quoted: message,
-            mentions,
-            viewOnce: false
-        })
-
-        const oldKey = getMatchKey(
-            match.chatId,
-            match.messageId
-        )
-
-        delete data[oldKey]
-
-        match.messageId = sent.key.id
-        match.key = sent.key
-
-        data[getMatchKey(chatId, sent.key.id)] = match
-
-        saveVersusData(data)
 
     } catch (error) {
         console.error('Error en upVersusCommand:', error)
