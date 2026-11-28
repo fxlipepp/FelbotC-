@@ -567,10 +567,24 @@ async function handleGroupControlSticker(sock, message, chatId, senderId, isGrou
 
     try {
         await sock.groupSettingUpdate(chatId, action === 'close' ? 'announcement' : 'not_announcement');
+
+        // Preferir el identificador PN para que la mención sea reconocida por WhatsApp.
+        const mentionJid =
+            senderIds.find(id => id.endsWith('@s.whatsapp.net')) ||
+            senderIds.find(id => id.endsWith('@lid')) ||
+            senderId;
+
+        const mentionNumber = typeof mentionJid === 'string'
+            ? mentionJid.split('@')[0]
+            : 'admin';
+
+        const announcementText = action === 'close'
+            ? `@\u200e${mentionNumber} 𝖍𝖆 𝖈𝖊𝖗𝖗𝖆𝖉𝖔 𝖊𝖑 𝖌𝖗𝖚𝖕𝖔 🔒💤\\n\\n𝑵𝒐𝒔 𝒗𝒆𝒎𝒐𝒔 𝒍𝒖𝒆𝒈𝒐...`
+            : `@\u200e${mentionNumber} 𝖍𝖆 𝖆𝖇𝖎𝖊𝖗𝖙𝖔 𝖊𝖑 𝖌𝖗𝖚𝖕𝖔 🔓✨\\n\\n𝑬𝒍 𝒄𝒉𝒂𝒕 𝒆𝒔𝒕𝒂́ 𝒅𝒆 𝒗𝒖𝒆𝒍𝒕𝒂...`;
+
         await sock.sendMessage(chatId, {
-            text: action === 'close'
-                ? '🔒 Grupo cerrado mediante el sticker.'
-                : '🔓 Grupo abierto mediante el sticker.'
+            text: announcementText,
+            mentions: [mentionJid]
         }, { quoted: message });
     } catch (error) {
         console.error('[GROUP STICKER] No se pudo cambiar el grupo:', error);
