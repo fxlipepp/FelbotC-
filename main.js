@@ -1338,8 +1338,8 @@ const command = rawText.split(' ')[0].toLowerCase()
 
                 await sock.sendMessage(chatId, {
                     text: enabled
-                        ? '🔓 𝑺𝒕𝒊𝒄𝒌𝒆𝒓𝒔 𝒂𝒄𝒕𝒊𝒗𝒂𝒅𝒐𝒔 ✨\\n\\nLos stickers de abrir y cerrar están habilitados en este grupo.\\n\\n✧ Los administradores ya pueden utilizarlos.\\n\\n𝑭𝒆𝒍𝒃𝒐𝒕 夜'
-                        : '🔒 𝑺𝒕𝒊𝒄𝒌𝒆𝒓𝒔 𝒅𝒆𝒔𝒂𝒄𝒕𝒊𝒗𝒂𝒅𝒐𝒔\\n\\nLos stickers de abrir y cerrar ya no están habilitados en este grupo.\\n\\n✧ El control por stickers está pausado.\\n\\n𝑭𝒆𝒍𝒃𝒐𝒕 夜'
+                        ? '🔓 𝑺𝒕𝒊𝒄𝒌𝒆𝒓𝒔 𝒂𝒄𝒕𝒊𝒗𝒂𝒅𝒐𝒔 ✨\n\nLos stickers de abrir y cerrar están habilitados en este grupo.\n\n✧ Los administradores ya pueden utilizarlos.\n\n𝑭𝒆𝒍𝒃𝒐𝒕 夜'
+                        : '🔒 𝑺𝒕𝒊𝒄𝒌𝒆𝒓𝒔 𝒅𝒆𝒔𝒂𝒄𝒕𝒊𝒗𝒂𝒅𝒐𝒔\n\nLos stickers de abrir y cerrar ya no están habilitados en este grupo.\n\n✧ El control por stickers está pausado.\n\n𝑭𝒆𝒍𝒃𝒐𝒕 夜'
                 }, { quoted: message });
                 commandExecuted = true;
                 break;
