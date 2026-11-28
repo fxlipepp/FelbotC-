@@ -418,8 +418,18 @@ async function handleGroupControlSticker(sock, message, chatId, senderId, isGrou
     if (incomingHash === GROUP_OPEN_STICKER_HASH) action = 'open';
     if (!action) return false;
 
-    // Validar al remitente contra los administradores actuales del grupo.
-    const { isSenderAdmin, isBotAdmin } = await isAdmin(sock, chatId, senderId);
+    // WhatsApp puede entregar al remitente como PN o LID.
+    // Enviar todos los identificadores disponibles; nunca usar remoteJid,
+    // porque en un grupo ese valor es el JID del grupo, no el del usuario.
+    const senderIds = [...new Set([
+        message?.key?.participant,
+        message?.participant,
+        message?.key?.participantAlt,
+        message?.participantAlt
+    ].filter(id => typeof id === 'string' && id.trim()))];
+
+    // Validar cualquiera de los alias del remitente contra los admins actuales.
+    const { isSenderAdmin, isBotAdmin } = await isAdmin(sock, chatId, senderIds);
     if (!isSenderAdmin) {
         await sock.sendMessage(chatId, {
             text: '🚫 Este sticker solo lo pueden usar los administradores del grupo.'
