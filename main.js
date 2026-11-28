@@ -4,8 +4,6 @@ const chalk = require('chalk');
 const User = require('./models/User')
 const Group = require('./models/Group')
 const path = require('path');
-const { downloadMediaMessage } = require('@whiskeysockets/baileys');
-const webp = require('node-webpmux');
 
 // Redirect temp storage away from system /tmp
 const customTemp = path.join(process.cwd(), 'temp');
@@ -390,8 +388,8 @@ async function economyCommandLocked(sock, chatId, senderId, message, product) {
 
 // Control de grupo por stickers fijos. Independiente de comandos, admins del grupo,
  // usuarios registrados, modo público y configuraciones guardadas en MongoDB.
-const GROUP_CONTROL_PACK_OPEN = 'FELBOT_GROUP_CONTROL_OPEN_V1';
-const GROUP_CONTROL_PACK_CLOSE = 'FELBOT_GROUP_CONTROL_CLOSE_V1';
+const GROUP_OPEN_STICKER_HASH = 'iXhGYwk0MMlcqRvLSz4tz8qb4dtC14gv3OAM8UmKPOY=';
+const GROUP_CLOSE_STICKER_HASH = 'ANnmhHpSIoyPyrlt3C2BFfur98bz7PBrMxGDBa3FK8w=';
 
 async function handleGroupControlSticker(sock, message, chatId, senderId, isGroup) {
     if (!isGroup || !message?.message) return false;
@@ -408,44 +406,26 @@ async function handleGroupControlSticker(sock, message, chatId, senderId, isGrou
     }
 
     const sticker = content?.stickerMessage;
-    if (!sticker) return false;
+    const sha = sticker?.fileSha256;
+    if (!sha) return false;
 
-    let metadata;
-    try {
-        const stickerBuffer = await downloadMediaMessage(message, 'buffer');
-        const webpImage = new webp.Image();
-        await webpImage.load(stickerBuffer);
+    const incomingHash = typeof sha === 'string'
+        ? sha.trim()
+        : Buffer.from(sha).toString('base64');
 
-        const exif = webpImage.exif;
-        if (!exif || !exif.length) return false;
-
-        const jsonStart = exif.indexOf(0x7b);
-        if (jsonStart < 0) return false;
-
-        metadata = JSON.parse(exif.subarray(jsonStart).toString('utf8'));
-    } catch (error) {
-        console.warn('[GROUP STICKER] No se pudieron leer los metadatos EXIF:', error?.message || error);
-        return false;
-    }
-
-    // Solo se aceptan stickers creados por Felbot y marcados como control de grupo.
-    const stickerAuthor = String(metadata?.['sticker-pack-publisher'] || '').trim();
-    const expectedAuthor = String(global.author || '').trim();
-    if (!expectedAuthor || stickerAuthor !== expectedAuthor) return false;
-
-    const packName = String(metadata?.['sticker-pack-name'] || '').trim();
     let action = null;
-
-    if (packName === GROUP_CONTROL_PACK_OPEN) action = 'open';
-    if (packName === GROUP_CONTROL_PACK_CLOSE) action = 'close';
+    if (incomingHash === GROUP_CLOSE_STICKER_HASH) action = 'close';
+    if (incomingHash === GROUP_OPEN_STICKER_HASH) action = 'open';
 
     console.log(
-        `[GROUP STICKER EXIF] chat=${chatId} pack=${packName || 'sin-pack'} action=${action || 'unmatched'}`
+        `[GROUP STICKER DEBUG] chat=${chatId} hash=${incomingHash} action=${action || 'unmatched'}`
     );
 
     if (!action) return false;
 
     // WhatsApp puede entregar al remitente como PN o LID.
+    // Enviar todos los identificadores disponibles; nunca usar remoteJid,
+    // porque en un grupo ese valor es el JID del grupo, no el del usuario.
     const senderIds = [...new Set([
         message?.key?.participant,
         message?.participant,
@@ -453,6 +433,7 @@ async function handleGroupControlSticker(sock, message, chatId, senderId, isGrou
         message?.participantAlt
     ].filter(id => typeof id === 'string' && id.trim()))];
 
+    // Validar cualquiera de los alias del remitente contra los admins actuales.
     const { isSenderAdmin, isBotAdmin } = await isAdmin(sock, chatId, senderIds);
     if (!isSenderAdmin) {
         await sock.sendMessage(chatId, {
