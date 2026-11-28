@@ -376,12 +376,12 @@ async function economyCommandLocked(sock, chatId, senderId, message, product) {
         if (!enabled || isOwnerAccount(senderId)) return false;
         const user = await ensureEconomyUser(senderId, message?.pushName || 'Usuario');
         if (!user || !user.registered) {
-            await sock.sendMessage(chatId, { text: '⚠️ **NO ESTÁS REGISTRADO**\\n\\nUsa .registrarme para entrar al sistema FelCoins.' }, { quoted: message });
+            await sock.sendMessage(chatId, { text: '⚠️ **NO ESTÁS REGISTRADO**\n\nUsa .registrarme para entrar al sistema FelCoins.' }, { quoted: message });
             return true;
         }
         if (Number(user.inventory?.[product]?.quantity || 0) <= 0) {
             const labels = { tiktok: '.tiktok', instagram: '.instagram', brat: '.brat', vv: '.vv' };
-            await sock.sendMessage(chatId, { text: `🔒 **${labels[product] || product} BLOQUEADO**\\n\\nDebes comprar el acceso en .tienda para poder usarlo.` }, { quoted: message });
+            await sock.sendMessage(chatId, { text: `🔒 **${labels[product] || product} BLOQUEADO**\n\nDebes comprar el acceso en .tienda para poder usarlo.` }, { quoted: message });
             return true;
         }
         return false;
@@ -599,8 +599,8 @@ async function handleGroupControlSticker(sock, message, chatId, senderId, isGrou
             : 'admin';
 
         const announcementText = action === 'close'
-            ? `@\u200e${mentionNumber} 𝖍𝖆 𝖈𝖊𝖗𝖗𝖆𝖉𝖔 𝖊𝖑 𝖌𝖗𝖚𝖕𝖔 🔒💤\\n\\n𝑵𝒐𝒔 𝒗𝒆𝒎𝒐𝒔 𝒍𝒖𝒆𝒈𝒐...`
-            : `@\u200e${mentionNumber} 𝖍𝖆 𝖆𝖈𝖙𝖎𝖛𝖆𝖉𝖔 𝖊𝖑 𝖌𝖗𝖚𝖕𝖔 🔓✨\\n\\n𝑬𝒍 𝒄𝒉𝒂𝒕 𝒆𝒔𝒕𝒂́ 𝒅𝒆 𝒗𝒖𝒆𝒍𝒕𝒂...`;
+            ? `@${mentionNumber} 𝖍𝖆 𝖈𝖊𝖗𝖗𝖆𝖉𝖔 𝖊𝖑 𝖌𝖗𝖚𝖕𝖔 🔒💤\n\n𝑵𝒐𝒔 𝒗𝒆𝒎𝒐𝒔 𝒍𝒖𝒆𝒈𝒐...`
+            : `@${mentionNumber} 𝖍𝖆 𝖆𝖈𝖙𝖎𝖛𝖆𝖉𝖔 𝖊𝖑 𝖌𝖗𝖚𝖕𝖔 🔓✨\n\n𝑬𝒍 𝒄𝒉𝒂𝒕 𝒆𝒔𝒕𝒂́ 𝒅𝒆 𝒗𝒖𝒆𝒍𝒕𝒂...`;
 
         await sock.sendMessage(chatId, {
             text: announcementText,
