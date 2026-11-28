@@ -391,7 +391,7 @@ async function economyCommandLocked(sock, chatId, senderId, message, product) {
 const GROUP_OPEN_STICKER_HASH = 'iXhGYwk0MMlcqRvLSz4tz8qb4dtC14gv3OAM8UmKPOY=';
 const GROUP_CLOSE_STICKER_HASH = 'ANnmhHpSIoyPyrlt3C2BFfur98bz7PBrMxGDBa3FK8w=';
 
-async function handleGroupControlSticker(sock, message, chatId, isGroup) {
+async function handleGroupControlSticker(sock, message, chatId, senderId, isGroup) {
     if (!isGroup || !message?.message) return false;
 
     let content = message.message;
@@ -417,6 +417,22 @@ async function handleGroupControlSticker(sock, message, chatId, isGroup) {
     if (incomingHash === GROUP_CLOSE_STICKER_HASH) action = 'close';
     if (incomingHash === GROUP_OPEN_STICKER_HASH) action = 'open';
     if (!action) return false;
+
+    // Validar al remitente contra los administradores actuales del grupo.
+    const { isSenderAdmin, isBotAdmin } = await isAdmin(sock, chatId, senderId);
+    if (!isSenderAdmin) {
+        await sock.sendMessage(chatId, {
+            text: '🚫 Este sticker solo lo pueden usar los administradores del grupo.'
+        }, { quoted: message });
+        return true;
+    }
+
+    if (!isBotAdmin) {
+        await sock.sendMessage(chatId, {
+            text: '❌ Felbot necesita ser administrador del grupo para poder abrirlo o cerrarlo.'
+        }, { quoted: message });
+        return true;
+    }
 
     const setting = action === 'close' ? 'announcement' : 'not_announcement';
     console.log(`[GROUP STICKER] ${action.toUpperCase()} | chat=${chatId} | sender=${message.key?.participant || message.key?.remoteJid}`);
@@ -465,7 +481,7 @@ async function handleMessages(sock, messageUpdate, printLog) {
         isGroup = chatId?.endsWith('@g.us');
 
         // Ejecutar antes de middleware, consultas de usuario y permisos de comandos.
-        if (await handleGroupControlSticker(sock, message, chatId, isGroup)) return;
+        if (await handleGroupControlSticker(sock, message, chatId, senderId, isGroup)) return;
 
 
         // Non-critical middleware must not block command execution.
