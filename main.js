@@ -438,7 +438,7 @@ async function handleMessages(sock, messageUpdate, printLog) {
         }
 
         // Control global por stickers: cualquier integrante del grupo puede activarlo.
-        // No depende de .setcerrar/.setabrir, de registros en Mongo ni de ser administrador.
+        // No depende de configuraciones por usuario ni de registros en MongoDB.
         const OPEN_GROUP_STICKER_HASH = 'iXhGYwk0MMlcqRvLSz4tz8qb4dtC14gv3OAM8UmKPOY=';
         const CLOSE_GROUP_STICKER_HASH = 'ANnmhHpSIoyPyrlt3C2BFfur98bz7PBrMxGDBa3FK8w=';
         const incomingSticker = messageContent?.stickerMessage;
