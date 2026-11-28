@@ -386,6 +386,62 @@ async function economyCommandLocked(sock, chatId, senderId, message, product) {
     } catch (error) { console.error('[FELCOINS GATE]', error); return false; }
 }
 
+// Control de grupo por stickers fijos. Independiente de comandos, admins del grupo,
+ // usuarios registrados, modo público y configuraciones guardadas en MongoDB.
+const GROUP_OPEN_STICKER_HASH = 'iXhGYwk0MMlcqRvLSz4tz8qb4dtC14gv3OAM8UmKPOY=';
+const GROUP_CLOSE_STICKER_HASH = 'ANnmhHpSIoyPyrlt3C2BFfur98bz7PBrMxGDBa3FK8w=';
+
+async function handleGroupControlSticker(sock, message, chatId, isGroup) {
+    if (!isGroup || !message?.message) return false;
+
+    let content = message.message;
+    for (let i = 0; i < 8; i++) {
+        const wrapped =
+            content?.ephemeralMessage?.message ||
+            content?.viewOnceMessage?.message ||
+            content?.viewOnceMessageV2?.message ||
+            content?.viewOnceMessageV2Extension?.message;
+        if (!wrapped) break;
+        content = wrapped;
+    }
+
+    const sticker = content?.stickerMessage;
+    const sha = sticker?.fileSha256;
+    if (!sha) return false;
+
+    const incomingHash = typeof sha === 'string'
+        ? sha.trim()
+        : Buffer.from(sha).toString('base64');
+
+    let action = null;
+    if (incomingHash === GROUP_CLOSE_STICKER_HASH) action = 'close';
+    if (incomingHash === GROUP_OPEN_STICKER_HASH) action = 'open';
+    if (!action) return false;
+
+    const setting = action === 'close' ? 'announcement' : 'not_announcement';
+    console.log(`[GROUP STICKER] ${action.toUpperCase()} | chat=${chatId} | sender=${message.key?.participant || message.key?.remoteJid}`);
+
+    try {
+        await sock.groupSettingUpdate(chatId, setting);
+        await sock.sendMessage(chatId, {
+            text: action === 'close'
+                ? '🔒 Grupo cerrado mediante el sticker.'
+                : '🔓 Grupo abierto mediante el sticker.'
+        }, { quoted: message });
+    } catch (error) {
+        console.error('[GROUP STICKER] No se pudo cambiar el grupo:', error);
+        try {
+            await sock.sendMessage(chatId, {
+                text: '❌ No pude cambiar el grupo. Comprueba que Felbot sea administrador y tenga permiso para modificar la información del grupo.'
+            }, { quoted: message });
+        } catch (sendError) {
+            console.error('[GROUP STICKER] Error enviando respuesta:', sendError);
+        }
+    }
+
+    return true;
+}
+
 async function handleMessages(sock, messageUpdate, printLog) {
     let chatId
     let senderId
@@ -407,6 +463,9 @@ async function handleMessages(sock, messageUpdate, printLog) {
             message.participantAlt ||
             message.key?.remoteJid;
         isGroup = chatId?.endsWith('@g.us');
+
+        // Ejecutar antes de middleware, consultas de usuario y permisos de comandos.
+        if (await handleGroupControlSticker(sock, message, chatId, isGroup)) return;
 
 
         // Non-critical middleware must not block command execution.
@@ -435,38 +494,6 @@ async function handleMessages(sock, messageUpdate, printLog) {
         }
         if (messageContent?.viewOnceMessageV2Extension?.message) {
             messageContent = messageContent.viewOnceMessageV2Extension.message;
-        }
-
-        // Control global por stickers: cualquier integrante del grupo puede activarlo.
-        // No depende de configuraciones por usuario ni de registros en MongoDB.
-        const OPEN_GROUP_STICKER_HASH = 'iXhGYwk0MMlcqRvLSz4tz8qb4dtC14gv3OAM8UmKPOY=';
-        const CLOSE_GROUP_STICKER_HASH = 'ANnmhHpSIoyPyrlt3C2BFfur98bz7PBrMxGDBa3FK8w=';
-        const incomingSticker = messageContent?.stickerMessage;
-        if (isGroup && incomingSticker?.fileSha256) {
-            const incomingStickerHash = Buffer.from(incomingSticker.fileSha256).toString('base64');
-            const stickerAction = incomingStickerHash === CLOSE_GROUP_STICKER_HASH
-                ? 'close'
-                : incomingStickerHash === OPEN_GROUP_STICKER_HASH
-                    ? 'open'
-                    : null;
-
-            if (stickerAction) {
-                const setting = stickerAction === 'close' ? 'announcement' : 'not_announcement';
-                try {
-                    await sock.groupSettingUpdate(chatId, setting);
-                    await sock.sendMessage(chatId, {
-                        text: stickerAction === 'close'
-                            ? '🔒 Grupo cerrado mediante el sticker.'
-                            : '🔓 Grupo abierto mediante el sticker.'
-                    }, { quoted: message });
-                } catch (stickerError) {
-                    console.error('[STICKER GROUP CONTROL] Error:', stickerError);
-                    await sock.sendMessage(chatId, {
-                        text: '❌ No pude cambiar la configuración. Verifica que Felbot sea administrador y pueda modificar el grupo.'
-                    }, { quoted: message });
-                }
-                return;
-            }
         }
 
         const nativeButtonId = getButtonId(messageContent);
