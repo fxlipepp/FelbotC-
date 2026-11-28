@@ -580,7 +580,7 @@ async function handleGroupControlSticker(sock, message, chatId, senderId, isGrou
 
         const announcementText = action === 'close'
             ? `@\u200e${mentionNumber} 𝖍𝖆 𝖈𝖊𝖗𝖗𝖆𝖉𝖔 𝖊𝖑 𝖌𝖗𝖚𝖕𝖔 🔒💤\\n\\n𝑵𝒐𝒔 𝒗𝒆𝒎𝒐𝒔 𝒍𝒖𝒆𝒈𝒐...`
-            : `@\u200e${mentionNumber} 𝖍𝖆 𝖆𝖇𝖎𝖊𝖗𝖙𝖔 𝖊𝖑 𝖌𝖗𝖚𝖕𝖔 🔓✨\\n\\n𝑬𝒍 𝒄𝒉𝒂𝒕 𝒆𝒔𝒕𝒂́ 𝒅𝒆 𝒗𝒖𝒆𝒍𝒕𝒂...`;
+            : `@\u200e${mentionNumber} 𝖍𝖆 𝖆𝖈𝖙𝖎𝖛𝖆𝖉𝖔 𝖊𝖑 𝖌𝖗𝖚𝖕𝖔 🔓✨\\n\\n𝑬𝒍 𝒄𝒉𝒂𝒕 𝒆𝒔𝒕𝒂́ 𝒅𝒆 𝒗𝒖𝒆𝒍𝒕𝒂...`;
 
         await sock.sendMessage(chatId, {
             text: announcementText,
