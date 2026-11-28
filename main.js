@@ -313,7 +313,18 @@ function getButtonId(messageContent) {
 
         if (direct) return String(direct);
 
-        for (const value of Object.values(node)) {
+        // No buscar dentro de mensajes citados: al responder a una lista
+        // de VS, su botón original está dentro de contextInfo.quotedMessage
+        // y no representa una pulsación nueva.
+        for (const [key, value] of Object.entries(node)) {
+            if (
+                key === 'contextInfo' ||
+                key === 'quotedMessage' ||
+                key === 'quotedMessageV2' ||
+                key === 'quotedMessageV3' ||
+                key === 'messageContextInfo'
+            ) continue;
+
             if (value && typeof value === 'object') {
                 const found = scan(value);
                 if (found) return found;
