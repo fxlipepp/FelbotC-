@@ -1068,7 +1068,22 @@ const command = rawText.split(' ')[0].toLowerCase()
 
         switch (true) {
             case userMessage.startsWith('.addco'): {
-                if (!(await getOwnerStatus())) {
+                const normalizeOwnerId = value => String(value || '').split(':')[0].split('@')[0].trim();
+                const ownerNumber = normalizeOwnerId(settings.ownerNumber);
+                const ownerLid = normalizeOwnerId(settings.ownerLid);
+                const commandSenderIds = [
+                    senderId,
+                    message?.key?.participant,
+                    message?.participant,
+                    message?.key?.participantAlt,
+                    message?.participantAlt,
+                    message?.key?.remoteJidAlt
+                ].filter(Boolean).map(normalizeOwnerId);
+                const isRealOwner = message.key?.fromMe ||
+                    (ownerNumber && commandSenderIds.includes(ownerNumber)) ||
+                    (ownerLid && commandSenderIds.includes(ownerLid));
+
+                if (!isRealOwner) {
                     await sock.sendMessage(chatId, {
                         text: '🚫 Solo el propietario del bot puede registrar stickers.'
                     }, { quoted: message });
