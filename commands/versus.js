@@ -4,7 +4,12 @@ const Versus = require('../models/Versus')
 const VERSUS_TTL_MS = 24 * 60 * 60 * 1000
 
 function getQuotedMessageId(message) {
-    const content = message?.message || {}
+    let content = message?.message || {}
+    for (let i = 0; i < 6 && content; i++) {
+        const wrapped = content.ephemeralMessage?.message || content.viewOnceMessage?.message || content.viewOnceMessageV2?.message || content.documentWithCaptionMessage?.message
+        if (!wrapped) break
+        content = wrapped
+    }
     const extended = content.extendedTextMessage || content.imageMessage || content.videoMessage || content.documentMessage
     return extended?.contextInfo?.stanzaId || null
 }
@@ -257,9 +262,6 @@ async function versusCommand(sock, chatId, senderId, message) {
             text: buildVersusText(match),
             mentions: mentionsForMatch(match)
         }, { quoted: message })
-
-        match.messageId = sent.key.id
-        match.key = sent.key
 
         match.messageId = sent.key.id
         match.key = sent.key
