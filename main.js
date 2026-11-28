@@ -615,7 +615,6 @@ if (userData?.banned) {
                 }
                 return;
             }
-        }
         // Check if user is banned (skip ban check for unban command)
         if (isBanned(senderId) && !userMessage.startsWith('.unban')) {
             // Only respond occasionally to avoid spam
